@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage } from './utils/firebase';
+import { collection, onSnapshot, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { db } from './utils/firebase';
 import {
   BhuFile,
   InwardTapal,
@@ -54,7 +53,6 @@ import { ChangePasswordModal } from './components/modals/ChangePasswordModal';
 import { PrintReportPayload } from './utils/printReport';
 
 export default function App() {
-  // Application State
   const [files, setFiles] = useState<BhuFile[]>(() =>
     safeGetLocalStorage('rdo_files', INITIAL_FILES)
   );
@@ -96,12 +94,10 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboardTab');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  // Pre-filter transfers from dashboard
   const [bhuInitialStatus, setBhuInitialStatus] = useState<string>('');
   const [inwardInitialStatus, setInwardInitialStatus] = useState<string>('');
   const [outwardInitialSentTo, setOutwardInitialSentTo] = useState<string>('');
 
-  // Modal States
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [selectedFileForStatus, setSelectedFileForStatus] = useState<BhuFile | null>(null);
@@ -137,7 +133,6 @@ export default function App() {
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
 
-  // Global listener for table print preview requests across all tabs
   useEffect(() => {
     const handleOpenPrintPreview = (e: any) => {
       if (e.detail) {
@@ -151,7 +146,7 @@ export default function App() {
     };
   }, []);
 
-  // Firebase Realtime Listeners with Full Sync (Add, Edit, Delete)
+  // Real-time Listeners (Syncs instantly across all devices)
   useEffect(() => {
     const unsubFiles = onSnapshot(collection(db, 'bhu_files'), (snapshot) => {
       const list: BhuFile[] = [];
@@ -189,16 +184,15 @@ export default function App() {
     };
   }, []);
 
-  // Universal PDF Cloud Storage Handlers
+  // Direct Firestore Attachment Handler (Works without Storage billing)
   const getUniversalAttachment = async (key: string): Promise<string | null> => {
     try {
-      const storageRef = ref(storage, `documents/${key}.txt`);
-      const url = await getDownloadURL(storageRef);
-      const res = await fetch(url);
-      const dataStr = await res.text();
-      if (dataStr) return dataStr;
+      const snap = await getDoc(doc(db, 'attachments', key));
+      if (snap.exists() && snap.data()?.data) {
+        return snap.data().data;
+      }
     } catch (e) {
-      // Local fallback
+      console.warn('Could not fetch from Firestore attachments:', e);
     }
     return (await getAttachmentFromDB(key)) || null;
   };
@@ -206,24 +200,25 @@ export default function App() {
   const saveUniversalAttachment = async (key: string, dataStr: string): Promise<void> => {
     await setAttachmentInDB(key, dataStr);
     try {
-      const storageRef = ref(storage, `documents/${key}.txt`);
-      await uploadString(storageRef, dataStr, 'raw');
+      await setDoc(doc(db, 'attachments', key), {
+        key,
+        data: dataStr,
+        updatedAt: new Date().toISOString(),
+      });
     } catch (e) {
-      console.warn('Firebase Storage upload notice:', e);
+      console.error('Error saving attachment directly to Firestore:', e);
     }
   };
 
   const deleteUniversalAttachment = async (key: string): Promise<void> => {
     await deleteAttachmentFromDB(key);
     try {
-      const storageRef = ref(storage, `documents/${key}.txt`);
-      await deleteObject(storageRef);
+      await deleteDoc(doc(db, 'attachments', key));
     } catch (e) {
-      // Ignore if not in cloud
+      console.error('Error deleting attachment from Firestore:', e);
     }
   };
 
-  // Toast handler
   const showToast = (msg: string) => {
     setToastMsg(msg);
   };
@@ -236,7 +231,6 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [toastMsg]);
 
-  // Dashboard navigation router
   const handleDashboardNavigate = (targetTab: ActiveTab, filters?: any) => {
     if (filters) {
       if (targetTab === 'bhuBharatiTab' && filters.status !== undefined) {
@@ -250,7 +244,6 @@ export default function App() {
     setActiveTab(targetTab);
   };
 
-  // Staff admin navigation guard
   const handleOpenAdminFromDashboard = () => {
     if (currentUser && currentUser.role === 'ADMIN') {
       setActiveTab('adminTab');
@@ -259,7 +252,6 @@ export default function App() {
     }
   };
 
-  // Activity & File Audit Logger
   const logActivity = (
     module: 'Bhu Bharati' | 'Tapal Inward' | 'Tapal Outward' | 'Appeal Cases' | 'Sadabainama' | 'Staff Admin',
     recordId: string,
@@ -302,7 +294,6 @@ export default function App() {
     });
   };
 
-  // Bhu Bharati File Handlers (Firestore Sync Enabled)
   const handleSaveFile = async (newFile: BhuFile) => {
     const fileToSave = { ...newFile };
     if (fileToSave.fileAttachment) {
@@ -416,7 +407,6 @@ export default function App() {
     setIsDeleteModalOpen(true);
   };
 
-  // Inward Tapal Handlers (Firestore Sync Enabled)
   const handleSaveInward = async (savedTapal: InwardTapal) => {
     const tapalToSave = { ...savedTapal };
     if (tapalToSave.fileAttachment) {
@@ -434,7 +424,7 @@ export default function App() {
         'Tapal Inward',
         tapalToSave.inwardNo,
         'EDIT',
-        `Inward record updated/returned. Sender: ${tapalToSave.sender}. Mandal: ${tapalToSave.mandal}, Village: ${tapalToSave.village || 'General'}. Status: ${tapalToSave.status}.`
+        `Inward record updated. Sender: ${tapalToSave.sender}. Status: ${tapalToSave.status}.`
       );
     } else {
       updated = [tapalToSave, ...inwards];
@@ -442,7 +432,7 @@ export default function App() {
         'Tapal Inward',
         tapalToSave.inwardNo,
         'ENTRY',
-        `New Inward Tapal received from ${tapalToSave.sender} (${tapalToSave.mandal || 'GENERAL'}, ${tapalToSave.village || 'General'}). Subject: ${tapalToSave.subject}.`
+        `New Inward Tapal received from ${tapalToSave.sender}. Subject: ${tapalToSave.subject}.`
       );
     }
     setInwards(updated);
@@ -477,7 +467,7 @@ export default function App() {
       'Tapal Inward',
       updatedTapal.inwardNo,
       'STATUS_CHANGE',
-      `Inward Tapal status updated to "${updatedTapal.status}". Assigned seat: ${updatedTapal.seat || 'D Section'}.`
+      `Inward Tapal status updated to "${updatedTapal.status}".`
     );
   };
 
@@ -493,7 +483,7 @@ export default function App() {
     setPdfData(docAttachment);
     setPdfTitle(`📬 Inward Tapal: ${tapal.inwardNo}`);
     setPdfSubtitle(
-      `Sender: <strong>${tapal.sender}</strong> • Mandal: <strong>${tapal.mandal}</strong> • Received Date: <strong>${tapal.receivedDate}</strong>`
+      `Sender: <strong>${tapal.sender}</strong> • Mandal: <strong>${tapal.mandal}</strong> • Date: <strong>${tapal.receivedDate}</strong>`
     );
     setPdfFileName(`${tapal.inwardNo}_Inward_Document`);
     setIsPdfModalOpen(true);
@@ -507,8 +497,8 @@ export default function App() {
     setDeleteModalTitle('📬 Inward Tapal Record');
     setDeleteModalDetails(
       <div className="space-y-1">
-        <div><strong>Inward / Tapal No:</strong> {tapal.inwardNo}</div>
-        <div><strong>Sender:</strong> {tapal.sender} • <strong>Date:</strong> {tapal.receivedDate}</div>
+        <div><strong>Inward No:</strong> {tapal.inwardNo}</div>
+        <div><strong>Sender:</strong> {tapal.sender}</div>
         <div><strong>Subject:</strong> {tapal.subject}</div>
       </div>
     );
@@ -522,18 +512,12 @@ export default function App() {
       } catch (err) {
         console.error('Firebase delete error:', err);
       }
-      logActivity(
-        'Tapal Inward',
-        tapal.inwardNo,
-        'DELETE',
-        `Inward Tapal #${tapal.inwardNo} from ${tapal.sender} deleted.`
-      );
+      logActivity('Tapal Inward', tapal.inwardNo, 'DELETE', `Inward Tapal #${tapal.inwardNo} deleted.`);
       showToast(`Inward Tapal (${tapal.inwardNo}) deleted successfully.`);
     });
     setIsDeleteModalOpen(true);
   };
 
-  // Outward Despatch Handlers (Firestore Sync Enabled)
   const handleOpenOutward = (linkedId?: number) => {
     setEditingOutward(null);
     setPreselectedInwardId(linkedId || null);
@@ -561,23 +545,11 @@ export default function App() {
     }
     let updatedOutwards: OutwardDespatch[];
     if (isEdit) {
-      updatedOutwards = outwards.map((o) =>
-        o.id === outwardToSave.id ? outwardToSave : o
-      );
-      logActivity(
-        'Tapal Outward',
-        outwardToSave.outwardNo,
-        'EDIT',
-        `Updated Outward Despatch #${outwardToSave.outwardNo} to ${outwardToSave.sentTo}. Subject: ${outwardToSave.subject}`
-      );
+      updatedOutwards = outwards.map((o) => (o.id === outwardToSave.id ? outwardToSave : o));
+      logActivity('Tapal Outward', outwardToSave.outwardNo, 'EDIT', `Updated Outward #${outwardToSave.outwardNo}`);
     } else {
       updatedOutwards = [outwardToSave, ...outwards];
-      logActivity(
-        'Tapal Outward',
-        outwardToSave.outwardNo,
-        'ENTRY',
-        `Official outward correspondence dispatched to ${outwardToSave.sentTo} via ${outwardToSave.mode}. Subject: ${outwardToSave.subject}.`
-      );
+      logActivity('Tapal Outward', outwardToSave.outwardNo, 'ENTRY', `Dispatched to ${outwardToSave.sentTo}.`);
     }
     setOutwards(updatedOutwards);
     safeSaveLocalStorage('rdo_outward', updatedOutwards);
@@ -591,9 +563,7 @@ export default function App() {
       const targetInward = inwards.find((t) => t.id === shouldDisposeInwardId);
       if (targetInward) {
         const disposed = { ...targetInward, status: 'Disposed' as const };
-        const updatedInwards = inwards.map((t) =>
-          t.id === shouldDisposeInwardId ? disposed : t
-        );
+        const updatedInwards = inwards.map((t) => (t.id === shouldDisposeInwardId ? disposed : t));
         setInwards(updatedInwards);
         safeSaveLocalStorage('rdo_inward_tapal', updatedInwards);
         try {
@@ -617,9 +587,7 @@ export default function App() {
     }
     setPdfData(docAttachment);
     setPdfTitle(`📤 Outward Despatch: ${outward.outwardNo}`);
-    setPdfSubtitle(
-      `Dispatched To: <strong>${outward.sentTo}</strong> • Date: <strong>${outward.outwardDate}</strong> • Mode: <strong>${outward.mode}</strong>`
-    );
+    setPdfSubtitle(`Dispatched To: <strong>${outward.sentTo}</strong> • Date: <strong>${outward.outwardDate}</strong>`);
     setPdfFileName(`${outward.outwardNo.replace(/\//g, '_')}_Outward_Despatch`);
     setIsPdfModalOpen(true);
   };
@@ -633,7 +601,7 @@ export default function App() {
     setDeleteModalDetails(
       <div className="space-y-1">
         <div><strong>Despatch No:</strong> {outward.outwardNo}</div>
-        <div><strong>Dispatched To:</strong> {outward.sentTo} • <strong>Date:</strong> {outward.outwardDate}</div>
+        <div><strong>To:</strong> {outward.sentTo}</div>
         <div><strong>Subject:</strong> {outward.subject}</div>
       </div>
     );
@@ -647,18 +615,12 @@ export default function App() {
       } catch (err) {
         console.error('Firebase delete outward error:', err);
       }
-      logActivity(
-        'Tapal Outward',
-        outward.outwardNo,
-        'DELETE',
-        `Outward despatch #${outward.outwardNo} to ${outward.sentTo} deleted.`
-      );
+      logActivity('Tapal Outward', outward.outwardNo, 'DELETE', `Outward #${outward.outwardNo} deleted.`);
       showToast(`Outward Despatch (${outward.outwardNo}) deleted successfully.`);
     });
     setIsDeleteModalOpen(true);
   };
 
-  // Appeal Cases Handlers (Firestore Sync Enabled)
   const handleSaveAppealCase = async (newCase: AppealCase, rawFileString?: string) => {
     let caseToSave = { ...newCase };
     if (rawFileString) {
@@ -675,12 +637,7 @@ export default function App() {
     } catch (err) {
       console.error('Firebase appeal case save error:', err);
     }
-    logActivity(
-      'Appeal Cases',
-      newCase.caseNo,
-      rawFileString ? 'ORDER_UPLOAD' : 'ENTRY',
-      `Appeal Case filed: ${newCase.appellantName} vs ${newCase.respondentName}. Type: ${newCase.appealType}, Village: ${newCase.village}.`
-    );
+    logActivity('Appeal Cases', newCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'ENTRY', `Appeal Case filed: ${newCase.appellantName} vs ${newCase.respondentName}.`);
     showToast(`Appeal Case ${newCase.caseNo} registered successfully.`);
   };
 
@@ -700,12 +657,7 @@ export default function App() {
     } catch (err) {
       console.error('Firebase appeal case update error:', err);
     }
-    logActivity(
-      'Appeal Cases',
-      updatedCase.caseNo,
-      rawFileString ? 'ORDER_UPLOAD' : 'EDIT',
-      `Appeal Case updated. Status: ${updatedCase.status}. Next Hearing: ${updatedCase.nextHearingDate || 'Disposed'}. Remarks: ${updatedCase.remarks || 'Case proceedings recorded'}.`
-    );
+    logActivity('Appeal Cases', updatedCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'EDIT', `Appeal Case updated. Status: ${updatedCase.status}.`);
     showToast(`Appeal Case ${updatedCase.caseNo} updated successfully.`);
   };
 
@@ -717,9 +669,8 @@ export default function App() {
     setDeleteModalTitle('⚖️ Appeal Case Record');
     setDeleteModalDetails(
       <div className="space-y-1">
-        <div><strong>Case No:</strong> {appealCase.caseNo} • <strong>Type:</strong> {appealCase.appealType}</div>
-        <div><strong>Appellant:</strong> {appealCase.appellantName} • <strong>Village:</strong> {appealCase.village}</div>
-        <div><strong>Status:</strong> {appealCase.status}</div>
+        <div><strong>Case No:</strong> {appealCase.caseNo}</div>
+        <div><strong>Appellant:</strong> {appealCase.appellantName}</div>
       </div>
     );
     setPendingDeleteAction(() => async () => {
@@ -730,14 +681,9 @@ export default function App() {
       try {
         await deleteDoc(doc(db, 'appeal_cases', String(appealCase.id)));
       } catch (err) {
-        console.error('Firebase delete appeal case error:', err);
+        console.error('Firebase delete error:', err);
       }
-      logActivity(
-        'Appeal Cases',
-        appealCase.caseNo,
-        'DELETE',
-        `Appeal Case #${appealCase.caseNo} (${appealCase.appellantName}) deleted.`
-      );
+      logActivity('Appeal Cases', appealCase.caseNo, 'DELETE', `Appeal Case #${appealCase.caseNo} deleted.`);
       showToast(`Appeal Case (${appealCase.caseNo}) deleted successfully.`);
     });
     setIsDeleteModalOpen(true);
@@ -753,9 +699,7 @@ export default function App() {
     }
     setPdfData(docAttachment);
     setPdfTitle(`⚖️ Appeal Final Order: ${appealCase.caseNo}`);
-    setPdfSubtitle(
-      `Court of RDO Huzurnagar • Village: <strong>${appealCase.village}</strong> • Result: <strong>${appealCase.status}</strong>`
-    );
+    setPdfSubtitle(`Court of RDO Huzurnagar • Result: <strong>${appealCase.status}</strong>`);
     setPdfFileName(`${appealCase.caseNo.replace(/\//g, '_')}_Final_Order`);
     setIsPdfModalOpen(true);
   };
@@ -775,7 +719,6 @@ export default function App() {
     }
   };
 
-  // Staff & Admin Handlers
   const handleToggleUserStatus = (id: number) => {
     const updated = staff.map((u) => (u.id === id ? { ...u, active: !u.active } : u));
     setStaff(updated);
@@ -826,12 +769,6 @@ export default function App() {
     const updated = staff.map((s) => (s.id === staffId ? { ...s, password: newPassword } : s));
     setStaff(updated);
     safeSaveLocalStorage('rdo_staff', updated);
-    logActivity(
-      'Staff Admin',
-      `Staff #${staffId}`,
-      'EDIT',
-      `Password changed for staff member #${staffId}`
-    );
     if (currentUser && currentUser.id === staffId) {
       setCurrentUser({ ...currentUser, password: newPassword });
     }
@@ -841,12 +778,6 @@ export default function App() {
     const updated = { ...adminProfile, password: newPassword };
     setAdminProfile(updated);
     safeSaveLocalStorage('rdo_admin_profile', updated);
-    logActivity(
-      'Staff Admin',
-      'Administrator',
-      'EDIT',
-      'Administrator master password updated'
-    );
   };
 
   return (
