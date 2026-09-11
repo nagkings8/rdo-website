@@ -39,26 +39,28 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
     // Cloudinary URL Handler
     if (fileData.startsWith('http://') || fileData.startsWith('https://')) {
       setIsCloud(true);
-      const isDocPdf = fileData.toLowerCase().includes('.pdf') || !fileData.match(/\.(jpg|jpeg|png|webp)$/i);
+      const isDocPdf =
+        fileData.toLowerCase().includes('.pdf') ||
+        !fileData.match(/\.(jpg|jpeg|png|webp)$/i);
       setIsPdf(isDocPdf);
 
-      // Force inline viewing URL for Cloudinary
-      let cleanUrl = fileData;
-      if (cleanUrl.includes('/fl_attachment/')) {
-        cleanUrl = cleanUrl.replace('/fl_attachment/', '/');
-      }
+      let cleanUrl = fileData.replace('/fl_attachment/', '/');
       setDisplayUrl(cleanUrl);
 
-      // Google Docs Viewer handles Cloudinary PDFs directly inside iframe without forced download
+      // Embedded Google Viewer so any system renders PDF directly inside modal
       if (isDocPdf) {
-        setViewerUrl(`https://docs.google.com/viewer?url=${encodeURIComponent(cleanUrl)}&embedded=true`);
+        setViewerUrl(
+          `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(
+            cleanUrl
+          )}`
+        );
       } else {
         setViewerUrl(cleanUrl);
       }
       return;
     }
 
-    // Base64 Local Data URL Handler
+    // Base64 Data URL Handler
     try {
       setIsCloud(false);
       const parts = fileData.split(',');
@@ -77,7 +79,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
       setViewerUrl(url);
       setIsPdf(mime.includes('pdf'));
     } catch (err) {
-      console.error('Error parsing Base64 document:', err);
+      console.error('Error parsing document:', err);
       onShowToast('Error loading document preview.');
     }
 
@@ -116,20 +118,19 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   };
 
   const handlePrint = () => {
-    if (iframeRef.current) {
+    if (iframeRef.current && !isCloud) {
       try {
         iframeRef.current.contentWindow?.focus();
         iframeRef.current.contentWindow?.print();
         return;
       } catch (e) {
-        console.warn('Iframe print access restricted, fallback to new tab.');
+        console.warn('Iframe print restricted:', e);
       }
     }
 
-    // If iframe print is blocked by browser sandbox
     if (displayUrl) {
       window.open(displayUrl, '_blank', 'noopener,noreferrer');
-      onShowToast('Document opened in new tab. Use Ctrl + P to print.');
+      onShowToast('Document opened in new window. Use Ctrl+P to print.');
     }
   };
 
@@ -142,10 +143,11 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   return (
     <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white border border-slate-200 rounded-xl shadow-2xl max-w-5xl w-full h-[90vh] flex flex-col overflow-hidden">
-        {/* Header */}
         <div className="bg-[#061122] text-white px-5 py-3 flex flex-wrap justify-between items-center gap-3 border-b-2 border-amber-500 shrink-0">
           <div>
-            <h3 className="font-extrabold text-sm md:text-base text-amber-300">{title}</h3>
+            <h3 className="font-extrabold text-sm md:text-base text-amber-300">
+              {title}
+            </h3>
             {subtitle && (
               <div
                 className="text-[11px] text-slate-300"
@@ -184,7 +186,6 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
           </div>
         </div>
 
-        {/* Content Viewer */}
         <div className="flex-1 bg-slate-800 relative overflow-hidden flex items-center justify-center p-2">
           {viewerUrl ? (
             isPdf ? (

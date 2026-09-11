@@ -1,9 +1,9 @@
 const CLOUD_NAME = 'xieanf0n';
 const UPLOAD_PRESET = 'rdo_docs';
 
-export const uploadPdfToCloudinary = async (file: File): Promise<string> => {
+export const uploadPdfToCloudinary = async (fileData: string | File): Promise<string> => {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', fileData);
   formData.append('upload_preset', UPLOAD_PRESET);
 
   const response = await fetch(

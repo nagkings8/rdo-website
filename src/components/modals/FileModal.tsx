@@ -33,7 +33,6 @@ export const FileModal: React.FC<FileModalProps> = ({
   const [status, setStatus] = useState<string>('Received from MRO');
   const [remarks, setRemarks] = useState('');
   const [base64File, setBase64File] = useState('');
-  const [selectedFileObj, setSelectedFileObj] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
   const [duplicateFile, setDuplicateFile] = useState<BhuFile | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -49,7 +48,6 @@ export const FileModal: React.FC<FileModalProps> = ({
     setStatus('Received from MRO');
     setRemarks('');
     setBase64File('');
-    setSelectedFileObj(null);
     setFileName('');
     setDuplicateFile(null);
   };
@@ -89,7 +87,6 @@ export const FileModal: React.FC<FileModalProps> = ({
       return;
     }
     setFileName(file.name);
-    setSelectedFileObj(file);
     const reader = new FileReader();
     reader.onloadend = () => {
       setBase64File(reader.result as string);
@@ -115,31 +112,28 @@ export const FileModal: React.FC<FileModalProps> = ({
     setIsSaving(true);
     const newId = Date.now();
     const attKey = `bhu_${newId}`;
-    let stampedFile = base64File;
-    let cloudUrl = '';
+    let finalDocUrl = '';
 
-    // 1. Cloudinary Direct Cloud Upload
-    if (selectedFileObj) {
-      try {
-        onShowToast('Uploading document to cloud...');
-        cloudUrl = await uploadPdfToCloudinary(selectedFileObj);
-      } catch (uploadErr) {
-        console.warn('Cloudinary upload failed, falling back to local/DB storage:', uploadErr);
-      }
-    }
-
-    // 2. Document stamping & local fallback
     if (base64File) {
       try {
+        onShowToast('Applying official receipt stamp...');
         const initialStamp = `RECEIPT DATE: ${receivedDate} | APP: ${appNumber} | INITIAL MRO RECEIPT`;
-        stampedFile = await stampSingleDocument(base64File, initialStamp);
-        await setAttachmentInDB(attKey, cloudUrl || stampedFile);
+        
+        // 1. ముద్ర (Stamp) వేయడం
+        const stampedFile = await stampSingleDocument(base64File, initialStamp);
+
+        // 2. ముద్ర పడిన డాక్యుమెంట్‌ను క్లౌడ్‌కి అప్‌లోడ్ చేయడం
+        onShowToast('Uploading stamped document to cloud...');
+        finalDocUrl = await uploadPdfToCloudinary(stampedFile);
+        
+        // స్థానిక బ్యాకప్
+        await setAttachmentInDB(attKey, finalDocUrl);
       } catch (err) {
-        console.warn('Initial stamp error:', err);
+        console.warn('Error applying stamp or uploading to Cloudinary:', err);
+        finalDocUrl = base64File;
+        await setAttachmentInDB(attKey, base64File);
       }
     }
-
-    const finalAttachment = cloudUrl || stampedFile;
 
     const newRecord: BhuFile = {
       id: newId,
@@ -152,10 +146,10 @@ export const FileModal: React.FC<FileModalProps> = ({
       receivedDate,
       status,
       remarks: remarks.trim(),
-      fileAttachment: finalAttachment || undefined,
-      hasAttachment: !!finalAttachment,
-      attachmentKey: finalAttachment ? attKey : null,
-      hasInitialAttachment: !!finalAttachment,
+      fileAttachment: finalDocUrl || undefined,
+      hasAttachment: !!finalDocUrl,
+      attachmentKey: finalDocUrl ? attKey : null,
+      hasInitialAttachment: !!finalDocUrl,
       history: [
         {
           date: receivedDate,
@@ -173,7 +167,7 @@ export const FileModal: React.FC<FileModalProps> = ({
     onSave(newRecord);
     handleReset();
     onClose();
-    onShowToast('Bhu Bharati file record saved successfully with Cloud Sync!');
+    onShowToast('Bhu Bharati file & stamped document saved with Cloud Sync!');
   };
 
   const villageList = mandal ? MANDAL_VILLAGES[mandal] || [] : [];
@@ -400,7 +394,7 @@ export const FileModal: React.FC<FileModalProps> = ({
               {isSaving ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Saving &amp; Syncing...</span>
+                  <span>Stamping &amp; Syncing...</span>
                 </>
               ) : (
                 <span>Save Bhu Bharati Record</span>
