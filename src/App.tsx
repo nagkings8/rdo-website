@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from './utils/firebase';
 import {
   BhuFile,
@@ -150,42 +150,34 @@ export default function App() {
     };
   }, []);
 
-  // Firebase Realtime Listeners
+  // Firebase Realtime Listeners with Full Sync (Add, Edit, Delete)
   useEffect(() => {
     const unsubFiles = onSnapshot(collection(db, 'bhu_files'), (snapshot) => {
-      if (!snapshot.empty) {
-        const list: BhuFile[] = [];
-        snapshot.forEach((d) => list.push(d.data() as BhuFile));
-        setFiles(list);
-        safeSaveLocalStorage('rdo_files', list);
-      }
+      const list: BhuFile[] = [];
+      snapshot.forEach((d) => list.push(d.data() as BhuFile));
+      setFiles(list);
+      safeSaveLocalStorage('rdo_files', list);
     });
 
     const unsubInwards = onSnapshot(collection(db, 'inward_tapals'), (snapshot) => {
-      if (!snapshot.empty) {
-        const list: InwardTapal[] = [];
-        snapshot.forEach((d) => list.push(d.data() as InwardTapal));
-        setInwards(list);
-        safeSaveLocalStorage('rdo_inward_tapal', list);
-      }
+      const list: InwardTapal[] = [];
+      snapshot.forEach((d) => list.push(d.data() as InwardTapal));
+      setInwards(list);
+      safeSaveLocalStorage('rdo_inward_tapal', list);
     });
 
     const unsubOutwards = onSnapshot(collection(db, 'outward_despatches'), (snapshot) => {
-      if (!snapshot.empty) {
-        const list: OutwardDespatch[] = [];
-        snapshot.forEach((d) => list.push(d.data() as OutwardDespatch));
-        setOutwards(list);
-        safeSaveLocalStorage('rdo_outward', list);
-      }
+      const list: OutwardDespatch[] = [];
+      snapshot.forEach((d) => list.push(d.data() as OutwardDespatch));
+      setOutwards(list);
+      safeSaveLocalStorage('rdo_outward', list);
     });
 
     const unsubAppeals = onSnapshot(collection(db, 'appeal_cases'), (snapshot) => {
-      if (!snapshot.empty) {
-        const list: AppealCase[] = [];
-        snapshot.forEach((d) => list.push(d.data() as AppealCase));
-        setAppealCases(list);
-        safeSaveLocalStorage('rdo_appeal_cases', list);
-      }
+      const list: AppealCase[] = [];
+      snapshot.forEach((d) => list.push(d.data() as AppealCase));
+      setAppealCases(list);
+      safeSaveLocalStorage('rdo_appeal_cases', list);
     });
 
     return () => {
@@ -195,6 +187,39 @@ export default function App() {
       unsubAppeals();
     };
   }, []);
+
+  // Helper function to fetch attachment from Cloud Firestore or Local DB
+  const getUniversalAttachment = async (key: string): Promise<string | null> => {
+    try {
+      const snap = await getDoc(doc(db, 'attachments', key));
+      if (snap.exists() && snap.data().data) {
+        return snap.data().data;
+      }
+    } catch (e) {
+      console.warn('Could not fetch cloud attachment:', e);
+    }
+    return (await getAttachmentFromDB(key)) || null;
+  };
+
+  // Helper function to save attachment to Cloud Firestore & Local DB
+  const saveUniversalAttachment = async (key: string, dataStr: string): Promise<void> => {
+    await setAttachmentInDB(key, dataStr);
+    try {
+      await setDoc(doc(db, 'attachments', key), { key, data: dataStr, updatedAt: new Date().toISOString() });
+    } catch (e) {
+      console.warn('Could not save cloud attachment:', e);
+    }
+  };
+
+  // Helper function to delete attachment
+  const deleteUniversalAttachment = async (key: string): Promise<void> => {
+    await deleteAttachmentFromDB(key);
+    try {
+      await deleteDoc(doc(db, 'attachments', key));
+    } catch (e) {
+      console.warn('Could not delete cloud attachment:', e);
+    }
+  };
 
   // Toast handler
   const showToast = (msg: string) => {
@@ -277,19 +302,27 @@ export default function App() {
 
   // Bhu Bharati File Handlers (Firestore Sync Enabled)
   const handleSaveFile = async (newFile: BhuFile) => {
-    const updated = [newFile, ...files.filter((f) => f.id !== newFile.id)];
+    const fileToSave = { ...newFile };
+    if (fileToSave.fileAttachment) {
+      const key = fileToSave.attachmentKey || `bhu_${fileToSave.id}`;
+      await saveUniversalAttachment(key, fileToSave.fileAttachment);
+      fileToSave.attachmentKey = key;
+      fileToSave.hasAttachment = true;
+      delete fileToSave.fileAttachment;
+    }
+    const updated = [fileToSave, ...files.filter((f) => f.id !== fileToSave.id)];
     setFiles(updated);
     safeSaveLocalStorage('rdo_files', updated);
     try {
-      await setDoc(doc(db, 'bhu_files', String(newFile.id)), newFile);
+      await setDoc(doc(db, 'bhu_files', String(fileToSave.id)), fileToSave);
     } catch (err) {
       console.error('Firebase save error:', err);
     }
     logActivity(
       'Bhu Bharati',
-      newFile.appNumber,
+      fileToSave.appNumber,
       'ENTRY',
-      `New Bhu Bharati file registered for ${newFile.applicantName}, Village: ${newFile.village}, Mandal: ${newFile.mandal}, Module: ${newFile.module}.`
+      `New Bhu Bharati file registered for ${fileToSave.applicantName}, Village: ${fileToSave.village}, Mandal: ${fileToSave.mandal}, Module: ${fileToSave.module}.`
     );
   };
 
@@ -330,7 +363,7 @@ export default function App() {
   const handleViewBhuPdf = async (file: BhuFile) => {
     let docAttachment = file.fileAttachment;
     if (!docAttachment && (file.attachmentKey || file.hasAttachment)) {
-      docAttachment = (await getAttachmentFromDB(file.attachmentKey || `bhu_${file.id}`)) || undefined;
+      docAttachment = (await getUniversalAttachment(file.attachmentKey || `bhu_${file.id}`)) || undefined;
     }
     if (!docAttachment) {
       showToast('No document attached for this Bhu Bharati file.');
@@ -361,7 +394,7 @@ export default function App() {
       </div>
     );
     setPendingDeleteAction(() => async () => {
-      if (file.attachmentKey) await deleteAttachmentFromDB(file.attachmentKey);
+      if (file.attachmentKey) await deleteUniversalAttachment(file.attachmentKey);
       const updated = files.filter((f) => f.id !== file.id);
       setFiles(updated);
       safeSaveLocalStorage('rdo_files', updated);
@@ -383,29 +416,37 @@ export default function App() {
 
   // Inward Tapal Handlers (Firestore Sync Enabled)
   const handleSaveInward = async (savedTapal: InwardTapal) => {
-    const exists = inwards.some((t) => t.id === savedTapal.id);
+    const tapalToSave = { ...savedTapal };
+    if (tapalToSave.fileAttachment) {
+      const key = tapalToSave.attachmentKey || `inw_${tapalToSave.id}`;
+      await saveUniversalAttachment(key, tapalToSave.fileAttachment);
+      tapalToSave.attachmentKey = key;
+      tapalToSave.hasAttachment = true;
+      delete tapalToSave.fileAttachment;
+    }
+    const exists = inwards.some((t) => t.id === tapalToSave.id);
     let updated: InwardTapal[];
     if (exists) {
-      updated = inwards.map((t) => (t.id === savedTapal.id ? savedTapal : t));
+      updated = inwards.map((t) => (t.id === tapalToSave.id ? tapalToSave : t));
       logActivity(
         'Tapal Inward',
-        savedTapal.inwardNo,
+        tapalToSave.inwardNo,
         'EDIT',
-        `Inward record updated/returned. Sender: ${savedTapal.sender}. Mandal: ${savedTapal.mandal}, Village: ${savedTapal.village || 'General'}. Status: ${savedTapal.status}.`
+        `Inward record updated/returned. Sender: ${tapalToSave.sender}. Mandal: ${tapalToSave.mandal}, Village: ${tapalToSave.village || 'General'}. Status: ${tapalToSave.status}.`
       );
     } else {
-      updated = [savedTapal, ...inwards];
+      updated = [tapalToSave, ...inwards];
       logActivity(
         'Tapal Inward',
-        savedTapal.inwardNo,
+        tapalToSave.inwardNo,
         'ENTRY',
-        `New Inward Tapal received from ${savedTapal.sender} (${savedTapal.mandal || 'GENERAL'}, ${savedTapal.village || 'General'}). Subject: ${savedTapal.subject}.`
+        `New Inward Tapal received from ${tapalToSave.sender} (${tapalToSave.mandal || 'GENERAL'}, ${tapalToSave.village || 'General'}). Subject: ${tapalToSave.subject}.`
       );
     }
     setInwards(updated);
     safeSaveLocalStorage('rdo_inward_tapal', updated);
     try {
-      await setDoc(doc(db, 'inward_tapals', String(savedTapal.id)), savedTapal);
+      await setDoc(doc(db, 'inward_tapals', String(tapalToSave.id)), tapalToSave);
     } catch (err) {
       console.error('Firebase inward save error:', err);
     }
@@ -441,7 +482,7 @@ export default function App() {
   const handleViewInwardPdf = async (tapal: InwardTapal) => {
     let docAttachment = tapal.fileAttachment;
     if (!docAttachment && (tapal.attachmentKey || tapal.hasAttachment)) {
-      docAttachment = (await getAttachmentFromDB(tapal.attachmentKey || `inw_${tapal.id}`)) || undefined;
+      docAttachment = (await getUniversalAttachment(tapal.attachmentKey || `inw_${tapal.id}`)) || undefined;
     }
     if (!docAttachment) {
       showToast('No document attached for this Inward Tapal.');
@@ -470,7 +511,7 @@ export default function App() {
       </div>
     );
     setPendingDeleteAction(() => async () => {
-      if (tapal.attachmentKey) await deleteAttachmentFromDB(tapal.attachmentKey);
+      if (tapal.attachmentKey) await deleteUniversalAttachment(tapal.attachmentKey);
       const updated = inwards.filter((t) => t.id !== tapal.id);
       setInwards(updated);
       safeSaveLocalStorage('rdo_inward_tapal', updated);
@@ -508,30 +549,38 @@ export default function App() {
     shouldDisposeInwardId?: number | null,
     isEdit?: boolean
   ) => {
+    const outwardToSave = { ...savedOutward };
+    if (outwardToSave.fileAttachment) {
+      const key = outwardToSave.attachmentKey || `out_${outwardToSave.id}`;
+      await saveUniversalAttachment(key, outwardToSave.fileAttachment);
+      outwardToSave.attachmentKey = key;
+      outwardToSave.hasAttachment = true;
+      delete outwardToSave.fileAttachment;
+    }
     let updatedOutwards: OutwardDespatch[];
     if (isEdit) {
       updatedOutwards = outwards.map((o) =>
-        o.id === savedOutward.id ? savedOutward : o
+        o.id === outwardToSave.id ? outwardToSave : o
       );
       logActivity(
         'Tapal Outward',
-        savedOutward.outwardNo,
+        outwardToSave.outwardNo,
         'EDIT',
-        `Updated Outward Despatch #${savedOutward.outwardNo} to ${savedOutward.sentTo}. Subject: ${savedOutward.subject}`
+        `Updated Outward Despatch #${outwardToSave.outwardNo} to ${outwardToSave.sentTo}. Subject: ${outwardToSave.subject}`
       );
     } else {
-      updatedOutwards = [savedOutward, ...outwards];
+      updatedOutwards = [outwardToSave, ...outwards];
       logActivity(
         'Tapal Outward',
-        savedOutward.outwardNo,
+        outwardToSave.outwardNo,
         'ENTRY',
-        `Official outward correspondence dispatched to ${savedOutward.sentTo} via ${savedOutward.mode}. Subject: ${savedOutward.subject}.`
+        `Official outward correspondence dispatched to ${outwardToSave.sentTo} via ${outwardToSave.mode}. Subject: ${outwardToSave.subject}.`
       );
     }
     setOutwards(updatedOutwards);
     safeSaveLocalStorage('rdo_outward', updatedOutwards);
     try {
-      await setDoc(doc(db, 'outward_despatches', String(savedOutward.id)), savedOutward);
+      await setDoc(doc(db, 'outward_despatches', String(outwardToSave.id)), outwardToSave);
     } catch (err) {
       console.error('Firebase outward save error:', err);
     }
@@ -558,7 +607,7 @@ export default function App() {
   const handleViewOutwardPdf = async (outward: OutwardDespatch) => {
     let docAttachment = outward.fileAttachment;
     if (!docAttachment && (outward.attachmentKey || outward.hasAttachment)) {
-      docAttachment = (await getAttachmentFromDB(outward.attachmentKey || `out_${outward.id}`)) || undefined;
+      docAttachment = (await getUniversalAttachment(outward.attachmentKey || `out_${outward.id}`)) || undefined;
     }
     if (!docAttachment) {
       showToast('No document attached for this Outward Despatch.');
@@ -587,7 +636,7 @@ export default function App() {
       </div>
     );
     setPendingDeleteAction(() => async () => {
-      if (outward.attachmentKey) await deleteAttachmentFromDB(outward.attachmentKey);
+      if (outward.attachmentKey) await deleteUniversalAttachment(outward.attachmentKey);
       const updated = outwards.filter((o) => o.id !== outward.id);
       setOutwards(updated);
       safeSaveLocalStorage('rdo_outward', updated);
@@ -612,7 +661,7 @@ export default function App() {
     let caseToSave = { ...newCase };
     if (rawFileString) {
       const key = `appeal_order_${newCase.id}`;
-      await setAttachmentInDB(key, rawFileString);
+      await saveUniversalAttachment(key, rawFileString);
       caseToSave.attachmentKey = key;
       caseToSave.hasFinalOrderAttachment = true;
     }
@@ -637,7 +686,7 @@ export default function App() {
     let caseToSave = { ...updatedCase };
     if (rawFileString) {
       const key = updatedCase.attachmentKey || `appeal_order_${updatedCase.id}`;
-      await setAttachmentInDB(key, rawFileString);
+      await saveUniversalAttachment(key, rawFileString);
       caseToSave.attachmentKey = key;
       caseToSave.hasFinalOrderAttachment = true;
     }
@@ -672,7 +721,7 @@ export default function App() {
       </div>
     );
     setPendingDeleteAction(() => async () => {
-      if (appealCase.attachmentKey) await deleteAttachmentFromDB(appealCase.attachmentKey);
+      if (appealCase.attachmentKey) await deleteUniversalAttachment(appealCase.attachmentKey);
       const updated = appealCases.filter((c) => c.id !== appealCase.id);
       setAppealCases(updated);
       safeSaveLocalStorage('rdo_appeal_cases', updated);
@@ -695,7 +744,7 @@ export default function App() {
   const handleViewAppealFinalOrder = async (appealCase: AppealCase) => {
     let docAttachment = appealCase.finalOrderFile;
     if (!docAttachment && (appealCase.attachmentKey || appealCase.hasFinalOrderAttachment)) {
-      docAttachment = (await getAttachmentFromDB(appealCase.attachmentKey || `appeal_order_${appealCase.id}`)) || undefined;
+      docAttachment = (await getUniversalAttachment(appealCase.attachmentKey || `appeal_order_${appealCase.id}`)) || undefined;
     }
     if (!docAttachment) {
       docAttachment = await generateOfficialOrderPdf(appealCase);
