@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
-import { db } from './utils/firebase';
+import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
+import { db, storage } from './utils/firebase';
 import {
   BhuFile,
   InwardTapal,
@@ -188,36 +189,37 @@ export default function App() {
     };
   }, []);
 
-  // Helper function to fetch attachment from Cloud Firestore or Local DB
+  // Universal PDF Cloud Storage Handlers
   const getUniversalAttachment = async (key: string): Promise<string | null> => {
     try {
-      const snap = await getDoc(doc(db, 'attachments', key));
-      if (snap.exists() && snap.data().data) {
-        return snap.data().data;
-      }
+      const storageRef = ref(storage, `documents/${key}.txt`);
+      const url = await getDownloadURL(storageRef);
+      const res = await fetch(url);
+      const dataStr = await res.text();
+      if (dataStr) return dataStr;
     } catch (e) {
-      console.warn('Could not fetch cloud attachment:', e);
+      // Local fallback
     }
     return (await getAttachmentFromDB(key)) || null;
   };
 
-  // Helper function to save attachment to Cloud Firestore & Local DB
   const saveUniversalAttachment = async (key: string, dataStr: string): Promise<void> => {
     await setAttachmentInDB(key, dataStr);
     try {
-      await setDoc(doc(db, 'attachments', key), { key, data: dataStr, updatedAt: new Date().toISOString() });
+      const storageRef = ref(storage, `documents/${key}.txt`);
+      await uploadString(storageRef, dataStr, 'raw');
     } catch (e) {
-      console.warn('Could not save cloud attachment:', e);
+      console.warn('Firebase Storage upload notice:', e);
     }
   };
 
-  // Helper function to delete attachment
   const deleteUniversalAttachment = async (key: string): Promise<void> => {
     await deleteAttachmentFromDB(key);
     try {
-      await deleteDoc(doc(db, 'attachments', key));
+      const storageRef = ref(storage, `documents/${key}.txt`);
+      await deleteObject(storageRef);
     } catch (e) {
-      console.warn('Could not delete cloud attachment:', e);
+      // Ignore if not in cloud
     }
   };
 
