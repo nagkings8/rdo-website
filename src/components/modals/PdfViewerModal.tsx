@@ -20,20 +20,31 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   fileName = 'Official_Document',
   onShowToast,
 }) => {
-  const [blobUrl, setBlobUrl] = useState<string>('');
+  const [displayUrl, setDisplayUrl] = useState<string>('');
   const [isPdf, setIsPdf] = useState<boolean>(true);
+  const [isCloud, setIsCloud] = useState<boolean>(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     if (!isOpen || !fileData) {
-      if (blobUrl) {
-        URL.revokeObjectURL(blobUrl);
-        setBlobUrl('');
+      if (displayUrl && !isCloud) {
+        URL.revokeObjectURL(displayUrl);
       }
+      setDisplayUrl('');
       return;
     }
 
+    // Check if fileData is a Cloudinary web URL
+    if (fileData.startsWith('http://') || fileData.startsWith('https://')) {
+      setIsCloud(true);
+      setDisplayUrl(fileData);
+      setIsPdf(fileData.toLowerCase().includes('.pdf') || !fileData.match(/\.(jpg|jpeg|png|webp)$/i));
+      return;
+    }
+
+    // Handle Base64 Data URL fallback
     try {
+      setIsCloud(false);
       const parts = fileData.split(',');
       const meta = parts[0];
       const mime = meta.split(':')[1]?.split(';')[0] || 'application/pdf';
@@ -46,62 +57,72 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
       }
       const blob = new Blob([bytes], { type: mime });
       const url = URL.createObjectURL(blob);
-      setBlobUrl(url);
+      setDisplayUrl(url);
       setIsPdf(mime.includes('pdf'));
     } catch (err) {
-      console.error('Error generating document blob url:', err);
+      console.error('Error parsing Base64 document:', err);
       onShowToast('Error loading attached document preview.');
     }
 
     return () => {
-      if (blobUrl) {
-        URL.revokeObjectURL(blobUrl);
+      if (displayUrl && !fileData.startsWith('http')) {
+        URL.revokeObjectURL(displayUrl);
       }
     };
   }, [isOpen, fileData]);
 
   if (!isOpen || !fileData) return null;
 
+  const handleDownload = () => {
+    if (isCloud) {
+      // Direct reliable download for Cloudinary URLs
+      const downloadUrl = fileData.includes('/upload/')
+        ? fileData.replace('/upload/', '/upload/fl_attachment/')
+        : fileData;
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.target = '_blank';
+      link.download = `${fileName}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
+    if (displayUrl) {
+      const link = document.createElement('a');
+      link.href = displayUrl;
+      link.download = `${fileName}.${isPdf ? 'pdf' : 'jpg'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   const handlePrint = () => {
     try {
-      if (iframeRef.current && isPdf) {
-        try {
-          iframeRef.current.contentWindow?.focus();
-          iframeRef.current.contentWindow?.print();
-          return;
-        } catch (crossErr) {
-          console.warn('Iframe print restriction:', crossErr);
-        }
+      if (iframeRef.current && isPdf && !isCloud) {
+        iframeRef.current.contentWindow?.focus();
+        iframeRef.current.contentWindow?.print();
+        return;
       }
-    } catch (e) {}
+    } catch (crossErr) {
+      console.warn('Iframe print restriction:', crossErr);
+    }
 
-    if (blobUrl) {
-      try {
-        const win = window.open(blobUrl, '_blank');
-        if (win) {
-          onShowToast('Document opened in new window. Use Ctrl+P to print.');
-          return;
-        }
-      } catch (e) {}
+    if (displayUrl) {
+      const win = window.open(displayUrl, '_blank');
+      if (win) {
+        onShowToast('Document opened in new window. Use Ctrl+P to print.');
+        return;
+      }
     }
     onShowToast("Please use 'Download PDF' to save and print this document.");
   };
 
   const handleOpenTab = () => {
-    if (blobUrl) {
-      try {
-        const win = window.open(blobUrl, '_blank');
-        if (!win) {
-          const a = document.createElement('a');
-          a.href = blobUrl;
-          a.target = '_blank';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        }
-      } catch (e) {
-        onShowToast('Unable to open in a new tab. Please use Download PDF.');
-      }
+    if (displayUrl) {
+      window.open(displayUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -120,16 +141,13 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
             )}
           </div>
           <div className="flex items-center gap-2">
-            {blobUrl && (
-              <a
-                href={blobUrl}
-                download={`${fileName}.${isPdf ? 'pdf' : 'jpg'}`}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded text-xs flex items-center gap-1 shadow-sm transition"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download PDF</span>
-              </a>
-            )}
+            <button
+              onClick={handleDownload}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded text-xs flex items-center gap-1 shadow-sm transition cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download PDF</span>
+            </button>
             <button
               onClick={handlePrint}
               className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-2.5 py-1.5 rounded text-xs flex items-center gap-1 shadow-sm transition cursor-pointer"
@@ -155,18 +173,18 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 
         {/* Content Viewer */}
         <div className="flex-1 bg-slate-800 relative overflow-hidden flex items-center justify-center p-2">
-          {blobUrl ? (
+          {displayUrl ? (
             isPdf ? (
               <iframe
                 ref={iframeRef}
-                src={blobUrl}
+                src={displayUrl}
                 title="Official Document Viewer"
                 className="w-full h-full border-none rounded bg-white"
               />
             ) : (
               <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
                 <img
-                  src={blobUrl}
+                  src={displayUrl}
                   alt="Attached Document"
                   className="max-w-full max-h-full object-contain rounded shadow-lg bg-white"
                 />
