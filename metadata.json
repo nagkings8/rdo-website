@@ -1,0 +1,8 @@
+{
+  "name": "Remix RDO Huzurnagar File Tracking System",
+  "description": "Official D Section File Tracking \u0026 Information Management System for Revenue Divisional Office, Huzurnagar (Government of Telangana).",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
