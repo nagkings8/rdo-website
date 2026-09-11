@@ -184,7 +184,7 @@ export default function App() {
     };
   }, []);
 
-  // Direct Firestore Attachment Handler (Works without Storage billing)
+  // Direct Firestore Attachment Handler
   const getUniversalAttachment = async (key: string): Promise<string | null> => {
     try {
       const snap = await getDoc(doc(db, 'attachments', key));
@@ -784,7 +784,8 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-100 via-slate-50 to-slate-100 text-slate-900 font-sans antialiased selection:bg-amber-400 selection:text-slate-950">
       <ColorSplashCursor />
 
-      <div className="sticky top-0 z-50 w-full shadow-lg bg-[#061122]">
+      {/* TOP STICKY BAR: HEADER & APP-STYLE HORIZONTAL SCROLLING NAVIGATION CONTAINER */}
+      <div className="sticky top-0 z-50 w-full shadow-md bg-[#061122]">
         <Header
           currentUser={currentUser}
           onOpenLogin={() => setIsLoginModalOpen(true)}
@@ -797,14 +798,19 @@ export default function App() {
           onGoHome={() => setActiveTab('dashboardTab')}
         />
 
-        <Navigation
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          currentUser={currentUser}
-        />
+        {/* Mobile App View Horizontal Scrolling Navigation Bar */}
+        <div className="w-full bg-[#0a1b33]/90 border-t border-slate-800/80 overflow-x-auto no-scrollbar py-1">
+          <div className="max-w-[1520px] mx-auto px-2 sm:px-4 flex items-center gap-1 sm:gap-2">
+            <Navigation
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              currentUser={currentUser}
+            />
+          </div>
+        </div>
       </div>
 
-      <main className="max-w-[1520px] w-full mx-auto px-4 md:px-6 py-6 flex-1">
+      <main className="max-w-[1520px] w-full mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6 flex-1">
         {activeTab === 'dashboardTab' && (
           <DashboardView
             files={files}
