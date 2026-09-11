@@ -36,7 +36,6 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
       return;
     }
 
-    // Cloudinary URL Handler
     if (fileData.startsWith('http://') || fileData.startsWith('https://')) {
       setIsCloud(true);
       const isDocPdf =
@@ -47,7 +46,6 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
       let cleanUrl = fileData.replace('/fl_attachment/', '/');
       setDisplayUrl(cleanUrl);
 
-      // Embedded Google Viewer so any system renders PDF directly inside modal
       if (isDocPdf) {
         setViewerUrl(
           `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(
@@ -60,7 +58,6 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
       return;
     }
 
-    // Base64 Data URL Handler
     try {
       setIsCloud(false);
       const parts = fileData.split(',');
@@ -97,13 +94,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
       const downloadUrl = fileData.includes('/upload/')
         ? fileData.replace('/upload/', '/upload/fl_attachment/')
         : fileData;
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.target = '_blank';
-      link.download = `${fileName}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      window.open(downloadUrl, '_blank');
       return;
     }
 
@@ -142,37 +133,37 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white border border-slate-200 rounded-xl shadow-2xl max-w-5xl w-full h-[90vh] flex flex-col overflow-hidden">
-        <div className="bg-[#061122] text-white px-5 py-3 flex flex-wrap justify-between items-center gap-3 border-b-2 border-amber-500 shrink-0">
-          <div>
-            <h3 className="font-extrabold text-sm md:text-base text-amber-300">
+      <div className="bg-white border border-slate-200 rounded-xl shadow-2xl w-full max-w-5xl h-[95vh] sm:h-[90vh] flex flex-col overflow-hidden m-1 sm:m-2">
+        <div className="bg-[#061122] text-white px-3 sm:px-5 py-2.5 sm:py-3 flex flex-wrap justify-between items-center gap-2 border-b-2 border-amber-500 shrink-0">
+          <div className="min-w-[180px] flex-1">
+            <h3 className="font-extrabold text-xs sm:text-base text-amber-300 truncate">
               {title}
             </h3>
             {subtitle && (
               <div
-                className="text-[11px] text-slate-300"
+                className="text-[10px] sm:text-[11px] text-slate-300 truncate"
                 dangerouslySetInnerHTML={{ __html: subtitle }}
               />
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={handleDownload}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded text-xs flex items-center gap-1 shadow-sm transition cursor-pointer"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 sm:px-2.5 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs flex items-center gap-1 shadow-sm transition cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Download PDF</span>
+              <span>Download</span>
             </button>
             <button
               onClick={handlePrint}
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-2.5 py-1.5 rounded text-xs flex items-center gap-1 shadow-sm transition cursor-pointer"
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-2 sm:px-2.5 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs flex items-center gap-1 shadow-sm transition cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print</span>
+              <span className="hidden xs:inline">Print</span>
             </button>
             <button
               onClick={handleOpenTab}
-              className="bg-slate-700 hover:bg-slate-600 text-white font-bold px-2.5 py-1.5 rounded text-xs flex items-center gap-1 transition cursor-pointer"
+              className="bg-slate-700 hover:bg-slate-600 text-white font-bold px-2 sm:px-2.5 py-1 sm:py-1.5 rounded text-[11px] sm:text-xs flex items-center gap-1 transition cursor-pointer"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Open Tab</span>
@@ -186,7 +177,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
           </div>
         </div>
 
-        <div className="flex-1 bg-slate-800 relative overflow-hidden flex items-center justify-center p-2">
+        <div className="flex-1 bg-slate-800 relative overflow-hidden flex items-center justify-center p-1 sm:p-2">
           {viewerUrl ? (
             isPdf ? (
               <iframe
@@ -196,7 +187,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
                 className="w-full h-full border-none rounded bg-white"
               />
             ) : (
-              <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
+              <div className="w-full h-full overflow-auto flex items-center justify-center p-2">
                 <img
                   src={viewerUrl}
                   alt="Attached Document"

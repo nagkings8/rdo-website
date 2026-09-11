@@ -7,7 +7,8 @@ import {
   setAttachmentInDB,
   mergeNewSignedDocToDossier,
 } from '../../utils/storage';
-import { X, Lock, Paperclip } from 'lucide-react';
+import { uploadPdfToCloudinary } from '../../utils/cloudinary';
+import { X, Lock, Paperclip, Loader2 } from 'lucide-react';
 
 interface StatusModalProps {
   isOpen: boolean;
@@ -73,27 +74,45 @@ export const StatusModal: React.FC<StatusModalProps> = ({
     const prevStatus = file.status;
     let hasNewDoc = false;
     const attKey = file.attachmentKey || `bhu_${file.id}`;
+    let latestDocUrl = file.fileAttachment || '';
 
     if (base64File) {
-      onShowToast('Applying official date stamp and appending to dossier...');
-      const stampText = `DATE: ${updateDate} | STATUS: ${newStatus.toUpperCase()}`;
+      onShowToast('Applying official date stamp and merging dossier...');
+      const stampText = `DATE: ${updateDate} | STATUS: ${newStatus.toUpperCase()} | RDO HUZURNAGAR`;
+      
       try {
         let existingDoc = file.fileAttachment;
         if (!existingDoc && (file.attachmentKey || file.hasAttachment)) {
           existingDoc = (await getAttachmentFromDB(attKey)) || undefined;
         }
+
+        // 1. Merge the new doc with existing dossier and stamp
         const mergedPdf = await mergeNewSignedDocToDossier(existingDoc, base64File, stampText);
-        await setAttachmentInDB(attKey, mergedPdf);
+
+        // 2. Upload the new merged dossier directly to Cloudinary
+        onShowToast('Syncing updated dossier to cloud...');
+        latestDocUrl = await uploadPdfToCloudinary(mergedPdf);
+
+        // 3. Save to local fallback DB
+        await setAttachmentInDB(attKey, latestDocUrl);
         hasNewDoc = true;
       } catch (mergeErr) {
-        console.error('PDF Merge error:', mergeErr);
-        await setAttachmentInDB(attKey, base64File);
-        hasNewDoc = true;
+        console.error('PDF Merge or Cloud upload error:', mergeErr);
+        // If merge fails, try uploading the signed file directly
+        try {
+          latestDocUrl = await uploadPdfToCloudinary(base64File);
+          await setAttachmentInDB(attKey, latestDocUrl);
+          hasNewDoc = true;
+        } catch (uploadErr) {
+          await setAttachmentInDB(attKey, base64File);
+          latestDocUrl = base64File;
+          hasNewDoc = true;
+        }
       }
     }
 
     const fullRemark = `${remarks.trim()}${
-      hasNewDoc ? ' (Date-stamped signed copy attached to PDF)' : ''
+      hasNewDoc ? ' (Date-stamped signed copy appended to cloud dossier)' : ''
     }`;
 
     const newHistory = [
@@ -112,18 +131,19 @@ export const StatusModal: React.FC<StatusModalProps> = ({
     const updatedRecord: BhuFile = {
       ...file,
       status: newStatus,
+      // Keep the updated cloud URL so the latest document opens in view
+      fileAttachment: latestDocUrl || file.fileAttachment,
       hasAttachment: hasNewDoc ? true : file.hasAttachment,
       attachmentKey: attKey,
       history: newHistory,
     };
-    delete updatedRecord.fileAttachment;
 
     setIsProcessing(false);
     onSaveStatus(updatedRecord);
     onClose();
     onShowToast(
       hasNewDoc
-        ? `Status updated & signed pages stamped with Date: ${updateDate}!`
+        ? `Status updated & newly signed pages synced to cloud with Date: ${updateDate}!`
         : `File status updated to "${newStatus}" successfully!`
     );
   };
@@ -207,7 +227,7 @@ export const StatusModal: React.FC<StatusModalProps> = ({
           <div className="border-1.5 border-dashed border-blue-400 bg-blue-50/60 p-3 rounded-lg space-y-1.5">
             <label className="font-bold text-blue-900 flex items-center gap-1.5">
               <Paperclip className="w-3.5 h-3.5 text-blue-600" />
-              <span>Attach Signed Copy / Endorsement Order (PDF / Image)</span>
+              <span>Attach Signed Copy / Endorsement Order (PDF / Image) - Cloud Sync</span>
             </label>
             <input
               type="file"
@@ -248,9 +268,16 @@ export const StatusModal: React.FC<StatusModalProps> = ({
             <button
               type="submit"
               disabled={isProcessing}
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-1.5 rounded-md font-bold transition cursor-pointer shadow-xs disabled:opacity-60"
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-1.5 rounded-md font-bold transition cursor-pointer shadow-xs disabled:opacity-60 flex items-center gap-1.5"
             >
-              {isProcessing ? '⏳ Stamping & Merging PDF...' : 'Save Status Update'}
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Stamping &amp; Syncing to Cloud...</span>
+                </>
+              ) : (
+                <span>Save Status Update</span>
+              )}
             </button>
           </div>
         </form>
