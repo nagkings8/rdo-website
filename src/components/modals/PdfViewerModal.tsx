@@ -21,6 +21,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   onShowToast,
 }) => {
   const [displayUrl, setDisplayUrl] = useState<string>('');
+  const [viewerUrl, setViewerUrl] = useState<string>('');
   const [isPdf, setIsPdf] = useState<boolean>(true);
   const [isCloud, setIsCloud] = useState<boolean>(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -31,18 +32,33 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
         URL.revokeObjectURL(displayUrl);
       }
       setDisplayUrl('');
+      setViewerUrl('');
       return;
     }
 
-    // Check if fileData is a Cloudinary web URL
+    // Cloudinary URL Handler
     if (fileData.startsWith('http://') || fileData.startsWith('https://')) {
       setIsCloud(true);
-      setDisplayUrl(fileData);
-      setIsPdf(fileData.toLowerCase().includes('.pdf') || !fileData.match(/\.(jpg|jpeg|png|webp)$/i));
+      const isDocPdf = fileData.toLowerCase().includes('.pdf') || !fileData.match(/\.(jpg|jpeg|png|webp)$/i);
+      setIsPdf(isDocPdf);
+
+      // Force inline viewing URL for Cloudinary
+      let cleanUrl = fileData;
+      if (cleanUrl.includes('/fl_attachment/')) {
+        cleanUrl = cleanUrl.replace('/fl_attachment/', '/');
+      }
+      setDisplayUrl(cleanUrl);
+
+      // Google Docs Viewer handles Cloudinary PDFs directly inside iframe without forced download
+      if (isDocPdf) {
+        setViewerUrl(`https://docs.google.com/viewer?url=${encodeURIComponent(cleanUrl)}&embedded=true`);
+      } else {
+        setViewerUrl(cleanUrl);
+      }
       return;
     }
 
-    // Handle Base64 Data URL fallback
+    // Base64 Local Data URL Handler
     try {
       setIsCloud(false);
       const parts = fileData.split(',');
@@ -58,10 +74,11 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
       const blob = new Blob([bytes], { type: mime });
       const url = URL.createObjectURL(blob);
       setDisplayUrl(url);
+      setViewerUrl(url);
       setIsPdf(mime.includes('pdf'));
     } catch (err) {
       console.error('Error parsing Base64 document:', err);
-      onShowToast('Error loading attached document preview.');
+      onShowToast('Error loading document preview.');
     }
 
     return () => {
@@ -75,7 +92,6 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 
   const handleDownload = () => {
     if (isCloud) {
-      // Direct reliable download for Cloudinary URLs
       const downloadUrl = fileData.includes('/upload/')
         ? fileData.replace('/upload/', '/upload/fl_attachment/')
         : fileData;
@@ -100,24 +116,21 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   };
 
   const handlePrint = () => {
-    try {
-      if (iframeRef.current && isPdf && !isCloud) {
+    if (iframeRef.current) {
+      try {
         iframeRef.current.contentWindow?.focus();
         iframeRef.current.contentWindow?.print();
         return;
+      } catch (e) {
+        console.warn('Iframe print access restricted, fallback to new tab.');
       }
-    } catch (crossErr) {
-      console.warn('Iframe print restriction:', crossErr);
     }
 
+    // If iframe print is blocked by browser sandbox
     if (displayUrl) {
-      const win = window.open(displayUrl, '_blank');
-      if (win) {
-        onShowToast('Document opened in new window. Use Ctrl+P to print.');
-        return;
-      }
+      window.open(displayUrl, '_blank', 'noopener,noreferrer');
+      onShowToast('Document opened in new tab. Use Ctrl + P to print.');
     }
-    onShowToast("Please use 'Download PDF' to save and print this document.");
   };
 
   const handleOpenTab = () => {
@@ -173,25 +186,25 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 
         {/* Content Viewer */}
         <div className="flex-1 bg-slate-800 relative overflow-hidden flex items-center justify-center p-2">
-          {displayUrl ? (
+          {viewerUrl ? (
             isPdf ? (
               <iframe
                 ref={iframeRef}
-                src={displayUrl}
+                src={viewerUrl}
                 title="Official Document Viewer"
                 className="w-full h-full border-none rounded bg-white"
               />
             ) : (
               <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
                 <img
-                  src={displayUrl}
+                  src={viewerUrl}
                   alt="Attached Document"
                   className="max-w-full max-h-full object-contain rounded shadow-lg bg-white"
                 />
               </div>
             )
           ) : (
-            <div className="text-white text-xs">Loading document...</div>
+            <div className="text-white text-xs">Loading document preview...</div>
           )}
         </div>
       </div>
