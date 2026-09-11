@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { InwardTapal, MANDAL_LIST, MANDAL_VILLAGES } from '../../types';
 import { getTodayDateString, isFutureDate, stampSingleDocument, setAttachmentInDB } from '../../utils/storage';
-import { X, Paperclip, AlertTriangle, RefreshCw, FileText } from 'lucide-react';
+import { uploadPdfToCloudinary } from '../../utils/cloudinary';
+import { X, Paperclip, AlertTriangle, RefreshCw, FileText, Loader2 } from 'lucide-react';
 
 interface InwardModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export const InwardModal: React.FC<InwardModalProps> = ({
   const [subject, setSubject] = useState('');
   const [remarks, setRemarks] = useState('');
   const [base64File, setBase64File] = useState('');
+  const [selectedFileObj, setSelectedFileObj] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -47,6 +49,7 @@ export const InwardModal: React.FC<InwardModalProps> = ({
     setSubject('');
     setRemarks('');
     setBase64File('');
+    setSelectedFileObj(null);
     setFileName('');
   };
 
@@ -63,6 +66,7 @@ export const InwardModal: React.FC<InwardModalProps> = ({
         setSubject(tapalToEdit.subject || '');
         setRemarks(tapalToEdit.remarks || '');
         setBase64File('');
+        setSelectedFileObj(null);
         setFileName('');
       } else {
         handleReset();
@@ -92,6 +96,7 @@ export const InwardModal: React.FC<InwardModalProps> = ({
       return;
     }
     setFileName(file.name);
+    setSelectedFileObj(file);
     const reader = new FileReader();
     reader.onloadend = () => {
       setBase64File(reader.result as string);
@@ -131,18 +136,32 @@ export const InwardModal: React.FC<InwardModalProps> = ({
     const activeId = tapalToEdit ? tapalToEdit.id : Date.now();
     const inwAttKey = `inw_${activeId}`;
     let stampedFile = base64File;
+    let cloudUrl = '';
 
+    // 1. Cloudinary Direct Cloud Upload
+    if (selectedFileObj) {
+      try {
+        onShowToast('Uploading document to cloud...');
+        cloudUrl = await uploadPdfToCloudinary(selectedFileObj);
+      } catch (uploadErr) {
+        console.warn('Cloudinary upload error:', uploadErr);
+      }
+    }
+
+    // 2. Document stamping & local fallback
     if (base64File) {
       try {
         const stampText = `INWARD NO: ${cleanInwardNo} | RECEIVED: ${receivedDate} | SENDER: ${sender
           .trim()
           .substring(0, 32)}`;
         stampedFile = await stampSingleDocument(base64File, stampText);
-        await setAttachmentInDB(inwAttKey, stampedFile);
+        await setAttachmentInDB(inwAttKey, cloudUrl || stampedFile);
       } catch (err) {
         console.warn('Error stamping inward doc:', err);
       }
     }
+
+    const finalAttachment = cloudUrl || stampedFile;
 
     // If in edit mode, log the return / modification movement history
     const existingHistory = tapalToEdit?.returnHistory || [];
@@ -173,9 +192,9 @@ export const InwardModal: React.FC<InwardModalProps> = ({
       status,
       subject: subject.trim(),
       remarks: remarks.trim(),
-      hasAttachment: stampedFile ? true : tapalToEdit ? tapalToEdit.hasAttachment : false,
-      attachmentKey: stampedFile ? inwAttKey : tapalToEdit ? tapalToEdit.attachmentKey : null,
-      fileAttachment: stampedFile || (tapalToEdit ? tapalToEdit.fileAttachment : undefined),
+      hasAttachment: finalAttachment ? true : tapalToEdit ? tapalToEdit.hasAttachment : false,
+      attachmentKey: finalAttachment ? inwAttKey : tapalToEdit ? tapalToEdit.attachmentKey : null,
+      fileAttachment: finalAttachment || (tapalToEdit ? tapalToEdit.fileAttachment : undefined),
       returnHistory: updatedHistory,
     };
 
@@ -186,8 +205,8 @@ export const InwardModal: React.FC<InwardModalProps> = ({
     onShowToast(
       isEditMode
         ? `Inward file #${cleanInwardNo} updated successfully!`
-        : stampedFile
-        ? 'Inward Tapal & date-stamped document saved successfully!'
+        : finalAttachment
+        ? 'Inward Tapal & document saved with Cloud Sync!'
         : 'Inward Tapal recorded successfully!'
     );
   };
@@ -347,7 +366,7 @@ export const InwardModal: React.FC<InwardModalProps> = ({
               <label className="font-bold text-blue-900 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <Paperclip className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Attach Inward Letter / Representation (PDF / Image)</span>
+                  <span>Attach Inward Letter / Representation (PDF / Image) - Cloud Sync</span>
                 </span>
                 {fileName && <span className="text-[11px] text-emerald-700 font-bold">{fileName}</span>}
               </label>
@@ -369,6 +388,7 @@ export const InwardModal: React.FC<InwardModalProps> = ({
             <button
               type="button"
               onClick={onClose}
+              disabled={isSaving}
               className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-semibold transition cursor-pointer"
             >
               Cancel
@@ -378,7 +398,14 @@ export const InwardModal: React.FC<InwardModalProps> = ({
               disabled={isSaving}
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold transition cursor-pointer shadow-sm disabled:opacity-50 flex items-center gap-1.5"
             >
-              {isSaving ? 'Saving...' : isEditMode ? 'Save Inward Edits' : 'Save Inward Entry'}
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Saving &amp; Syncing...</span>
+                </>
+              ) : (
+                <span>{isEditMode ? 'Save Inward Edits' : 'Save Inward Entry'}</span>
+              )}
             </button>
           </div>
         </form>

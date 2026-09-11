@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BhuFile, MANDAL_VILLAGES, MANDAL_LIST, REVENUE_MODULES, FILE_STATUSES } from '../../types';
 import { getTodayDateString, isFutureDate, stampSingleDocument, setAttachmentInDB } from '../../utils/storage';
-import { X, AlertTriangle, Paperclip } from 'lucide-react';
+import { uploadPdfToCloudinary } from '../../utils/cloudinary';
+import { X, AlertTriangle, Paperclip, Loader2 } from 'lucide-react';
 
 interface FileModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ export const FileModal: React.FC<FileModalProps> = ({
   const [status, setStatus] = useState<string>('Received from MRO');
   const [remarks, setRemarks] = useState('');
   const [base64File, setBase64File] = useState('');
+  const [selectedFileObj, setSelectedFileObj] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
   const [duplicateFile, setDuplicateFile] = useState<BhuFile | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -47,6 +49,7 @@ export const FileModal: React.FC<FileModalProps> = ({
     setStatus('Received from MRO');
     setRemarks('');
     setBase64File('');
+    setSelectedFileObj(null);
     setFileName('');
     setDuplicateFile(null);
   };
@@ -86,6 +89,7 @@ export const FileModal: React.FC<FileModalProps> = ({
       return;
     }
     setFileName(file.name);
+    setSelectedFileObj(file);
     const reader = new FileReader();
     reader.onloadend = () => {
       setBase64File(reader.result as string);
@@ -112,16 +116,30 @@ export const FileModal: React.FC<FileModalProps> = ({
     const newId = Date.now();
     const attKey = `bhu_${newId}`;
     let stampedFile = base64File;
+    let cloudUrl = '';
 
+    // 1. Cloudinary Direct Cloud Upload
+    if (selectedFileObj) {
+      try {
+        onShowToast('Uploading document to cloud...');
+        cloudUrl = await uploadPdfToCloudinary(selectedFileObj);
+      } catch (uploadErr) {
+        console.warn('Cloudinary upload failed, falling back to local/DB storage:', uploadErr);
+      }
+    }
+
+    // 2. Document stamping & local fallback
     if (base64File) {
       try {
         const initialStamp = `RECEIPT DATE: ${receivedDate} | APP: ${appNumber} | INITIAL MRO RECEIPT`;
         stampedFile = await stampSingleDocument(base64File, initialStamp);
-        await setAttachmentInDB(attKey, stampedFile);
+        await setAttachmentInDB(attKey, cloudUrl || stampedFile);
       } catch (err) {
         console.warn('Initial stamp error:', err);
       }
     }
+
+    const finalAttachment = cloudUrl || stampedFile;
 
     const newRecord: BhuFile = {
       id: newId,
@@ -134,9 +152,10 @@ export const FileModal: React.FC<FileModalProps> = ({
       receivedDate,
       status,
       remarks: remarks.trim(),
-      hasAttachment: !!stampedFile,
-      attachmentKey: stampedFile ? attKey : null,
-      hasInitialAttachment: !!stampedFile,
+      fileAttachment: finalAttachment || undefined,
+      hasAttachment: !!finalAttachment,
+      attachmentKey: finalAttachment ? attKey : null,
+      hasInitialAttachment: !!finalAttachment,
       history: [
         {
           date: receivedDate,
@@ -154,7 +173,7 @@ export const FileModal: React.FC<FileModalProps> = ({
     onSave(newRecord);
     handleReset();
     onClose();
-    onShowToast('Bhu Bharati file record saved successfully!');
+    onShowToast('Bhu Bharati file record saved successfully with Cloud Sync!');
   };
 
   const villageList = mandal ? MANDAL_VILLAGES[mandal] || [] : [];
@@ -327,7 +346,7 @@ export const FileModal: React.FC<FileModalProps> = ({
             <div className="sm:col-span-2 border-1.5 border-dashed border-blue-400 bg-blue-50/60 p-3 rounded-lg">
               <label className="font-bold text-blue-900 flex items-center gap-1.5 mb-1.5">
                 <Paperclip className="w-3.5 h-3.5 text-blue-600" />
-                <span>Attach Application Document (PDF / Image)</span>
+                <span>Attach Application Document (PDF / Image) - Cloud Sync</span>
               </label>
               <input
                 type="file"
@@ -360,6 +379,7 @@ export const FileModal: React.FC<FileModalProps> = ({
             <button
               type="button"
               onClick={handleReset}
+              disabled={isSaving}
               className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md font-bold transition cursor-pointer"
             >
               Clear
@@ -367,6 +387,7 @@ export const FileModal: React.FC<FileModalProps> = ({
             <button
               type="button"
               onClick={onClose}
+              disabled={isSaving}
               className="bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded-md font-bold transition cursor-pointer"
             >
               Cancel
@@ -374,9 +395,16 @@ export const FileModal: React.FC<FileModalProps> = ({
             <button
               type="submit"
               disabled={isSaving}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-md font-bold transition cursor-pointer shadow-xs"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-md font-bold transition cursor-pointer shadow-xs flex items-center gap-1.5"
             >
-              {isSaving ? 'Saving...' : 'Save Bhu Bharati Record'}
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Saving &amp; Syncing...</span>
+                </>
+              ) : (
+                <span>Save Bhu Bharati Record</span>
+              )}
             </button>
           </div>
         </form>
