@@ -77,28 +77,45 @@ export const StatusModal: React.FC<StatusModalProps> = ({
     let latestDocUrl = file.fileAttachment || '';
 
     if (base64File) {
-      onShowToast('Applying official date stamp and merging dossier...');
+      onShowToast('Fetching existing dossier and appending new pages...');
       const stampText = `DATE: ${updateDate} | STATUS: ${newStatus.toUpperCase()} | RDO HUZURNAGAR`;
-      
+
       try {
-        let existingDoc = file.fileAttachment;
-        if (!existingDoc && (file.attachmentKey || file.hasAttachment)) {
-          existingDoc = (await getAttachmentFromDB(attKey)) || undefined;
+        let existingDocData: string | undefined = file.fileAttachment;
+
+        // 1. Cloudinary URL ఉంటే నేరుగా fetch చేసి Base64 లోకి మార్చడం
+        if (
+          existingDocData &&
+          (existingDocData.startsWith('http://') || existingDocData.startsWith('https://'))
+        ) {
+          try {
+            const resp = await fetch(existingDocData);
+            const blob = await resp.blob();
+            existingDocData = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+            });
+          } catch (fetchErr) {
+            console.warn('Could not fetch cloud file directly, fallback to IndexedDB:', fetchErr);
+            existingDocData = (await getAttachmentFromDB(attKey)) || undefined;
+          }
+        } else if (!existingDocData && (file.attachmentKey || file.hasAttachment)) {
+          existingDocData = (await getAttachmentFromDB(attKey)) || undefined;
         }
 
-        // 1. Merge the new doc with existing dossier and stamp
-        const mergedPdf = await mergeNewSignedDocToDossier(existingDoc, base64File, stampText);
+        // 2. పాత ఫైల్ కు కొత్త ఫైల్ ను వెనుక మెర్జ్ చేసి స్టాంప్ వేయడం
+        const mergedPdf = await mergeNewSignedDocToDossier(existingDocData, base64File, stampText);
 
-        // 2. Upload the new merged dossier directly to Cloudinary
-        onShowToast('Syncing updated dossier to cloud...');
+        // 3. మెర్జ్ అయిన పూర్తి Multi-page PDF ని Cloudinary కి అప్‌లోడ్ చేయడం
+        onShowToast('Uploading full multi-page dossier to cloud...');
         latestDocUrl = await uploadPdfToCloudinary(mergedPdf);
 
-        // 3. Save to local fallback DB
+        // 4. స్థానిక డేటాబేస్‌లో సేవ్ చేయడం
         await setAttachmentInDB(attKey, latestDocUrl);
         hasNewDoc = true;
       } catch (mergeErr) {
-        console.error('PDF Merge or Cloud upload error:', mergeErr);
-        // If merge fails, try uploading the signed file directly
+        console.error('PDF Merge/Upload error:', mergeErr);
         try {
           latestDocUrl = await uploadPdfToCloudinary(base64File);
           await setAttachmentInDB(attKey, latestDocUrl);
@@ -112,7 +129,7 @@ export const StatusModal: React.FC<StatusModalProps> = ({
     }
 
     const fullRemark = `${remarks.trim()}${
-      hasNewDoc ? ' (Date-stamped signed copy appended to cloud dossier)' : ''
+      hasNewDoc ? ' (Appended to continuous PDF dossier)' : ''
     }`;
 
     const newHistory = [
@@ -131,7 +148,7 @@ export const StatusModal: React.FC<StatusModalProps> = ({
     const updatedRecord: BhuFile = {
       ...file,
       status: newStatus,
-      // Keep the updated cloud URL so the latest document opens in view
+      // మెర్జ్ అయిన తాజా Cloud URL ఇక్కడ భద్రపరచబడుతుంది
       fileAttachment: latestDocUrl || file.fileAttachment,
       hasAttachment: hasNewDoc ? true : file.hasAttachment,
       attachmentKey: attKey,
@@ -143,12 +160,13 @@ export const StatusModal: React.FC<StatusModalProps> = ({
     onClose();
     onShowToast(
       hasNewDoc
-        ? `Status updated & newly signed pages synced to cloud with Date: ${updateDate}!`
+        ? `Status updated & page appended to dossier successfully!`
         : `File status updated to "${newStatus}" successfully!`
     );
   };
 
-  const hasExistingDoc = file.hasAttachment || (file.fileAttachment && file.fileAttachment.length > 50);
+  const hasExistingDoc =
+    file.hasAttachment || (file.fileAttachment && file.fileAttachment.length > 50);
 
   return (
     <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-3 overflow-y-auto">
@@ -158,7 +176,10 @@ export const StatusModal: React.FC<StatusModalProps> = ({
             <span>🔄</span>
             <span>Update Bhu Bharati File Movement Status</span>
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition cursor-pointer">
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-white transition cursor-pointer"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -182,22 +203,27 @@ export const StatusModal: React.FC<StatusModalProps> = ({
             </div>
             <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600">
               <div>
-                <span className="font-semibold text-slate-900">Mandal &amp; Village:</span> {file.mandal} • {file.village}
+                <span className="font-semibold text-slate-900">Mandal &amp; Village:</span>{' '}
+                {file.mandal} • {file.village}
               </div>
               <div>
-                <span className="font-semibold text-slate-900">Survey No(s):</span> {file.surveyNo}
+                <span className="font-semibold text-slate-900">Survey No(s):</span>{' '}
+                {file.surveyNo}
               </div>
               <div>
                 <span className="font-semibold text-slate-900">Module:</span> {file.module}
               </div>
               <div>
-                <span className="font-semibold text-slate-900">Received Date:</span> {file.receivedDate}
+                <span className="font-semibold text-slate-900">Received Date:</span>{' '}
+                {file.receivedDate}
               </div>
             </div>
           </div>
 
           <div>
-            <label className="font-extrabold text-blue-900 block mb-1">Update Status To *</label>
+            <label className="font-extrabold text-blue-900 block mb-1">
+              Update Status To *
+            </label>
             <select
               required
               value={newStatus}
@@ -213,7 +239,9 @@ export const StatusModal: React.FC<StatusModalProps> = ({
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Status Movement Date *</label>
+            <label className="font-bold text-slate-700 block mb-1">
+              Status Movement Date *
+            </label>
             <input
               type="date"
               required
@@ -236,17 +264,21 @@ export const StatusModal: React.FC<StatusModalProps> = ({
               className="w-full text-xs text-slate-600 file:mr-2.5 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
             />
             {fileName && (
-              <div className="text-[11px] text-blue-700 font-semibold">Selected: {fileName}</div>
+              <div className="text-[11px] text-blue-700 font-semibold">
+                Selected: {fileName}
+              </div>
             )}
             <div className="text-[11px] text-blue-800 font-medium pt-1">
               {hasExistingDoc
-                ? '📄 Existing Dossier: File already has attached documents. Any uploaded file will automatically attach as subsequent pages in the PDF with an official stamp.'
-                : '📄 No prior document: The uploaded signed file will become the primary PDF dossier for this record.'}
+                ? '📄 Continuous Dossier Active: Existing files will be preserved. New uploads will automatically append as subsequent pages with an official stamp.'
+                : '📄 Primary Document: This uploaded file will become the initial document for this record.'}
             </div>
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Endorsement Remarks / Notes *</label>
+            <label className="font-bold text-slate-700 block mb-1">
+              Endorsement Remarks / Notes *
+            </label>
             <textarea
               required
               rows={3}
