@@ -14,7 +14,15 @@ import {
   MapPin,
   Loader2
 } from 'lucide-react';
-import { doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { 
+  doc, 
+  setDoc, 
+  deleteDoc, 
+  onSnapshot, 
+  collection, 
+  getDocs, 
+  writeBatch 
+} from 'firebase/firestore';
 import { db } from "../utils/firebase";
 import { safeSaveLocalStorage } from '../utils/storage';
 import { DEFAULT_SADABAINAMA_ABSTRACT, DEFAULT_SADABAINAMA_REPORT } from '../data/sadabainamaData';
@@ -46,23 +54,68 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
   const [selectedAbstractCard, setSelectedAbstractCard] = useState<'all' | 'pending_tahsildar' | 'pending_rdo' | 'approved_synos' | 'total_surveys'>('all');
   const [selectedDetailFilter, setSelectedDetailFilter] = useState<'all' | 'approved' | 'rejected' | 'pending_tahsildar' | 'pending_rdo'>('all');
 
+  // Helper: Chunk array to stay well below Firestore 1MB document limit
+  const CHUNK_SIZE = 150; // 150 rows per doc chunk
+
+  // Load all chunks for detailed report
+  const fetchDetailedReportFromChunks = async () => {
+    try {
+      const snapMeta = await doc(db, 'sadabainama_data', 'report_meta');
+      const chunksColl = collection(db, 'sadabainama_report_chunks');
+      const querySnap = await getDocs(chunksColl);
+
+      if (!querySnap.empty) {
+        const sortedDocs = querySnap.docs.sort((a, b) => {
+          const idxA = parseInt(a.id.replace('chunk_', ''), 10) || 0;
+          const idxB = parseInt(b.id.replace('chunk_', ''), 10) || 0;
+          return idxA - idxB;
+        });
+
+        let fullRows: any[][] = [];
+        sortedDocs.forEach((d) => {
+          const chunkData = d.data();
+          if (chunkData?.rows) {
+            try {
+              const parsed = JSON.parse(chunkData.rows);
+              fullRows = fullRows.concat(parsed);
+            } catch (e) {
+              console.error('Error parsing chunk:', e);
+            }
+          }
+        });
+
+        if (fullRows.length > 0) {
+          onUpdateReport(fullRows);
+          safeSaveLocalStorage('rdo_sadabainama_report', fullRows);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching detailed chunks:', err);
+    }
+  };
+
   // Firebase Real-time Listener for all computers
   useEffect(() => {
+    // 1. Abstract Sync
     const unsubAbstract = onSnapshot(doc(db, 'sadabainama_data', 'abstract'), (snap) => {
       if (snap.exists() && snap.data()?.rows) {
-        const rows = JSON.parse(snap.data().rows);
-        onUpdateAbstract(rows);
-        safeSaveLocalStorage('rdo_sadabainama_abstract', rows);
+        try {
+          const rows = JSON.parse(snap.data().rows);
+          onUpdateAbstract(rows);
+          safeSaveLocalStorage('rdo_sadabainama_abstract', rows);
+        } catch (e) {
+          console.error(e);
+        }
       }
     }, (error) => {
       console.error('Firestore Abstract sync error:', error);
     });
 
-    const unsubReport = onSnapshot(doc(db, 'sadabainama_data', 'report'), (snap) => {
-      if (snap.exists() && snap.data()?.rows) {
-        const rows = JSON.parse(snap.data().rows);
-        onUpdateReport(rows);
-        safeSaveLocalStorage('rdo_sadabainama_report', rows);
+    // 2. Detailed Report Sync via Meta Trigger
+    const unsubReportMeta = onSnapshot(doc(db, 'sadabainama_data', 'report_meta'), (snap) => {
+      if (snap.exists()) {
+        fetchDetailedReportFromChunks();
       }
     }, (error) => {
       console.error('Firestore Report sync error:', error);
@@ -70,7 +123,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
 
     return () => {
       unsubAbstract();
-      unsubReport();
+      unsubReportMeta();
     };
   }, [onUpdateAbstract, onUpdateReport]);
 
@@ -113,10 +166,8 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           return;
         }
 
-        // Firestore Clouddocs Save
-        const rowsJson = JSON.stringify(rawRows);
-
         if (type === 'abstract') {
+          const rowsJson = JSON.stringify(rawRows);
           await setDoc(doc(db, 'sadabainama_data', 'abstract'), {
             rows: rowsJson,
             updatedAt: new Date().toISOString(),
@@ -126,14 +177,39 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           safeSaveLocalStorage('rdo_sadabainama_abstract', rawRows);
           onShowToast('Sadabainama Abstract uploaded & synced to all systems!');
         } else {
-          await setDoc(doc(db, 'sadabainama_data', 'report'), {
-            rows: rowsJson,
+          // Chunked upload for Detailed Report to avoid Firestore 1MB document limit
+          const chunksColl = collection(db, 'sadabainama_report_chunks');
+          const existingSnap = await getDocs(chunksColl);
+
+          // Clear previous chunks
+          if (!existingSnap.empty) {
+            const deleteBatch = writeBatch(db);
+            existingSnap.docs.forEach((d) => deleteBatch.delete(d.ref));
+            await deleteBatch.commit();
+          }
+
+          // Write new chunks
+          const totalChunks = Math.ceil(rawRows.length / CHUNK_SIZE);
+          for (let i = 0; i < totalChunks; i++) {
+            const slice = rawRows.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+            const chunkDocRef = doc(db, 'sadabainama_report_chunks', `chunk_${i.toString().padStart(4, '0')}`);
+            await setDoc(chunkDocRef, {
+              rows: JSON.stringify(slice),
+              chunkIndex: i
+            });
+          }
+
+          // Trigger listener across all machines using meta doc
+          await setDoc(doc(db, 'sadabainama_data', 'report_meta'), {
+            totalRows: rawRows.length,
+            totalChunks,
             updatedAt: new Date().toISOString(),
             updatedBy: currentUser?.name || 'Staff'
           });
+
           onUpdateReport(rawRows);
           safeSaveLocalStorage('rdo_sadabainama_report', rawRows);
-          onShowToast('Sadabainama Detailed Report uploaded & synced to all systems!');
+          onShowToast(`Sadabainama Detailed Report (${rawRows.length} rows) synced to all systems!`);
         }
       } catch (err) {
         console.error('Excel parse or sync error:', err);
@@ -155,7 +231,15 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
         setAbstractSearch('');
         onShowToast('Sadabainama Abstract removed from cloud across all systems.');
       } else {
-        await deleteDoc(doc(db, 'sadabainama_data', 'report'));
+        // Clear chunks and meta
+        const chunksColl = collection(db, 'sadabainama_report_chunks');
+        const existingSnap = await getDocs(chunksColl);
+        if (!existingSnap.empty) {
+          const deleteBatch = writeBatch(db);
+          existingSnap.docs.forEach((d) => deleteBatch.delete(d.ref));
+          await deleteBatch.commit();
+        }
+        await deleteDoc(doc(db, 'sadabainama_data', 'report_meta'));
         onUpdateReport(null);
         localStorage.removeItem('rdo_sadabainama_report');
         setReportSearch('');
@@ -186,11 +270,32 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
 
   const handleResetReport = async () => {
     try {
-      await setDoc(doc(db, 'sadabainama_data', 'report'), {
-        rows: JSON.stringify(DEFAULT_SADABAINAMA_REPORT),
+      const rawRows = DEFAULT_SADABAINAMA_REPORT;
+      const chunksColl = collection(db, 'sadabainama_report_chunks');
+      const existingSnap = await getDocs(chunksColl);
+      if (!existingSnap.empty) {
+        const deleteBatch = writeBatch(db);
+        existingSnap.docs.forEach((d) => deleteBatch.delete(d.ref));
+        await deleteBatch.commit();
+      }
+
+      const totalChunks = Math.ceil(rawRows.length / CHUNK_SIZE);
+      for (let i = 0; i < totalChunks; i++) {
+        const slice = rawRows.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        const chunkDocRef = doc(db, 'sadabainama_report_chunks', `chunk_${i.toString().padStart(4, '0')}`);
+        await setDoc(chunkDocRef, {
+          rows: JSON.stringify(slice),
+          chunkIndex: i
+        });
+      }
+
+      await setDoc(doc(db, 'sadabainama_data', 'report_meta'), {
+        totalRows: rawRows.length,
+        totalChunks,
         updatedAt: new Date().toISOString(),
         updatedBy: 'Default'
       });
+
       onUpdateReport(DEFAULT_SADABAINAMA_REPORT);
       safeSaveLocalStorage('rdo_sadabainama_report', DEFAULT_SADABAINAMA_REPORT);
       setReportSearch('');
