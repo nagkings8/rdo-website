@@ -23,6 +23,7 @@ import {
   INITIAL_ADMIN_PROFILE,
 } from './utils/storage';
 import { Header } from './components/Header';
+import { NoticeTicker } from './components/NoticeTicker';
 import { Navigation, ActiveTab } from './components/Navigation';
 import { Footer } from './components/Footer';
 import { DashboardView } from './components/DashboardView';
@@ -784,7 +785,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-100 via-slate-50 to-slate-100 text-slate-900 font-sans antialiased selection:bg-amber-400 selection:text-slate-950">
       <ColorSplashCursor />
 
-      {/* TOP STICKY BAR: HEADER & APP-STYLE HORIZONTAL SCROLLING NAVIGATION CONTAINER */}
+      {/* TOP STICKY BAR: HEADER, TICKER & NAVIGATION */}
       <div className="sticky top-0 z-50 w-full shadow-md bg-[#061122]">
         <Header
           currentUser={currentUser}
@@ -797,6 +798,9 @@ export default function App() {
           onOpenChangePassword={() => setIsChangePasswordModalOpen(true)}
           onGoHome={() => setActiveTab('dashboardTab')}
         />
+
+        {/* Scrolling Glowing Announcement Ticker */}
+        <NoticeTicker />
 
         {/* Mobile App View Horizontal Scrolling Navigation Bar */}
         <div className="w-full bg-[#0a1b33]/90 border-t border-slate-800/80 overflow-x-auto no-scrollbar py-1">
