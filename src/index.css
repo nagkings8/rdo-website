@@ -128,3 +128,18 @@ button[class*="bg-white"]:not(:disabled):hover {
     print-color-adjust: exact !important;
   }
 }
+
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee 28s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
