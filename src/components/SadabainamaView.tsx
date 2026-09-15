@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { 
   Upload, 
   Trash2, 
@@ -11,10 +11,11 @@ import {
   AlertCircle,
   Printer,
   Clock,
-  XCircle,
   MapPin,
-  Eye
+  Loader2
 } from 'lucide-react';
+import { doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 import { safeSaveLocalStorage } from '../utils/storage';
 import { DEFAULT_SADABAINAMA_ABSTRACT, DEFAULT_SADABAINAMA_REPORT } from '../data/sadabainamaData';
 import { printTableReport } from '../utils/printReport';
@@ -39,13 +40,40 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
 }) => {
   const isAdmin = currentUser?.role === 'ADMIN';
   const isViewer = !currentUser || currentUser?.role === 'VIEWER';
-  const canEditAndPrint = !isViewer;
+  const [isUploading, setIsUploading] = useState(false);
   const [abstractSearch, setAbstractSearch] = useState('');
   const [reportSearch, setReportSearch] = useState('');
   const [selectedAbstractCard, setSelectedAbstractCard] = useState<'all' | 'pending_tahsildar' | 'pending_rdo' | 'approved_synos' | 'total_surveys'>('all');
   const [selectedDetailFilter, setSelectedDetailFilter] = useState<'all' | 'approved' | 'rejected' | 'pending_tahsildar' | 'pending_rdo'>('all');
 
-  // Default to the official report data if none uploaded
+  // Firebase Real-time Listener for all computers
+  useEffect(() => {
+    const unsubAbstract = onSnapshot(doc(db, 'sadabainama_data', 'abstract'), (snap) => {
+      if (snap.exists() && snap.data()?.rows) {
+        const rows = JSON.parse(snap.data().rows);
+        onUpdateAbstract(rows);
+        safeSaveLocalStorage('rdo_sadabainama_abstract', rows);
+      }
+    }, (error) => {
+      console.error('Firestore Abstract sync error:', error);
+    });
+
+    const unsubReport = onSnapshot(doc(db, 'sadabainama_data', 'report'), (snap) => {
+      if (snap.exists() && snap.data()?.rows) {
+        const rows = JSON.parse(snap.data().rows);
+        onUpdateReport(rows);
+        safeSaveLocalStorage('rdo_sadabainama_report', rows);
+      }
+    }, (error) => {
+      console.error('Firestore Report sync error:', error);
+    });
+
+    return () => {
+      unsubAbstract();
+      unsubReport();
+    };
+  }, [onUpdateAbstract, onUpdateReport]);
+
   const currentAbstract = abstractData || DEFAULT_SADABAINAMA_ABSTRACT;
   const currentReport = reportData || DEFAULT_SADABAINAMA_REPORT;
 
@@ -61,11 +89,15 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
       return;
     }
 
+    setIsUploading(true);
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
         const buffer = evt.target?.result;
-        if (!buffer) return;
+        if (!buffer) {
+          setIsUploading(false);
+          return;
+        }
         const data = new Uint8Array(buffer as ArrayBuffer);
         const workbook = window.XLSX.read(data, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];
@@ -77,56 +109,98 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
 
         if (!rawRows || rawRows.length === 0) {
           onShowToast('Uploaded Excel file is empty.');
+          setIsUploading(false);
           return;
         }
 
+        // Firestore Clouddocs Save
+        const rowsJson = JSON.stringify(rawRows);
+
         if (type === 'abstract') {
+          await setDoc(doc(db, 'sadabainama_data', 'abstract'), {
+            rows: rowsJson,
+            updatedAt: new Date().toISOString(),
+            updatedBy: currentUser?.name || 'Staff'
+          });
           onUpdateAbstract(rawRows);
           safeSaveLocalStorage('rdo_sadabainama_abstract', rawRows);
-          onShowToast('Sadabainama Abstract uploaded successfully verbatim!');
+          onShowToast('Sadabainama Abstract uploaded & synced to all systems!');
         } else {
+          await setDoc(doc(db, 'sadabainama_data', 'report'), {
+            rows: rowsJson,
+            updatedAt: new Date().toISOString(),
+            updatedBy: currentUser?.name || 'Staff'
+          });
           onUpdateReport(rawRows);
           safeSaveLocalStorage('rdo_sadabainama_report', rawRows);
-          onShowToast('Sadabainama Detailed Report uploaded successfully verbatim!');
+          onShowToast('Sadabainama Detailed Report uploaded & synced to all systems!');
         }
       } catch (err) {
-        console.error('Excel parse error:', err);
-        onShowToast('Error parsing Excel file. Please ensure it is a valid format.');
+        console.error('Excel parse or sync error:', err);
+        onShowToast('Error saving data to Cloud. Check internet connection.');
+      } finally {
+        setIsUploading(false);
       }
     };
     reader.readAsArrayBuffer(file);
     e.target.value = '';
   };
 
-  const handleClear = (type: 'abstract' | 'report') => {
-    if (type === 'abstract') {
-      onUpdateAbstract(null);
-      localStorage.removeItem('rdo_sadabainama_abstract');
-      setAbstractSearch('');
-      onShowToast('Sadabainama Abstract cleared. Reset to official report.');
-    } else {
-      onUpdateReport(null);
-      localStorage.removeItem('rdo_sadabainama_report');
-      setReportSearch('');
-      onShowToast('Sadabainama Report cleared.');
+  const handleClear = async (type: 'abstract' | 'report') => {
+    try {
+      if (type === 'abstract') {
+        await deleteDoc(doc(db, 'sadabainama_data', 'abstract'));
+        onUpdateAbstract(null);
+        localStorage.removeItem('rdo_sadabainama_abstract');
+        setAbstractSearch('');
+        onShowToast('Sadabainama Abstract removed from cloud across all systems.');
+      } else {
+        await deleteDoc(doc(db, 'sadabainama_data', 'report'));
+        onUpdateReport(null);
+        localStorage.removeItem('rdo_sadabainama_report');
+        setReportSearch('');
+        onShowToast('Sadabainama Report removed from cloud across all systems.');
+      }
+    } catch (err) {
+      console.error('Clear error:', err);
+      onShowToast('Error clearing data from Cloud.');
     }
   };
 
-  const handleResetAbstract = () => {
-    onUpdateAbstract(DEFAULT_SADABAINAMA_ABSTRACT);
-    safeSaveLocalStorage('rdo_sadabainama_abstract', DEFAULT_SADABAINAMA_ABSTRACT);
-    setAbstractSearch('');
-    onShowToast('Reset to official Huzurnagar Sadabainama Abstract report!');
+  const handleResetAbstract = async () => {
+    try {
+      await setDoc(doc(db, 'sadabainama_data', 'abstract'), {
+        rows: JSON.stringify(DEFAULT_SADABAINAMA_ABSTRACT),
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'Default'
+      });
+      onUpdateAbstract(DEFAULT_SADABAINAMA_ABSTRACT);
+      safeSaveLocalStorage('rdo_sadabainama_abstract', DEFAULT_SADABAINAMA_ABSTRACT);
+      setAbstractSearch('');
+      onShowToast('Reset to official Huzurnagar Sadabainama Abstract across all systems!');
+    } catch (err) {
+      console.error(err);
+      onShowToast('Error resetting abstract.');
+    }
   };
 
-  const handleResetReport = () => {
-    onUpdateReport(DEFAULT_SADABAINAMA_REPORT);
-    safeSaveLocalStorage('rdo_sadabainama_report', DEFAULT_SADABAINAMA_REPORT);
-    setReportSearch('');
-    onShowToast('Reset to official Huzurnagar Sadabainama Detailed Report!');
+  const handleResetReport = async () => {
+    try {
+      await setDoc(doc(db, 'sadabainama_data', 'report'), {
+        rows: JSON.stringify(DEFAULT_SADABAINAMA_REPORT),
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'Default'
+      });
+      onUpdateReport(DEFAULT_SADABAINAMA_REPORT);
+      safeSaveLocalStorage('rdo_sadabainama_report', DEFAULT_SADABAINAMA_REPORT);
+      setReportSearch('');
+      onShowToast('Reset to official Huzurnagar Sadabainama Detailed Report across all systems!');
+    } catch (err) {
+      console.error(err);
+      onShowToast('Error resetting report.');
+    }
   };
 
-  // Export to CSV
   const handleExportCSV = (rows: any[][], fileName: string) => {
     if (!rows || rows.length === 0) return;
     const csvContent = rows
@@ -154,7 +228,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     onShowToast(`${fileName}.csv downloaded.`);
   };
 
-  // Categorize columns in Abstract table for exact color matching
   const getColType = (colName: any, idx: number): 'tahsildarPending' | 'rdoPending' | 'mandal' | 'sno' | 'normal' => {
     const name = String(colName || '').toLowerCase().trim();
     if (name.includes('s. no') || name.includes('s.no') || (idx === 0 && name.includes('no'))) {
@@ -163,14 +236,12 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     if (name.includes('mandal')) {
       return 'mandal';
     }
-    // Column 5 in image: Total Applications Pending At Tahsildar
     if (
       (name.includes('pending') && name.includes('tahsildar') && (name.includes('application') || !name.includes('survey'))) ||
       idx === 5
     ) {
       return 'tahsildarPending';
     }
-    // Column 6 in image: Total Applications Pending At RDO
     if (
       (name.includes('pending') && name.includes('rdo') && (name.includes('application') || !name.includes('survey'))) ||
       idx === 6
@@ -180,14 +251,13 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     return 'normal';
   };
 
-  // Parse Abstract rows into header, data rows, total row, and reportTitle
   const parsedAbstract = useMemo(() => {
     if (!currentAbstract || currentAbstract.length === 0) {
       return { 
         header: [], 
         dataRows: [], 
         totalRow: null, 
-        reportTitle: 'Sadabainama Abstract Report as on 05-09-2026 17.56.04' 
+        reportTitle: 'Sadabainama Abstract Report' 
       };
     }
 
@@ -197,7 +267,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     const row0 = currentAbstract[0] || [];
     const row1 = currentAbstract[1] || [];
 
-    // Check if row 0 is actually the Title row (e.g. from uploaded Excel)
     const row0FirstCell = String(row0[0] || '').trim();
     const row0NonEmptyCount = row0.filter((c) => String(c || '').trim() !== '').length;
 
@@ -219,7 +288,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     const header = currentAbstract[headerRowIdx] || [];
     const rest = currentAbstract.slice(headerRowIdx + 1);
 
-    // Look for row where any column equals "TOTAL"
     let totalRow: any[] | null = null;
     const dataRows: any[][] = [];
 
@@ -235,14 +303,12 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     return { header, dataRows, totalRow, reportTitle };
   }, [currentAbstract]);
 
-  // Calculate Abstract statistics strictly according to Abstract data (dynamic from uploaded/default abstract)
   const abstractStats = useMemo(() => {
     const { header, dataRows, totalRow } = parsedAbstract;
     const headerNormalized = (header || []).map((h: any) =>
       String(h || '').trim().toLowerCase()
     );
 
-    // Dynamic column index resolution with fallback matching standard abstract
     const totalAppsIdx = headerNormalized.findIndex(
       (h: string) =>
         (h.includes('total application') || h.includes('total apps') || h === 'applications' || h === 'total applications') &&
@@ -322,7 +388,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     };
   }, [parsedAbstract]);
 
-  // Filtered data rows based on search and card selection
   const filteredAbstractDataRows = useMemo(() => {
     let rows = parsedAbstract.dataRows;
 
@@ -352,21 +417,17 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     );
   }, [parsedAbstract.dataRows, abstractSearch, selectedAbstractCard, abstractStats]);
 
-  // Recalculate dynamic totals if filtered, or use official total row
   const displayTotalRow = useMemo(() => {
     if (!parsedAbstract.header.length) return null;
     
-    // If not searching and no card filter, and we have an official total row, use it directly
     if (!abstractSearch.trim() && selectedAbstractCard === 'all' && parsedAbstract.totalRow) {
       return parsedAbstract.totalRow;
     }
 
-    // If searching or filtered, calculate the sum for numeric columns of the filtered rows
     const colsCount = parsedAbstract.header.length;
     const sumRow: any[] = new Array(colsCount).fill('');
     
     sumRow[0] = '';
-    // Find mandal column index
     const mandalIdx = parsedAbstract.header.findIndex((h) => String(h).toLowerCase().includes('mandal'));
     sumRow[mandalIdx >= 0 ? mandalIdx : 1] = (abstractSearch.trim() || selectedAbstractCard !== 'all')
       ? `TOTAL (${filteredAbstractDataRows.length} MANDALS)` 
@@ -394,7 +455,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     return sumRow;
   }, [parsedAbstract.header, parsedAbstract.totalRow, filteredAbstractDataRows, abstractSearch, selectedAbstractCard]);
 
-  // Parse Detailed Report rows into reportTitle, header row, and data rows
   const parsedDetailedReport = useMemo(() => {
     if (!currentReport || currentReport.length === 0) {
       return {
@@ -413,7 +473,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     const row0FirstCell = String(row0[0] || '').trim();
     const row0NonEmptyCount = row0.filter((c) => String(c || '').trim() !== '').length;
 
-    // Check if row 0 is actually the Title row (e.g. from uploaded Excel or default format)
     const isRow0Title =
       row0FirstCell.toLowerCase().includes('sadabainama') ||
       row0FirstCell.toLowerCase().includes('detailed') ||
@@ -442,7 +501,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     };
   }, [currentReport]);
 
-  // Calculate application-wise statistics from Detailed Report (uploaded data)
   const detailedStats = useMemo(() => {
     const { header, dataRows } = parsedDetailedReport;
 
@@ -461,7 +519,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
       String(h || '').trim().toLowerCase()
     );
 
-    // Locate column indices dynamically
     const appNoIdx = headerNormalized.findIndex((h: string) =>
       h.includes('application no') ||
       h.includes('application_no') ||
@@ -507,7 +564,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
         ? appNoRaw
         : `row_${rowIdx}`;
 
-      // Combine relevant status texts
       const statusText = [
         statusIdx !== -1 ? String(row[statusIdx] || '') : '',
         pendingOfficeIdx !== -1 ? String(row[pendingOfficeIdx] || '') : '',
@@ -520,7 +576,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
 
       let rowStatus: AppStatus = 'other';
 
-      // 1. Check for Rejection first
       if (
         searchTarget.includes('reject') ||
         searchTarget.includes('dismiss') ||
@@ -530,9 +585,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
         searchTarget.includes('invalid')
       ) {
         rowStatus = 'rejected';
-      }
-      // 2. Check for Approval / Regularized
-      else if (
+      } else if (
         searchTarget.includes('approv') ||
         searchTarget.includes('complet') ||
         searchTarget.includes('regulariz') ||
@@ -543,18 +596,14 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
         searchTarget.includes('accepted')
       ) {
         rowStatus = 'approved';
-      }
-      // 3. Check for Pending at Tahsildar
-      else if (
+      } else if (
         searchTarget.includes('tahsildar') ||
         searchTarget.includes('mro') ||
         searchTarget.includes('vro') ||
         searchTarget.includes('field enquiry')
       ) {
         rowStatus = 'pending_tahsildar';
-      }
-      // 4. Check for Pending at RDO
-      else if (
+      } else if (
         searchTarget.includes('rdo') ||
         searchTarget.includes('sub collector') ||
         searchTarget.includes('dao')
@@ -569,7 +618,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
         });
       } else {
         const existing = appMap.get(appKey)!;
-        // Priority rollup for multi-row applications: Rejected > Approved > Pending RDO > Pending Tahsildar
         if (rowStatus === 'rejected') {
           existing.status = 'rejected';
         } else if (existing.status !== 'rejected' && rowStatus === 'approved') {
@@ -602,11 +650,9 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     };
   }, [parsedDetailedReport]);
 
-  // Filtered detailed report rows based on search and card status filter
   const filteredDetailedDataRows = useMemo(() => {
     let rows = parsedDetailedReport.dataRows;
 
-    // Filter by card selection
     if (selectedDetailFilter !== 'all' && detailedStats.appMap.size > 0) {
       const { appMap } = detailedStats;
       const { header } = parsedDetailedReport;
@@ -803,10 +849,9 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
   return (
     <div className="space-y-6">
       {/* ============================================================ */}
-      {/* TOP DASHBOARD BANNER (MATCHING APPEAL CASES STYLE) */}
+      {/* TOP DASHBOARD BANNER */}
       {/* ============================================================ */}
       <div className="bg-gradient-to-r from-[#072418] via-[#0f402c] to-[#072418] text-white p-5 md:p-6 rounded-2xl shadow-xl border-t-2 border-amber-400 relative overflow-hidden">
-        {/* Top ambient glass reflection */}
         <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-300/60 to-transparent pointer-events-none" />
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -left-10 -top-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -839,7 +884,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
             </div>
           </div>
 
-          {/* Quick Stats Pill */}
           <div className="flex items-center gap-2.5 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/15 shadow-sm">
             <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0" />
             <div>
@@ -858,10 +902,9 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
       </div>
 
       {/* ============================================================ */}
-      {/* SUMMARY STAT CARDS (5 GLOSSY & COLORFUL CARDS - ACCORDING TO ABSTRACT) */}
+      {/* SUMMARY STAT CARDS */}
       {/* ============================================================ */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
-        {/* Card 1: Total Applications */}
         <div
           onClick={() => {
             setSelectedAbstractCard('all');
@@ -894,7 +937,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           </p>
         </div>
 
-        {/* Card 2: Pending at Tahsildar */}
         <div
           onClick={() => setSelectedAbstractCard((prev) => (prev === 'pending_tahsildar' ? 'all' : 'pending_tahsildar'))}
           className={`group relative overflow-hidden backdrop-blur-md rounded-2xl p-4.5 cursor-pointer transition-all duration-300 ${
@@ -924,7 +966,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           </p>
         </div>
 
-        {/* Card 3: Pending at RDO */}
         <div
           onClick={() => setSelectedAbstractCard((prev) => (prev === 'pending_rdo' ? 'all' : 'pending_rdo'))}
           className={`group relative overflow-hidden backdrop-blur-md rounded-2xl p-4.5 cursor-pointer transition-all duration-300 ${
@@ -954,7 +995,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           </p>
         </div>
 
-        {/* Card 4: Approved Sy.Nos */}
         <div
           onClick={() => setSelectedAbstractCard((prev) => (prev === 'approved_synos' ? 'all' : 'approved_synos'))}
           className={`group relative overflow-hidden backdrop-blur-md rounded-2xl p-4.5 cursor-pointer transition-all duration-300 ${
@@ -984,7 +1024,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           </p>
         </div>
 
-        {/* Card 5: Total Survey Numbers */}
         <div
           onClick={() => {
             setSelectedAbstractCard((prev) => (prev === 'total_surveys' ? 'all' : 'total_surveys'));
@@ -1018,13 +1057,11 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
       </div>
 
       {/* ============================================================ */}
-      {/* SECTION 1: SADABAINAMA ABSTRACT REPORT (EXACT MATCH TO IMAGE) */}
+      {/* SECTION 1: SADABAINAMA ABSTRACT REPORT */}
       {/* ============================================================ */}
       <div className="bg-white border-2 border-[#134674] rounded-xl shadow-lg overflow-hidden">
-        {/* Action Controls Bar with Search and Quick Filters */}
         <div className="bg-slate-50 border-b border-slate-200 p-4 space-y-3">
           <div className="flex flex-wrap justify-between items-center gap-3">
-            {/* Search Box - LOCKED HEADERS WORK ALWAYS EVEN WITH SEARCH */}
             <div className="relative w-full sm:w-96">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <input
@@ -1046,7 +1083,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
               )}
             </div>
 
-            {/* Controls: Upload, Export, Reset, Clear */}
             <div className="flex flex-wrap items-center gap-2">
               {!isViewer && (
                 <>
@@ -1058,11 +1094,12 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                     onChange={(e) => handleExcelUpload(e, 'abstract')}
                   />
                   <button
+                    disabled={isUploading}
                     onClick={() => abstractFileInputRef.current?.click()}
-                    className="bg-[#134674] hover:bg-[#0f3b63] text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer"
-                    title="Upload custom Excel or CSV"
+                    className="bg-[#134674] hover:bg-[#0f3b63] disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                    title="Upload custom Excel or CSV and sync with all systems"
                   >
-                    <Upload className="w-3.5 h-3.5" />
+                    {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                     <span>Upload Abstract Excel</span>
                   </button>
 
@@ -1087,7 +1124,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                   <button
                     onClick={handleResetAbstract}
                     className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 transition cursor-pointer"
-                    title="Reset to official Huzurnagar dataset"
+                    title="Reset to official Huzurnagar dataset across cloud"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     <span>Reset Official</span>
@@ -1108,7 +1145,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
             </div>
           </div>
 
-          {/* Quick Mandal Filter Pills */}
           <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
             <span className="text-slate-500 font-bold mr-1">Filter Mandal:</span>
             <button
@@ -1142,7 +1178,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           </div>
         </div>
 
-        {/* Filter count notice */}
         {(abstractSearch.trim() || selectedAbstractCard !== 'all') && (
           <div className="bg-blue-50/90 border-b border-blue-200 px-4 py-2 text-xs font-bold text-blue-900 flex flex-wrap justify-between items-center gap-2">
             <div className="flex items-center gap-2">
@@ -1172,17 +1207,12 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           </div>
         )}
 
-        {/* ============================================================ */}
-        {/* SCROLLABLE TABLE CONTAINER WITH LOCKED 1 & 2 HEADERS */}
-        {/* ============================================================ */}
         <div 
           className="relative overflow-x-auto overflow-y-auto max-h-[620px] bg-white select-none"
           style={{ scrollBehavior: 'smooth' }}
         >
           <table className="w-full text-xs text-left border-separate border-spacing-0 border-t border-l border-slate-300">
-            {/* LOCKED THEAD - 1 & 2 HEADERS STAY LOCKED AT TOP ON SCROLL & SEARCH */}
             <thead className="sticky top-0 z-30 shadow-md">
-              {/* HEADER 1: FULLY MERGED ACROSS ALL COLUMNS AND CENTERED IN TABLE MIDDLE */}
               <tr className="sticky top-0 z-40 bg-[#134674]" style={{ height: '46px' }}>
                 <th
                   colSpan={parsedAbstract.header.length || 12}
@@ -1197,7 +1227,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                 </th>
               </tr>
 
-              {/* HEADER 2: COLUMN NAMES - LOCKED AT TOP-46px */}
               <tr className="sticky top-[46px] z-30 bg-[#164875]">
                 {parsedAbstract.header.map((colName: any, idx: number) => {
                   const colType = getColType(colName, idx);
@@ -1206,7 +1235,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                   const isMandal = colType === 'mandal';
                   const isSno = colType === 'sno';
 
-                  // Sticky coordinates for columns 1 & 2
                   let colStickyClass = 'sticky top-[46px] z-30 bg-[#164875]';
                   let colStyle: React.CSSProperties = { backgroundColor: '#164875' };
 
@@ -1239,7 +1267,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
               </tr>
             </thead>
 
-            {/* TBODY - DATA ROWS (COLUMNS 1 & 2 FROZEN ON HORIZONTAL SCROLL) */}
             <tbody>
               {filteredAbstractDataRows.length === 0 ? (
                 <tr>
@@ -1276,7 +1303,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                         const isSno = colType === 'sno';
                         const val = String(row[cIdx] !== undefined && row[cIdx] !== null ? row[cIdx] : '');
 
-                        // Column locking coordinates
                         let cellStickyClass = '';
                         if (isSno) {
                           cellStickyClass = 'sticky left-0 z-20 shadow-[1px_0_0_0_#cbd5e1]';
@@ -1316,7 +1342,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
               )}
             </tbody>
 
-            {/* LOCKED / PINNED FOOTER: TOTAL ROW (EXACT REPLICA OF SCREENSHOT) */}
             {displayTotalRow && (
               <tfoot className="sticky bottom-0 z-30 shadow-md">
                 <tr className="font-black bg-[#e9ecf5]">
@@ -1328,7 +1353,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                     const isSno = colType === 'sno';
                     const val = String(displayTotalRow[cIdx] !== undefined && displayTotalRow[cIdx] !== null ? displayTotalRow[cIdx] : '');
 
-                    // Sticky coordinates for footer columns 1 & 2
                     let footerStickyClass = 'sticky bottom-0 z-30';
                     if (isSno) {
                       footerStickyClass = 'sticky bottom-0 left-0 z-40';
@@ -1368,7 +1392,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           </table>
         </div>
 
-        {/* Footer info legend */}
         <div className="bg-slate-100 border-t border-slate-300 px-4 py-2.5 flex flex-wrap justify-between items-center text-xs text-slate-600 gap-3">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5 font-bold">
@@ -1387,7 +1410,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
       </div>
 
       {/* ============================================================ */}
-      {/* SECTION 2: SADABAINAMA DETAILED REPORT (2 LOCKED BLUE HEADERS) */}
+      {/* SECTION 2: SADABAINAMA DETAILED REPORT */}
       {/* ============================================================ */}
       <div className="bg-white border border-slate-200 border-t-4 border-t-blue-600 rounded-xl p-5 md:p-6 shadow-xs space-y-4">
         <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-100 pb-4">
@@ -1411,16 +1434,17 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                   onChange={(e) => handleExcelUpload(e, 'report')}
                 />
                 <button
+                  disabled={isUploading}
                   onClick={() => reportFileInputRef.current?.click()}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
                 >
-                  <Upload className="w-3.5 h-3.5" />
+                  {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                   <span>Upload Report Excel</span>
                 </button>
                 <button
                   onClick={handleResetReport}
                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 border border-slate-300 shadow-xs transition cursor-pointer"
-                  title="Reset to official Huzurnagar sample report"
+                  title="Reset to official Huzurnagar sample report across cloud"
                 >
                   <RotateCcw className="w-3.5 h-3.5 text-blue-600" />
                   <span>Reset Sample</span>
@@ -1504,7 +1528,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           </div>
         </div>
 
-        {/* Detailed Report Table with Locked 2 Blue Header Rows & Scrolling Data Rows */}
         {parsedDetailedReport.header.length === 0 ? (
           <div className="text-center py-12 text-slate-400 text-xs font-medium border border-dashed border-slate-200 rounded-lg space-y-2">
             <div>No Detailed Report data loaded yet.</div>
@@ -1527,9 +1550,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
         ) : (
           <div className="overflow-x-auto overflow-y-auto max-h-[520px] border border-slate-300 rounded-lg shadow-sm">
             <table className="w-full text-xs text-left border-separate border-spacing-0 border-t border-l border-slate-300 bg-white">
-              {/* LOCKED THEAD - 1 & 2 HEADERS STAY LOCKED IN BLUE WITH WHITE FONTS */}
               <thead className="sticky top-0 z-30 shadow-md">
-                {/* ROW 1: FULLY MERGED ACROSS ALL COLUMNS, CENTERED IN MIDDLE, BLUE WITH WHITE FONTS, LOCKED AT TOP */}
                 <tr className="sticky top-0 z-40 bg-[#134674]" style={{ height: '46px' }}>
                   <th
                     colSpan={parsedDetailedReport.header.length || 1}
@@ -1544,7 +1565,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                   </th>
                 </tr>
 
-                {/* ROW 2: COLUMN HEADERS, BLUE BACKGROUND WITH WHITE FONTS, LOCKED AT TOP-46px */}
                 <tr className="sticky top-[46px] z-30 bg-[#164875]" style={{ height: '38px' }}>
                   {parsedDetailedReport.header.map((colName: any, idx: number) => (
                     <th
@@ -1558,7 +1578,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                 </tr>
               </thead>
 
-              {/* BODY: REMAINING DATA ROWS THAT SCROLL SMOOTHLY UNDERNEATH */}
               <tbody className="divide-y divide-slate-200">
                 {filteredDetailedDataRows.length === 0 ? (
                   <tr>
@@ -1613,7 +1632,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           </div>
         )}
 
-        {/* Footer info legend */}
         <div className="bg-slate-100 border border-slate-200 rounded-lg px-4 py-2.5 flex flex-wrap justify-between items-center text-xs text-slate-600 gap-3">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5 font-bold">
@@ -1641,4 +1659,3 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     </div>
   );
 };
-
