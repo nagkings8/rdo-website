@@ -15,7 +15,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from "../utils/firebase";
 import { safeSaveLocalStorage } from '../utils/storage';
 import { DEFAULT_SADABAINAMA_ABSTRACT, DEFAULT_SADABAINAMA_REPORT } from '../data/sadabainamaData';
 import { printTableReport } from '../utils/printReport';
