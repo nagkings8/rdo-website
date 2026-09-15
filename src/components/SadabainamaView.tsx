@@ -54,13 +54,10 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
   const [selectedAbstractCard, setSelectedAbstractCard] = useState<'all' | 'pending_tahsildar' | 'pending_rdo' | 'approved_synos' | 'total_surveys'>('all');
   const [selectedDetailFilter, setSelectedDetailFilter] = useState<'all' | 'approved' | 'rejected' | 'pending_tahsildar' | 'pending_rdo'>('all');
 
-  // Helper: Chunk array to stay well below Firestore 1MB document limit
-  const CHUNK_SIZE = 150; // 150 rows per doc chunk
+  const CHUNK_SIZE = 150;
 
-  // Load all chunks for detailed report
   const fetchDetailedReportFromChunks = async () => {
     try {
-      const snapMeta = await doc(db, 'sadabainama_data', 'report_meta');
       const chunksColl = collection(db, 'sadabainama_report_chunks');
       const querySnap = await getDocs(chunksColl);
 
@@ -95,9 +92,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     }
   };
 
-  // Firebase Real-time Listener for all computers
   useEffect(() => {
-    // 1. Abstract Sync
     const unsubAbstract = onSnapshot(doc(db, 'sadabainama_data', 'abstract'), (snap) => {
       if (snap.exists() && snap.data()?.rows) {
         try {
@@ -112,7 +107,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
       console.error('Firestore Abstract sync error:', error);
     });
 
-    // 2. Detailed Report Sync via Meta Trigger
     const unsubReportMeta = onSnapshot(doc(db, 'sadabainama_data', 'report_meta'), (snap) => {
       if (snap.exists()) {
         fetchDetailedReportFromChunks();
@@ -177,18 +171,15 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           safeSaveLocalStorage('rdo_sadabainama_abstract', rawRows);
           onShowToast('Sadabainama Abstract uploaded & synced to all systems!');
         } else {
-          // Chunked upload for Detailed Report to avoid Firestore 1MB document limit
           const chunksColl = collection(db, 'sadabainama_report_chunks');
           const existingSnap = await getDocs(chunksColl);
 
-          // Clear previous chunks
           if (!existingSnap.empty) {
             const deleteBatch = writeBatch(db);
             existingSnap.docs.forEach((d) => deleteBatch.delete(d.ref));
             await deleteBatch.commit();
           }
 
-          // Write new chunks
           const totalChunks = Math.ceil(rawRows.length / CHUNK_SIZE);
           for (let i = 0; i < totalChunks; i++) {
             const slice = rawRows.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
@@ -199,7 +190,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
             });
           }
 
-          // Trigger listener across all machines using meta doc
           await setDoc(doc(db, 'sadabainama_data', 'report_meta'), {
             totalRows: rawRows.length,
             totalChunks,
@@ -231,7 +221,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
         setAbstractSearch('');
         onShowToast('Sadabainama Abstract removed from cloud across all systems.');
       } else {
-        // Clear chunks and meta
         const chunksColl = collection(db, 'sadabainama_report_chunks');
         const existingSnap = await getDocs(chunksColl);
         if (!existingSnap.empty) {
@@ -953,9 +942,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* ============================================================ */}
       {/* TOP DASHBOARD BANNER */}
-      {/* ============================================================ */}
       <div className="bg-gradient-to-r from-[#072418] via-[#0f402c] to-[#072418] text-white p-5 md:p-6 rounded-2xl shadow-xl border-t-2 border-amber-400 relative overflow-hidden">
         <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-300/60 to-transparent pointer-events-none" />
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -1006,9 +993,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
         </div>
       </div>
 
-      {/* ============================================================ */}
       {/* SUMMARY STAT CARDS */}
-      {/* ============================================================ */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
         <div
           onClick={() => {
@@ -1161,9 +1146,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
         </div>
       </div>
 
-      {/* ============================================================ */}
       {/* SECTION 1: SADABAINAMA ABSTRACT REPORT */}
-      {/* ============================================================ */}
       <div className="bg-white border-2 border-[#134674] rounded-xl shadow-lg overflow-hidden">
         <div className="bg-slate-50 border-b border-slate-200 p-4 space-y-3">
           <div className="flex flex-wrap justify-between items-center gap-3">
@@ -1340,19 +1323,10 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                   const isMandal = colType === 'mandal';
                   const isSno = colType === 'sno';
 
-                  let colStickyClass = 'sticky top-[46px] z-30 bg-[#164875]';
-                  let colStyle: React.CSSProperties = { backgroundColor: '#164875' };
-
-                  if (isSno) {
-                    colStickyClass = 'sticky top-[46px] left-0 z-50 bg-[#164875]';
-                  } else if (isMandal) {
-                    colStickyClass = 'sticky top-[46px] left-[55px] z-50 bg-[#164875]';
-                  }
-
                   return (
                     <th
                       key={idx}
-                      className={`${colStickyClass} py-3.5 px-3 border-b-2 border-r border-slate-400/60 font-black text-xs tracking-wider select-none whitespace-normal ${
+                      className={`sticky top-[46px] z-30 bg-[#164875] py-3.5 px-3 border-b-2 border-r border-slate-400/60 font-black text-xs tracking-wider select-none whitespace-normal ${
                         isTahsildarPending 
                           ? 'text-[#ffff00] text-center min-w-[130px] max-w-[140px]' 
                           : isRdoPending 
@@ -1363,7 +1337,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                           ? 'text-white text-center w-[55px] min-w-[55px] max-w-[55px]' 
                           : 'text-white text-center min-w-[110px]'
                       }`}
-                      style={colStyle}
+                      style={{ backgroundColor: '#164875' }}
                     >
                       {String(colName || '')}
                     </th>
@@ -1408,17 +1382,10 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                         const isSno = colType === 'sno';
                         const val = String(row[cIdx] !== undefined && row[cIdx] !== null ? row[cIdx] : '');
 
-                        let cellStickyClass = '';
-                        if (isSno) {
-                          cellStickyClass = 'sticky left-0 z-20 shadow-[1px_0_0_0_#cbd5e1]';
-                        } else if (isMandal) {
-                          cellStickyClass = 'sticky left-[55px] z-20 shadow-[1px_0_0_0_#cbd5e1]';
-                        }
-
                         return (
                           <td
                             key={cIdx}
-                            className={`${cellStickyClass} py-2.5 px-3 border-b border-r border-slate-300 text-xs ${
+                            className={`py-2.5 px-3 border-b border-r border-slate-300 text-xs ${
                               isTahsildarPending
                                 ? 'bg-[#ffffc8] text-slate-950 font-black text-center text-sm'
                                 : isRdoPending
@@ -1458,17 +1425,10 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                     const isSno = colType === 'sno';
                     const val = String(displayTotalRow[cIdx] !== undefined && displayTotalRow[cIdx] !== null ? displayTotalRow[cIdx] : '');
 
-                    let footerStickyClass = 'sticky bottom-0 z-30';
-                    if (isSno) {
-                      footerStickyClass = 'sticky bottom-0 left-0 z-40';
-                    } else if (isMandal) {
-                      footerStickyClass = 'sticky bottom-0 left-[55px] z-40';
-                    }
-
                     return (
                       <td
                         key={cIdx}
-                        className={`${footerStickyClass} py-3 px-3 border-t-2 border-b-2 border-r border-slate-400 font-black text-xs ${
+                        className={`sticky bottom-0 z-30 py-3 px-3 border-t-2 border-b-2 border-r border-slate-400 font-black text-xs ${
                           isTahsildarPending
                             ? 'bg-[#fef08a] text-slate-950 text-center text-sm'
                             : isRdoPending
@@ -1514,9 +1474,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
         </div>
       </div>
 
-      {/* ============================================================ */}
       {/* SECTION 2: SADABAINAMA DETAILED REPORT */}
-      {/* ============================================================ */}
       <div className="bg-white border border-slate-200 border-t-4 border-t-blue-600 rounded-xl p-5 md:p-6 shadow-xs space-y-4">
         <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-100 pb-4">
           <div>
