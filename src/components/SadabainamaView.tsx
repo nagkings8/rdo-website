@@ -796,6 +796,13 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
 
   const totalPages = Math.max(1, Math.ceil(filteredDetailedDataRows.length / rowsPerPage));
 
+  // Extract date and time dynamically from report title string
+  const extractPeriodFromTitle = (titleStr: string, fallback: string) => {
+    if (!titleStr) return fallback;
+    const match = titleStr.match(/(\d{2}[-/.]\d{2}[-/.]\d{4}(?:\s+\d{1,2}[:.]\d{2}(?:[:.]\d{2})?)?)/);
+    return match ? match[1] : fallback;
+  };
+
   const handlePrintAbstract = () => {
     const colgroup = `
       <colgroup>
@@ -881,10 +888,12 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
       </table>
     `;
 
+    const dynamicPeriod = extractPeriodFromTitle(parsedAbstract.reportTitle, '05-09-2026 17:56:04');
+
     printTableReport(tableHtml, {
       title: parsedAbstract.reportTitle,
       subtitle: 'Revenue Divisional Office, Huzurnagar • Suryapet District',
-      period: '05-09-2026 17:56:04',
+      period: dynamicPeriod,
       landscape: true,
       fileName: 'Sadabainama_Abstract_Report',
     });
@@ -955,10 +964,12 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
       </table>
     `;
 
+    const dynamicPeriodDetailed = extractPeriodFromTitle(parsedDetailedReport.reportTitle, '05-09-2026 17:56:04');
+
     printTableReport(tableHtml, {
       title: parsedDetailedReport.reportTitle,
       subtitle: 'Revenue Divisional Office, Huzurnagar • Suryapet District',
-      period: '05-09-2026 17:56:04',
+      period: dynamicPeriodDetailed,
       landscape: true,
       fileName: 'Sadabainama_Detailed_Report',
     });
