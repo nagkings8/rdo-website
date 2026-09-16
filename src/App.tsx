@@ -177,11 +177,61 @@ export default function App() {
       safeSaveLocalStorage('rdo_appeal_cases', list);
     });
 
+    // 1. Staff Users & Passwords Firestore Cloud Listener
+    const unsubStaff = onSnapshot(doc(db, 'system_auth', 'staff_users'), (snapshot) => {
+      if (snapshot.exists() && snapshot.data()?.users) {
+        try {
+          const list: StaffUser[] = JSON.parse(snapshot.data().users);
+          if (Array.isArray(list) && list.length > 0) {
+            setStaff(list);
+            safeSaveLocalStorage('rdo_staff', list);
+            setCurrentUser((prev) => {
+              if (!prev) return null;
+              const found = list.find((u) => u.id === prev.id);
+              return found || prev;
+            });
+          }
+        } catch (err) {
+          console.error('Error parsing cloud staff users:', err);
+        }
+      }
+    });
+
+    // 2. Admin Profile & Password Firestore Cloud Listener
+    const unsubAdmin = onSnapshot(doc(db, 'system_auth', 'admin_profile'), (snapshot) => {
+      if (snapshot.exists() && snapshot.data()?.profile) {
+        try {
+          const prof: AdminProfile = JSON.parse(snapshot.data().profile);
+          if (prof) {
+            setAdminProfile(prof);
+            safeSaveLocalStorage('rdo_admin_profile', prof);
+            setCurrentUser((prev) => {
+              if (prev && prev.role === 'ADMIN') {
+                return {
+                  id: prof.id || 999,
+                  name: prof.name,
+                  role: 'ADMIN',
+                  cadre: prof.cadre,
+                  phone: prof.phone,
+                  active: true,
+                };
+              }
+              return prev;
+            });
+          }
+        } catch (err) {
+          console.error('Error parsing cloud admin profile:', err);
+        }
+      }
+    });
+
     return () => {
       unsubFiles();
       unsubInwards();
       unsubOutwards();
       unsubAppeals();
+      unsubStaff();
+      unsubAdmin();
     };
   }, []);
 
@@ -720,28 +770,52 @@ export default function App() {
     }
   };
 
-  const handleToggleUserStatus = (id: number) => {
+  const handleToggleUserStatus = async (id: number) => {
     const updated = staff.map((u) => (u.id === id ? { ...u, active: !u.active } : u));
     setStaff(updated);
     safeSaveLocalStorage('rdo_staff', updated);
+    try {
+      await setDoc(doc(db, 'system_auth', 'staff_users'), {
+        users: JSON.stringify(updated),
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Could not sync user status toggle to Firestore:', e);
+    }
   };
 
-  const handleSaveNewUser = (newUser: StaffUser) => {
+  const handleSaveNewUser = async (newUser: StaffUser) => {
     const updated = [...staff, newUser];
     setStaff(updated);
     safeSaveLocalStorage('rdo_staff', updated);
+    try {
+      await setDoc(doc(db, 'system_auth', 'staff_users'), {
+        users: JSON.stringify(updated),
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Could not sync new user to Firestore:', e);
+    }
   };
 
-  const handleUpdateStaff = (updatedMember: StaffUser) => {
+  const handleUpdateStaff = async (updatedMember: StaffUser) => {
     const updated = staff.map((u) => (u.id === updatedMember.id ? updatedMember : u));
     setStaff(updated);
     safeSaveLocalStorage('rdo_staff', updated);
     if (currentUser && currentUser.id === updatedMember.id) {
       setCurrentUser(updatedMember);
     }
+    try {
+      await setDoc(doc(db, 'system_auth', 'staff_users'), {
+        users: JSON.stringify(updated),
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Could not sync staff update to Firestore:', e);
+    }
   };
 
-  const handleDeleteStaff = (staffId: number) => {
+  const handleDeleteStaff = async (staffId: number) => {
     const updated = staff.filter((u) => u.id !== staffId);
     setStaff(updated);
     safeSaveLocalStorage('rdo_staff', updated);
@@ -749,9 +823,17 @@ export default function App() {
       setCurrentUser(null);
       setActiveTab('dashboardTab');
     }
+    try {
+      await setDoc(doc(db, 'system_auth', 'staff_users'), {
+        users: JSON.stringify(updated),
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Could not sync staff delete to Firestore:', e);
+    }
   };
 
-  const handleUpdateAdminProfile = (newProfile: AdminProfile) => {
+  const handleUpdateAdminProfile = async (newProfile: AdminProfile) => {
     setAdminProfile(newProfile);
     safeSaveLocalStorage('rdo_admin_profile', newProfile);
     if (currentUser && currentUser.role === 'ADMIN') {
@@ -764,21 +846,45 @@ export default function App() {
         active: true,
       });
     }
+    try {
+      await setDoc(doc(db, 'system_auth', 'admin_profile'), {
+        profile: JSON.stringify(newProfile),
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Could not sync admin profile to Firestore:', e);
+    }
   };
 
-  const handleUpdateStaffPassword = (staffId: number, newPassword: string) => {
+  const handleUpdateStaffPassword = async (staffId: number, newPassword: string) => {
     const updated = staff.map((s) => (s.id === staffId ? { ...s, password: newPassword } : s));
     setStaff(updated);
     safeSaveLocalStorage('rdo_staff', updated);
     if (currentUser && currentUser.id === staffId) {
       setCurrentUser({ ...currentUser, password: newPassword });
     }
+    try {
+      await setDoc(doc(db, 'system_auth', 'staff_users'), {
+        users: JSON.stringify(updated),
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Could not sync staff password to Firestore:', e);
+    }
   };
 
-  const handleUpdateAdminPassword = (newPassword: string) => {
+  const handleUpdateAdminPassword = async (newPassword: string) => {
     const updated = { ...adminProfile, password: newPassword };
     setAdminProfile(updated);
     safeSaveLocalStorage('rdo_admin_profile', updated);
+    try {
+      await setDoc(doc(db, 'system_auth', 'admin_profile'), {
+        profile: JSON.stringify(updated),
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Could not sync admin password to Firestore:', e);
+    }
   };
 
   return (
