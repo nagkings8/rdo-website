@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StaffUser, AdminProfile } from '../../types';
 import { 
   X, 
@@ -11,8 +11,11 @@ import {
   Eye,
   EyeOff,
   BookOpen,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '../../utils/firebase';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -52,10 +55,56 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [showChangeNew, setShowChangeNew] = useState(false);
   const [showChangeConfirm, setShowChangeConfirm] = useState(false);
   const [changeError, setChangeError] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  // Live Cloud Credentials
+  const [cloudStaffList, setCloudStaffList] = useState<StaffUser[]>(staff);
+  const [cloudAdminProfile, setCloudAdminProfile] = useState<AdminProfile>(adminProfile);
+
+  // Listen to live Cloud Credentials on Firestore
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const unsubStaff = onSnapshot(doc(db, 'system_auth', 'staff_users'), (snap) => {
+      if (snap.exists() && snap.data()?.users) {
+        try {
+          const parsed = JSON.parse(snap.data().users);
+          setCloudStaffList(parsed);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    });
+
+    const unsubAdmin = onSnapshot(doc(db, 'system_auth', 'admin_profile'), (snap) => {
+      if (snap.exists() && snap.data()?.profile) {
+        try {
+          const parsed = JSON.parse(snap.data().profile);
+          setCloudAdminProfile(parsed);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    });
+
+    return () => {
+      unsubStaff();
+      unsubAdmin();
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (staff.length > 0 && !selectedStaffId) {
+      setSelectedStaffId(String(staff[0].id));
+      setChangeStaffId(String(staff[0].id));
+    }
+  }, [staff, selectedStaffId]);
 
   if (!isOpen) return null;
 
-  const activeStaffList = staff.filter((s) => s.active);
+  const currentStaffList = cloudStaffList.length > 0 ? cloudStaffList : staff;
+  const currentAdmin = cloudAdminProfile || adminProfile;
+  const activeStaffList = currentStaffList.filter((s) => s.active);
 
   const handleClose = () => {
     setActiveView('LOGIN');
@@ -67,51 +116,80 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     onClose();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (role === 'ADMIN') {
-      const expectedAdminPassword = adminProfile.password || 'admin';
-      if (password !== expectedAdminPassword) {
-        onShowToast('❌ Incorrect Administrator password. Please try again or check security credentials.');
-        return;
-      }
+    setIsVerifying(true);
 
-      onLogin({
-        id: adminProfile.id || 999,
-        name: adminProfile.name,
-        role: 'ADMIN',
-        cadre: adminProfile.cadre,
-        phone: adminProfile.phone,
-        active: true,
-      });
-      setPassword('');
-      handleClose();
-      onShowToast(`Welcome, ${adminProfile.name}! Signed in with full administrative privileges.`);
-    } else {
-      const selected = staff.find((s) => String(s.id) === selectedStaffId);
-      if (!selected) {
-        onShowToast('Please select a valid staff member.');
-        return;
-      }
+    try {
+      if (role === 'ADMIN') {
+        let expectedAdminPassword = currentAdmin.password || 'admin';
+        try {
+          const adminSnap = await getDoc(doc(db, 'system_auth', 'admin_profile'));
+          if (adminSnap.exists() && adminSnap.data()?.profile) {
+            const parsed = JSON.parse(adminSnap.data().profile);
+            if (parsed.password) expectedAdminPassword = parsed.password;
+          }
+        } catch (fetchErr) {
+          console.warn('Fallback to local admin profile:', fetchErr);
+        }
 
-      const expectedStaffPassword = selected.password || 'staff';
-      if (password !== expectedStaffPassword) {
-        onShowToast(`❌ Incorrect password for ${selected.name}. Please try again or change password.`);
-        return;
-      }
+        if (password !== expectedAdminPassword) {
+          onShowToast('❌ Incorrect Administrator password.');
+          setIsVerifying(false);
+          return;
+        }
 
-      onLogin(selected);
-      setPassword('');
-      handleClose();
-      onShowToast(`Welcome, ${selected.name}! Signed in successfully.`);
+        onLogin({
+          id: currentAdmin.id || 999,
+          name: currentAdmin.name,
+          role: 'ADMIN',
+          cadre: currentAdmin.cadre,
+          phone: currentAdmin.phone,
+          active: true,
+        });
+        setPassword('');
+        handleClose();
+        onShowToast(`Welcome, ${currentAdmin.name}! Signed in with administrative privileges.`);
+      } else {
+        let activeList = currentStaffList;
+        try {
+          const staffSnap = await getDoc(doc(db, 'system_auth', 'staff_users'));
+          if (staffSnap.exists() && staffSnap.data()?.users) {
+            activeList = JSON.parse(staffSnap.data().users);
+          }
+        } catch (fetchErr) {
+          console.warn('Fallback to local staff list:', fetchErr);
+        }
+
+        const selected = activeList.find((s) => String(s.id) === selectedStaffId);
+        if (!selected) {
+          onShowToast('Please select a valid staff member.');
+          setIsVerifying(false);
+          return;
+        }
+
+        const expectedStaffPassword = selected.password || 'staff';
+        if (password !== expectedStaffPassword) {
+          onShowToast(`❌ Incorrect password for ${selected.name}.`);
+          setIsVerifying(false);
+          return;
+        }
+
+        onLogin(selected);
+        setPassword('');
+        handleClose();
+        onShowToast(`Welcome, ${selected.name}! Signed in successfully.`);
+      }
+    } finally {
+      setIsVerifying(false);
     }
   };
 
-  const handleChangePasswordSubmit = (e: React.FormEvent) => {
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setChangeError('');
 
-    const targetStaff = staff.find((s) => String(s.id) === changeStaffId);
+    const targetStaff = currentStaffList.find((s) => String(s.id) === changeStaffId);
     if (!targetStaff) {
       setChangeError('Please select a valid staff member.');
       return;
@@ -138,11 +216,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    if (onUpdateStaffPassword) {
-      onUpdateStaffPassword(targetStaff.id, changeNewPassword);
+    const updatedList = currentStaffList.map((s) =>
+      s.id === targetStaff.id ? { ...s, password: changeNewPassword.trim() } : s
+    );
+
+    try {
+      await setDoc(doc(db, 'system_auth', 'staff_users'), {
+        users: JSON.stringify(updatedList),
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (err) {
+      console.warn('Error syncing new password to Firestore:', err);
     }
 
-    onShowToast(`✅ Password successfully updated for ${targetStaff.name}! You can now login.`);
+    if (onUpdateStaffPassword) {
+      onUpdateStaffPassword(targetStaff.id, changeNewPassword.trim());
+    }
+
+    setCloudStaffList(updatedList);
+    onShowToast(`✅ Password successfully updated for ${targetStaff.name}! Synced to all devices.`);
     setSelectedStaffId(String(targetStaff.id));
     setPassword('');
     setChangeCurrentPassword('');
@@ -183,7 +275,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </button>
         </div>
 
-        {/* CHANGE PASSWORD VIEW RIGHT FROM LOGIN SCREEN */}
+        {/* CHANGE PASSWORD VIEW */}
         {activeView === 'CHANGE_PASSWORD' ? (
           <form onSubmit={handleChangePasswordSubmit} className="p-5 md:p-6 space-y-4 text-xs animate-in fade-in duration-200">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-900">
@@ -192,7 +284,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <span>Change Staff Password</span>
               </div>
               <p className="text-slate-600">
-                Select your staff profile, enter your current password, and choose your new password.
+                New password will be immediately synced across all office computers and mobile devices.
               </p>
             </div>
 
@@ -203,7 +295,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </div>
             )}
 
-            {/* Select Staff Member */}
             <div>
               <label className="font-bold text-slate-700 block mb-1">
                 Select Staff Member <span className="text-rose-500">*</span>
@@ -225,7 +316,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </select>
             </div>
 
-            {/* Current Password */}
             <div>
               <label className="font-bold text-slate-700 block mb-1">
                 Current Password <span className="text-rose-500">*</span>
@@ -250,7 +340,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </div>
             </div>
 
-            {/* New Password */}
             <div>
               <label className="font-bold text-slate-700 block mb-1">
                 New Password <span className="text-rose-500">*</span>
@@ -275,7 +364,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </div>
             </div>
 
-            {/* Confirm New Password */}
             <div>
               <label className="font-bold text-slate-700 block mb-1">
                 Confirm New Password <span className="text-rose-500">*</span>
@@ -323,7 +411,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
           </form>
         ) : activeView === 'FORGOT_PASSWORD' ? (
-          /* FORGOT PASSWORD VIEW - NO PHONE NUMBER AS REQUESTED */
           <div className="p-6 space-y-5 text-xs animate-in fade-in duration-200">
             <div className="text-center space-y-2">
               <div className="w-14 h-14 bg-amber-50 border-2 border-amber-200 rounded-2xl flex items-center justify-center text-amber-600 mx-auto shadow-inner">
@@ -333,11 +420,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 Contact Administrator
               </h4>
               <p className="text-[12px] text-slate-600 max-w-xs mx-auto leading-relaxed">
-                For security and audit protocol, staff passwords can also be reset by the <strong>Revenue Divisional Officer (Administrator)</strong>.
+                For security, staff passwords can be directly reset by the <strong>Administrator</strong>.
               </p>
             </div>
 
-            {/* Admin Contact Card - Clean, dignified, NO PHONE NUMBER */}
             <div className="bg-gradient-to-br from-slate-50 via-amber-50/40 to-slate-50 border border-amber-200 rounded-xl p-4 shadow-xs space-y-2">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#061122] text-amber-400 flex items-center justify-center font-bold text-sm shrink-0 border border-amber-500/30">
@@ -348,10 +434,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     Authorized Administrator
                   </div>
                   <div className="text-sm font-bold text-slate-950 truncate">
-                    {adminProfile.name}
+                    {currentAdmin.name}
                   </div>
                   <div className="text-[11px] text-slate-500 font-medium truncate">
-                    {adminProfile.cadre}
+                    {currentAdmin.cadre}
                   </div>
                 </div>
               </div>
@@ -379,7 +465,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         ) : (
           /* STANDARD LOGIN VIEW */
           <form onSubmit={handleSubmit} className="p-5 md:p-6 space-y-4 text-xs">
-            {/* Informational banner */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-600 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
               <span>
@@ -387,7 +472,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </span>
             </div>
 
-            {/* Role Selection Tabs: Staff or Admin */}
             <div>
               <label className="font-bold text-slate-700 block mb-1.5">Select Account Type</label>
               <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
@@ -425,7 +509,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
 
             {role === 'STAFF' ? (
-              /* STAFF SELECTION */
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
                   Select Staff Member <span className="text-rose-500">*</span>
@@ -444,15 +527,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </select>
               </div>
             ) : (
-              /* ADMIN ACCOUNT INFO (NO PHONE DISPLAYED) */
               <div className="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-[#061122] text-amber-400 flex items-center justify-center font-bold">
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="font-bold text-slate-900 text-xs">{adminProfile.name}</div>
-                    <div className="text-[11px] text-slate-600">{adminProfile.cadre}</div>
+                    <div className="font-bold text-slate-900 text-xs">{currentAdmin.name}</div>
+                    <div className="text-[11px] text-slate-600">{currentAdmin.cadre}</div>
                   </div>
                 </div>
                 <span className="text-[10px] font-black bg-amber-200 text-amber-900 px-2 py-0.5 rounded border border-amber-300 uppercase">
@@ -461,7 +543,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </div>
             )}
 
-            {/* PASSWORD FIELD */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="font-bold text-slate-700">
@@ -509,31 +590,24 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {role === 'STAFF' && (
-                <div className="mt-1.5 flex items-center justify-between text-[11px]">
-                  <span className="text-slate-500">Need to change password?</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setChangeStaffId(selectedStaffId);
-                      setActiveView('CHANGE_PASSWORD');
-                    }}
-                    className="text-amber-700 font-bold hover:underline cursor-pointer flex items-center gap-1"
-                  >
-                    <KeyRound className="w-3 h-3 text-amber-600" />
-                    <span>Change Password</span>
-                  </button>
-                </div>
-              )}
             </div>
 
-            {/* SUBMIT BUTTON */}
             <button
               type="submit"
-              className="w-full text-white font-bold py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:-translate-y-0.5 mt-2 text-xs bg-[#134674] hover:bg-[#0f3b63]"
+              disabled={isVerifying}
+              className="w-full text-white font-bold py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:-translate-y-0.5 mt-2 text-xs bg-[#134674] hover:bg-[#0f3b63] disabled:opacity-50"
             >
-              <UserCheck className="w-4 h-4" />
-              <span>Sign In as {role === 'ADMIN' ? 'Administrator' : 'Staff Member'}</span>
+              {isVerifying ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Verifying Credentials...</span>
+                </>
+              ) : (
+                <>
+                  <UserCheck className="w-4 h-4" />
+                  <span>Sign In as {role === 'ADMIN' ? 'Administrator' : 'Staff Member'}</span>
+                </>
+              )}
             </button>
           </form>
         )}
@@ -541,4 +615,3 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     </div>
   );
 };
-

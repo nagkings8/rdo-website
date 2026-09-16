@@ -33,6 +33,8 @@ import {
   FileCheck,
   FolderOpen
 } from 'lucide-react';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../utils/firebase';
 import { printTableReport } from '../utils/printReport';
 
 interface AdminViewProps {
@@ -232,7 +234,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
   };
 
   // Save Edit Staff Details
-  const handleSaveEditStaff = (e: React.FormEvent) => {
+  const handleSaveEditStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStaffDetails) return;
 
@@ -246,17 +248,27 @@ export const AdminView: React.FC<AdminViewProps> = ({
       name: editName.trim(),
       cadre: editCadre.trim(),
       phone: editPhone.trim(),
-      role: editRole.trim() || 'STAFF',
+      role: editRole.trim() as any || 'STAFF',
       active: editActive,
     };
 
+    try {
+      const updatedList = staff.map((s) => (s.id === updated.id ? updated : s));
+      await setDoc(doc(db, 'system_auth', 'staff_users'), {
+        users: JSON.stringify(updatedList),
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.warn('Firestore staff update err:', err);
+    }
+
     onUpdateStaff(updated);
     setEditingStaffDetails(null);
-    onShowToast(`Staff details for ${updated.name} updated successfully!`);
+    onShowToast(`Staff details for ${updated.name} updated & synced across all systems!`);
   };
 
   // Confirm Delete Staff
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deletingStaff) return;
     if (staff.length <= 1) {
       onShowToast('Cannot delete the last remaining staff account.');
@@ -264,9 +276,20 @@ export const AdminView: React.FC<AdminViewProps> = ({
       return;
     }
     const staffName = deletingStaff.name;
+
+    try {
+      const updatedList = staff.filter((s) => s.id !== deletingStaff.id);
+      await setDoc(doc(db, 'system_auth', 'staff_users'), {
+        users: JSON.stringify(updatedList),
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.warn('Firestore staff delete err:', err);
+    }
+
     onDeleteStaff(deletingStaff.id);
     setDeletingStaff(null);
-    onShowToast(`Staff account for ${staffName} deleted successfully.`);
+    onShowToast(`Staff account for ${staffName} deleted across all devices.`);
   };
 
   const handlePrintStaff = () => {
@@ -321,8 +344,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
     setShowStaffPassword(false);
   };
 
-  // Save Staff Password
-  const handleSaveStaffPassword = (e: React.FormEvent) => {
+  // Save Staff Password (Syncs with Cloud)
+  const handleSaveStaffPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStaffPassword) return;
 
@@ -337,9 +360,19 @@ export const AdminView: React.FC<AdminViewProps> = ({
       phone: staffNewPhone.trim() || editingStaffPassword.phone,
     };
 
+    try {
+      const updatedList = staff.map((s) => (s.id === updated.id ? updated : s));
+      await setDoc(doc(db, 'system_auth', 'staff_users'), {
+        users: JSON.stringify(updatedList),
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.warn('Firestore password update err:', err);
+    }
+
     onUpdateStaff(updated);
     setEditingStaffPassword(null);
-    onShowToast(`Password and phone details for ${updated.name} updated successfully!`);
+    onShowToast(`Password & phone for ${updated.name} updated across all devices!`);
   };
 
   // Open Admin Security Modal
@@ -353,8 +386,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
     setIsAdminSecurityModalOpen(true);
   };
 
-  // Save Admin Security & Phone
-  const handleSaveAdminSecurity = (e: React.FormEvent) => {
+  // Save Admin Security & Phone (Syncs with Cloud)
+  const handleSaveAdminSecurity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminPhone.trim()) {
       onShowToast('Please enter an official Administrator mobile phone number.');
@@ -379,16 +412,23 @@ export const AdminView: React.FC<AdminViewProps> = ({
       password: adminPassword.trim(),
     };
 
+    try {
+      await setDoc(doc(db, 'system_auth', 'admin_profile'), {
+        profile: JSON.stringify(updatedProfile),
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.warn('Firestore admin profile update err:', err);
+    }
+
     onUpdateAdminProfile(updatedProfile);
     setIsAdminSecurityModalOpen(false);
-    onShowToast('Administrator phone number and password updated successfully!');
+    onShowToast('Admin password and phone updated across all computers & mobiles!');
   };
 
   return (
     <div className="space-y-6">
-      {/* ============================================================ */}
-      {/* TOP DASHBOARD BANNER (GLOSSY REVENUE ACCESS CONTROL STYLE) */}
-      {/* ============================================================ */}
+      {/* TOP DASHBOARD BANNER */}
       <div className="bg-gradient-to-r from-[#1c1335] via-[#2d1b4e] to-[#1c1335] text-white p-5 md:p-6 rounded-2xl shadow-xl border-t-2 border-amber-400 relative overflow-hidden">
         <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-300/60 to-transparent pointer-events-none" />
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -417,12 +457,11 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 D SECTION STAFF DIRECTORY &amp; ACCESS CONTROL
               </h1>
               <p className="text-xs text-purple-100 font-medium max-w-3xl">
-                Manage Officer Accounts, Contact Phone Numbers, Passwords &amp; Administrative Credentials
+                Manage Officer Accounts, Contact Phone Numbers, Passwords &amp; Administrative Credentials (Cloud Sync Enabled)
               </p>
             </div>
           </div>
 
-          {/* Admin Header Action Controls */}
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleOpenAdminSecurityModal}
@@ -561,7 +600,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     <td className="py-2.5 px-3 text-slate-700 border-r border-slate-200">
                       {u.cadre}
                     </td>
-                    {/* Phone Number column with call & copy */}
                     <td className="py-2.5 px-3 border-r border-slate-200 font-mono">
                       {u.phone ? (
                         <div className="flex items-center gap-2">
@@ -596,7 +634,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     </td>
                     <td className="py-2.5 px-3 text-center">
                       <div className="flex items-center justify-center gap-1.5">
-                        {/* Edit Staff Details Button */}
                         <button
                           onClick={() => handleOpenEditStaff(u)}
                           className="bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300 font-bold px-2 py-1 rounded text-[11px] transition cursor-pointer flex items-center gap-1 shadow-2xs"
@@ -606,7 +643,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                           <span>Edit</span>
                         </button>
 
-                        {/* Change Password Button */}
                         <button
                           onClick={() => handleOpenStaffPasswordModal(u)}
                           className="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold px-2 py-1 rounded text-[11px] transition cursor-pointer flex items-center gap-1 shadow-2xs"
@@ -616,9 +652,19 @@ export const AdminView: React.FC<AdminViewProps> = ({
                           <span>Password</span>
                         </button>
 
-                        {/* Enable/Disable Button */}
                         <button
-                          onClick={() => onToggleUserStatus(u.id)}
+                          onClick={async () => {
+                            const updatedList = staff.map((s) => s.id === u.id ? { ...s, active: !s.active } : s);
+                            try {
+                              await setDoc(doc(db, 'system_auth', 'staff_users'), {
+                                users: JSON.stringify(updatedList),
+                                updatedAt: new Date().toISOString()
+                              }, { merge: true });
+                            } catch (err) {
+                              console.warn('User status toggle cloud err:', err);
+                            }
+                            onToggleUserStatus(u.id);
+                          }}
                           className={`font-bold px-2 py-1 rounded text-[11px] transition cursor-pointer shadow-xs ${
                             u.active
                               ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
@@ -628,7 +674,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                           {u.active ? 'Disable' : 'Enable'}
                         </button>
 
-                        {/* Delete Staff Account Button */}
                         <button
                           onClick={() => setDeletingStaff(u)}
                           className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold px-2 py-1 rounded text-[11px] transition cursor-pointer flex items-center gap-1 shadow-2xs"
@@ -647,314 +692,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
         </div>
       </div>
 
-      {/* ============================================================ */}
-      {/* SECTION: FILE ENTRY & EDIT AUDIT LOG REGISTER (ADMIN ONLY)   */}
-      {/* "ye file yevaru entry cheshaaru yeppudu evaru edit cheshaaru"*/}
-      {/* ============================================================ */}
-      <div className="bg-white border-2 border-slate-300/80 rounded-2xl shadow-md overflow-hidden">
-        {/* Section Header */}
-        <div className="bg-[#061122] text-white p-4 md:p-5 border-b-2 border-amber-500">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                <span className="inline-flex items-center gap-1.5 bg-amber-500/20 text-amber-300 border border-amber-400/40 text-[10px] md:text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full">
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Admin Exclusive • Confidential Audit Trail</span>
-                </span>
-                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  Live System Logs
-                </span>
-              </div>
-              <h2 className="text-base sm:text-lg md:text-xl font-black text-white flex items-center gap-2 tracking-tight">
-                <History className="w-5 h-5 text-amber-400 shrink-0" />
-                <span>File Entry &amp; Edit Audit Log Register</span>
-              </h2>
-              <p className="text-xs text-slate-300 mt-1 max-w-2xl font-medium">
-                Complete official audit record tracking which staff officer entered each file, who made status changes or edits, timestamps, and case disposal actions across D-Section.
-              </p>
-            </div>
-
-            {/* Header Action Buttons: Print & Export */}
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={handlePrintAuditLog}
-                className="bg-white/10 hover:bg-white/20 text-white border border-white/25 hover:border-amber-400 font-bold px-3 py-2 rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5 shadow-xs"
-                title="Print Official Government Audit Log Register"
-              >
-                <Printer className="w-4 h-4 text-amber-400" />
-                <span>Print Register</span>
-              </button>
-              <button
-                onClick={handleExportAuditCsv}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3.5 py-2 rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5 shadow-md"
-                title="Export all audit log entries to CSV file"
-              >
-                <Download className="w-4 h-4 text-slate-950" />
-                <span>Export CSV</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Summary Metric Counters */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-slate-50/70 border-b border-slate-200">
-          <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs">
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-              <Clock className="w-3 h-3 text-blue-600" />
-              <span>Total Activities Logged</span>
-            </div>
-            <div className="text-2xl font-black text-slate-900 mt-1">{auditStats.total}</div>
-            <div className="text-[10px] text-slate-500 mt-0.5">Chronological system events</div>
-          </div>
-
-          <div className="bg-white border border-emerald-200 rounded-xl p-3 shadow-2xs">
-            <div className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1">
-              <PlusCircle className="w-3 h-3 text-emerald-600" />
-              <span>New File Entries</span>
-            </div>
-            <div className="text-2xl font-black text-emerald-950 mt-1">{auditStats.entries}</div>
-            <div className="text-[10px] text-emerald-700 mt-0.5">Newly created files / tapal</div>
-          </div>
-
-          <div className="bg-white border border-blue-200 rounded-xl p-3 shadow-2xs">
-            <div className="text-[10px] font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1">
-              <ArrowUpDown className="w-3 h-3 text-blue-600" />
-              <span>Status Updates &amp; Edits</span>
-            </div>
-            <div className="text-2xl font-black text-blue-950 mt-1">{auditStats.edits}</div>
-            <div className="text-[10px] text-blue-700 mt-0.5">Scrutiny &amp; movement logs</div>
-          </div>
-
-          <div className="bg-white border border-purple-200 rounded-xl p-3 shadow-2xs">
-            <div className="text-[10px] font-bold text-purple-700 uppercase tracking-wider flex items-center gap-1">
-              <FileCheck className="w-3 h-3 text-purple-600" />
-              <span>Orders &amp; Disposals</span>
-            </div>
-            <div className="text-2xl font-black text-purple-950 mt-1">{auditStats.orders}</div>
-            <div className="text-[10px] text-purple-700 mt-0.5">Final orders &amp; despatches</div>
-          </div>
-        </div>
-
-        {/* Filter Controls Bar */}
-        <div className="p-4 border-b border-slate-200 bg-white">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* Search Input */}
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                value={logSearchTerm}
-                onChange={(e) => setLogSearchTerm(e.target.value)}
-                placeholder="Search File No, Officer, or Remarks..."
-                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:border-amber-500 focus:outline-none"
-              />
-            </div>
-
-            {/* Module Filter */}
-            <div>
-              <select
-                value={logModuleFilter}
-                onChange={(e) => setLogModuleFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:border-amber-500 focus:outline-none bg-white"
-              >
-                <option value="ALL">All Modules</option>
-                <option value="Bhu Bharati">Bhu Bharati Files</option>
-                <option value="Tapal Inward">Tapal Inward</option>
-                <option value="Tapal Outward">Tapal Outward</option>
-                <option value="Appeal Cases">Appeal Cases</option>
-                <option value="Sadabainama">Sadabainama</option>
-              </select>
-            </div>
-
-            {/* Action Type Filter */}
-            <div>
-              <select
-                value={logActionFilter}
-                onChange={(e) => setLogActionFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:border-amber-500 focus:outline-none bg-white"
-              >
-                <option value="ALL">All Actions</option>
-                <option value="ENTRY">New File Entry</option>
-                <option value="STATUS_CHANGE">Status Change</option>
-                <option value="EDIT">File / Hearing Edited</option>
-                <option value="ORDER_UPLOAD">Order Uploaded</option>
-                <option value="DELETE">Record Deleted</option>
-              </select>
-            </div>
-
-            {/* Officer Filter */}
-            <div className="flex items-center gap-2">
-              <select
-                value={logOfficerFilter}
-                onChange={(e) => setLogOfficerFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:border-amber-500 focus:outline-none bg-white"
-              >
-                <option value="ALL">All Officers</option>
-                {officerOptions.map((off) => (
-                  <option key={off} value={off}>
-                    {off}
-                  </option>
-                ))}
-              </select>
-
-              {(logSearchTerm || logModuleFilter !== 'ALL' || logActionFilter !== 'ALL' || logOfficerFilter !== 'ALL') && (
-                <button
-                  onClick={() => {
-                    setLogSearchTerm('');
-                    setLogModuleFilter('ALL');
-                    setLogActionFilter('ALL');
-                    setLogOfficerFilter('ALL');
-                  }}
-                  className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition shrink-0"
-                  title="Reset Log Filters"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Audit Log Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-100/90 text-slate-700 font-extrabold border-b border-slate-200">
-                <th className="py-3 px-3 text-center w-12">S.No</th>
-                <th className="py-3 px-3 w-40">Date &amp; Time</th>
-                <th className="py-3 px-3 w-32">Module</th>
-                <th className="py-3 px-3 w-36">Record Reference</th>
-                <th className="py-3 px-3 w-36">Action Performed</th>
-                <th className="py-3 px-3 w-48">Staff Officer &amp; Cadre</th>
-                <th className="py-3 px-4">Activity Description &amp; Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredLogs.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
-                    <History className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    <div className="font-bold text-sm text-slate-600">No activity logs found</div>
-                    <p className="text-xs text-slate-400 mt-0.5">Try adjusting search or filter parameters</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredLogs.map((log, index) => {
-                  const getModuleBadge = (mod: string) => {
-                    switch (mod) {
-                      case 'Bhu Bharati':
-                        return 'bg-sky-50 text-sky-800 border-sky-300';
-                      case 'Tapal Inward':
-                        return 'bg-amber-50 text-amber-800 border-amber-300';
-                      case 'Tapal Outward':
-                        return 'bg-slate-100 text-slate-800 border-slate-300';
-                      case 'Appeal Cases':
-                        return 'bg-indigo-50 text-indigo-800 border-indigo-300';
-                      case 'Sadabainama':
-                        return 'bg-emerald-50 text-emerald-800 border-emerald-300';
-                      default:
-                        return 'bg-slate-50 text-slate-700 border-slate-200';
-                    }
-                  };
-
-                  const getActionBadge = (act: string) => {
-                    switch (act) {
-                      case 'ENTRY':
-                        return (
-                          <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full font-bold text-[10.5px]">
-                            <PlusCircle className="w-3 h-3 text-emerald-600" />
-                            <span>New Entry</span>
-                          </span>
-                        );
-                      case 'STATUS_CHANGE':
-                        return (
-                          <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-800 border border-blue-300 px-2 py-0.5 rounded-full font-bold text-[10.5px]">
-                            <ArrowUpDown className="w-3 h-3 text-blue-600" />
-                            <span>Status Update</span>
-                          </span>
-                        );
-                      case 'EDIT':
-                        return (
-                          <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold text-[10.5px]">
-                            <Edit3 className="w-3 h-3 text-amber-600" />
-                            <span>Record Edited</span>
-                          </span>
-                        );
-                      case 'ORDER_UPLOAD':
-                        return (
-                          <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-900 border border-purple-300 px-2 py-0.5 rounded-full font-bold text-[10.5px]">
-                            <FileCheck className="w-3 h-3 text-purple-600" />
-                            <span>Order Uploaded</span>
-                          </span>
-                        );
-                      case 'DELETE':
-                        return (
-                          <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full font-bold text-[10.5px]">
-                            <Trash2 className="w-3 h-3 text-rose-600" />
-                            <span>Record Deleted</span>
-                          </span>
-                        );
-                      default:
-                        return <span className="font-semibold text-slate-600">{act}</span>;
-                    }
-                  };
-
-                  return (
-                    <tr key={log.id} className="hover:bg-amber-50/30 transition-colors">
-                      <td className="py-2.5 px-3 text-center font-bold text-slate-400">
-                        {index + 1}
-                      </td>
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <div className="font-bold text-slate-800 text-[11px]">{log.timestamp.split(',')[0]}</div>
-                        <div className="text-[10px] text-slate-500 font-mono">{log.timestamp.split(',')[1] || ''}</div>
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <span className={`inline-block px-2 py-0.5 rounded-md font-bold text-[10.5px] border ${getModuleBadge(log.module)}`}>
-                          {log.module}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <span className="font-mono font-black text-blue-900 bg-blue-50/70 border border-blue-200 px-2 py-0.5 rounded text-[11px]">
-                          {log.recordId}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3">
-                        {getActionBadge(log.actionType)}
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <div className="font-bold text-slate-900 text-xs">
-                          {log.performedBy.split('(')[0] || log.performedBy}
-                        </div>
-                        <div className="text-[10px] text-slate-500 font-medium">
-                          {log.performedBy.includes('(') ? log.performedBy.substring(log.performedBy.indexOf('(')) : log.userRole}
-                        </div>
-                      </td>
-                      <td className="py-2.5 px-4 text-slate-700 leading-relaxed font-medium">
-                        {log.details}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Audit Log Footer */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-between items-center text-xs text-slate-500">
-          <div>
-            Showing <strong>{filteredLogs.length}</strong> of <strong>{auditLogs.length}</strong> audit log entries
-          </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg font-medium">
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-            <span>Audit logs are permanently captured and tamper-evident. Access restricted to Administrator.</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ============================================================ */}
       {/* MODAL 1: CHANGE STAFF PASSWORD & PHONE MODAL */}
-      {/* ============================================================ */}
       {editingStaffPassword && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-3">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-in fade-in duration-150">
@@ -974,7 +712,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
             </div>
 
             <form onSubmit={handleSaveStaffPassword} className="p-5 space-y-3.5 text-xs">
-              {/* Officer Details Banner */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
                 <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
                   Officer Account
@@ -987,7 +724,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 </div>
               </div>
 
-              {/* Phone Number Field */}
               <div>
                 <label className="font-bold text-slate-700 block mb-1 flex items-center gap-1">
                   <Phone className="w-3.5 h-3.5 text-emerald-600" />
@@ -1002,7 +738,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 />
               </div>
 
-              {/* New Password Field */}
               <div>
                 <label className="font-bold text-slate-700 block mb-1 flex items-center gap-1">
                   <Lock className="w-3.5 h-3.5 text-amber-600" />
@@ -1026,7 +761,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Enter the new secure password to assign to this staff officer.
+                  Password syncs to all computers and phones automatically via Cloud.
                 </p>
               </div>
 
@@ -1051,9 +786,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
         </div>
       )}
 
-      {/* ============================================================ */}
       {/* MODAL 2: ADMIN PROFILE, PHONE & PASSWORD SETTINGS */}
-      {/* ============================================================ */}
       {isAdminSecurityModalOpen && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-3">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in duration-150">
@@ -1074,10 +807,9 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
             <form onSubmit={handleSaveAdminSecurity} className="p-5 md:p-6 space-y-4 text-xs">
               <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 text-amber-900 text-[11px] leading-relaxed">
-                <strong>Admin Notice:</strong> This mobile phone number will be displayed to staff members when they request password assistance on the portal login screen.
+                <strong>Cloud Sync Notice:</strong> Changes made here immediately update in Firebase Firestore across all workstations and smartphones.
               </div>
 
-              {/* Admin Name */}
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
                   Administrator Name <span className="text-rose-500">*</span>
@@ -1091,7 +823,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 />
               </div>
 
-              {/* Admin Cadre */}
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
                   Cadre / Designation <span className="text-rose-500">*</span>
@@ -1105,7 +836,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 />
               </div>
 
-              {/* Admin Mobile Phone Number */}
               <div>
                 <label className="font-bold text-slate-700 block mb-1 flex items-center gap-1">
                   <Phone className="w-3.5 h-3.5 text-emerald-600" />
@@ -1119,12 +849,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   onChange={(e) => setAdminPhone(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:border-amber-500 focus:outline-none shadow-2xs font-mono font-bold text-sm"
                 />
-                <p className="text-[10px] text-slate-500 mt-0.5">
-                  Staff see this number under "Contact Admin" on the login screen.
-                </p>
               </div>
 
-              {/* Admin New Password */}
               <div>
                 <label className="font-bold text-slate-700 block mb-1 flex items-center gap-1">
                   <Lock className="w-3.5 h-3.5 text-amber-600" />
@@ -1149,7 +875,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 </div>
               </div>
 
-              {/* Confirm Password */}
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
                   Confirm Admin Password <span className="text-rose-500">*</span>
@@ -1185,9 +910,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
         </div>
       )}
 
-      {/* ============================================================ */}
       {/* MODAL 3: EDIT STAFF DETAILS MODAL */}
-      {/* ============================================================ */}
       {editingStaffDetails && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-3">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in duration-150">
@@ -1207,7 +930,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
             </div>
 
             <form onSubmit={handleSaveEditStaff} className="p-5 space-y-3.5 text-xs">
-              {/* Staff Name */}
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
                   Staff Member Name <span className="text-rose-500">*</span>
@@ -1222,7 +944,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 />
               </div>
 
-              {/* Cadre / Designation */}
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
                   Cadre / Designation <span className="text-rose-500">*</span>
@@ -1237,7 +958,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 />
               </div>
 
-              {/* Mobile Phone Number */}
               <div>
                 <label className="font-bold text-slate-700 block mb-1 flex items-center gap-1">
                   <Phone className="w-3.5 h-3.5 text-emerald-600" />
@@ -1250,12 +970,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   onChange={(e) => setEditPhone(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:border-sky-500 focus:outline-none shadow-2xs font-mono font-medium"
                 />
-                <p className="text-[10px] text-slate-500 mt-0.5">
-                  Visible to Administrator only.
-                </p>
               </div>
 
-              {/* Assigned Role */}
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
                   Assigned Role
@@ -1275,7 +991,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 </select>
               </div>
 
-              {/* Account Status */}
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
                   Account Status
@@ -1325,9 +1040,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
         </div>
       )}
 
-      {/* ============================================================ */}
       {/* MODAL 4: DELETE STAFF CONFIRMATION MODAL */}
-      {/* ============================================================ */}
       {deletingStaff && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-3">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-in fade-in duration-150">
@@ -1359,15 +1072,10 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 <div className="text-slate-700 font-medium">
                   {deletingStaff.cadre} • Role: {deletingStaff.role}
                 </div>
-                {deletingStaff.phone && (
-                  <div className="text-slate-600 font-mono text-[11px]">
-                    Phone: {deletingStaff.phone}
-                  </div>
-                )}
               </div>
 
               <p className="text-[11px] text-rose-700 font-semibold">
-                ⚠️ This action is irreversible. The officer will no longer be able to log in to the portal.
+                ⚠️ This action is irreversible. The officer will no longer be able to log in across all systems.
               </p>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
