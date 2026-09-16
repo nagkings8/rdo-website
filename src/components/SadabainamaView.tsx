@@ -12,7 +12,11 @@ import {
   Printer,
   Clock,
   MapPin,
-  Loader2
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import { 
   doc, 
@@ -53,6 +57,10 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
   const [reportSearch, setReportSearch] = useState('');
   const [selectedAbstractCard, setSelectedAbstractCard] = useState<'all' | 'pending_tahsildar' | 'pending_rdo' | 'approved_synos' | 'total_surveys'>('all');
   const [selectedDetailFilter, setSelectedDetailFilter] = useState<'all' | 'approved' | 'rejected' | 'pending_tahsildar' | 'pending_rdo'>('all');
+
+  // Performance: Pagination Controls
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
 
   const CHUNK_SIZE = 150;
 
@@ -199,6 +207,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
 
           onUpdateReport(rawRows);
           safeSaveLocalStorage('rdo_sadabainama_report', rawRows);
+          setCurrentPage(1);
           onShowToast(`Sadabainama Detailed Report (${rawRows.length} rows) synced to all systems!`);
         }
       } catch (err) {
@@ -232,6 +241,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
         onUpdateReport(null);
         localStorage.removeItem('rdo_sadabainama_report');
         setReportSearch('');
+        setCurrentPage(1);
         onShowToast('Sadabainama Report removed from cloud across all systems.');
       }
     } catch (err) {
@@ -288,6 +298,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
       onUpdateReport(DEFAULT_SADABAINAMA_REPORT);
       safeSaveLocalStorage('rdo_sadabainama_report', DEFAULT_SADABAINAMA_REPORT);
       setReportSearch('');
+      setCurrentPage(1);
       onShowToast('Reset to official Huzurnagar Sadabainama Detailed Report across all systems!');
     } catch (err) {
       console.error(err);
@@ -771,6 +782,19 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
       row.some((cell) => String(cell || '').toLowerCase().includes(q))
     );
   }, [parsedDetailedReport.dataRows, parsedDetailedReport.header, reportSearch, selectedDetailFilter, detailedStats.appMap]);
+
+  // Reset to page 1 whenever filter or search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [reportSearch, selectedDetailFilter]);
+
+  // Fast slice: Paginated Rows for Ultra-Smooth DOM rendering
+  const paginatedDetailedRows = useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return filteredDetailedDataRows.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredDetailedDataRows, currentPage, rowsPerPage]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredDetailedDataRows.length / rowsPerPage));
 
   const handlePrintAbstract = () => {
     const colgroup = `
@@ -1474,7 +1498,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
         </div>
       </div>
 
-      {/* SECTION 2: SADABAINAMA DETAILED REPORT */}
+      {/* SECTION 2: SADABAINAMA DETAILED REPORT (HIGH-SPEED PAGINATION) */}
       <div className="bg-white border border-slate-200 border-t-4 border-t-blue-600 rounded-xl p-5 md:p-6 shadow-xs space-y-4">
         <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-100 pb-4">
           <div>
@@ -1483,7 +1507,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
               <span>Sadabainama Detailed Report</span>
             </h2>
             <p className="text-xs font-semibold text-slate-500">
-              Upload and view verbatim detailed report data as-is from Excel (.xls, .xlsx, .csv)
+              Instant loading with high-speed pagination • {filteredDetailedDataRows.length.toLocaleString('en-IN')} Total Records
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -1546,13 +1570,14 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           </div>
         </div>
 
+        {/* Filter, Search & Rows per page */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative w-full sm:w-80">
               <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" />
               <input
                 type="text"
-                placeholder="Search by Mandal, Village, Applicant, Application No, Khata, Survey..."
+                placeholder="Search Mandal, Village, Applicant, App No, Survey..."
                 value={reportSearch}
                 onChange={(e) => setReportSearch(e.target.value)}
                 className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:border-blue-500 focus:outline-none"
@@ -1584,9 +1609,27 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+              <span>Show:</span>
+              <select
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border border-slate-300 rounded px-2 py-1 bg-white text-xs font-bold text-slate-800 focus:outline-none"
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={200}>200</option>
+              </select>
+              <span>rows</span>
+            </div>
+
             <span className="text-xs font-bold text-slate-500">
-              Showing <span className="text-blue-700 font-extrabold">{filteredDetailedDataRows.length}</span> Records
+              Total <span className="text-blue-700 font-extrabold">{filteredDetailedDataRows.length.toLocaleString('en-IN')}</span>
             </span>
           </div>
         </div>
@@ -1611,88 +1654,149 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto overflow-y-auto max-h-[520px] border border-slate-300 rounded-lg shadow-sm">
-            <table className="w-full text-xs text-left border-separate border-spacing-0 border-t border-l border-slate-300 bg-white">
-              <thead className="sticky top-0 z-30 shadow-md">
-                <tr className="sticky top-0 z-40 bg-[#134674]" style={{ height: '46px' }}>
-                  <th
-                    colSpan={parsedDetailedReport.header.length || 1}
-                    className="sticky top-0 left-0 z-40 bg-[#134674] text-white px-4 py-2.5 border-b-2 border-r border-[#0e3253] text-center select-none shadow-sm"
-                    style={{ backgroundColor: '#134674', height: '46px' }}
-                  >
-                    <div className="w-full flex items-center justify-center text-center">
-                      <span className="text-sm md:text-base font-black text-white tracking-wide">
-                        {parsedDetailedReport.reportTitle}
-                      </span>
-                    </div>
-                  </th>
-                </tr>
-
-                <tr className="sticky top-[46px] z-30 bg-[#164875]" style={{ height: '38px' }}>
-                  {parsedDetailedReport.header.map((colName: any, idx: number) => (
+          <>
+            <div className="overflow-x-auto overflow-y-auto max-h-[520px] border border-slate-300 rounded-lg shadow-sm">
+              <table className="w-full text-xs text-left border-separate border-spacing-0 border-t border-l border-slate-300 bg-white">
+                <thead className="sticky top-0 z-30 shadow-md">
+                  <tr className="sticky top-0 z-40 bg-[#134674]" style={{ height: '46px' }}>
                     <th
-                      key={idx}
-                      className="sticky top-[46px] z-30 bg-[#164875] py-2.5 px-3 border-b border-r border-slate-400/50 whitespace-nowrap font-bold text-white text-center shadow-xs text-[11px]"
-                      style={{ backgroundColor: '#164875' }}
-                    >
-                      {String(colName || '')}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-200">
-                {filteredDetailedDataRows.length === 0 ? (
-                  <tr>
-                    <td
                       colSpan={parsedDetailedReport.header.length || 1}
-                      className="py-8 text-center text-slate-400 border-r border-b border-slate-200"
+                      className="sticky top-0 left-0 z-40 bg-[#134674] text-white px-4 py-2.5 border-b-2 border-r border-[#0e3253] text-center select-none shadow-sm"
+                      style={{ backgroundColor: '#134674', height: '46px' }}
                     >
-                      No matching records found for "{reportSearch}".
-                    </td>
+                      <div className="w-full flex items-center justify-center text-center">
+                        <span className="text-sm md:text-base font-black text-white tracking-wide">
+                          {parsedDetailedReport.reportTitle}
+                        </span>
+                      </div>
+                    </th>
                   </tr>
-                ) : (
-                  filteredDetailedDataRows.map((row, rIdx) => {
-                    const rowBg = rIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
-                    return (
-                      <tr key={rIdx} className={`${rowBg} hover:bg-blue-50/60 transition-colors`}>
-                        {parsedDetailedReport.header.map((colName: any, cIdx: number) => {
-                          const val = row[cIdx] !== undefined && row[cIdx] !== null ? String(row[cIdx]) : '';
-                          const lowerVal = val.toLowerCase();
-                          const isPendingTah = lowerVal.includes('pending at tahsildar') || lowerVal.includes('field enquiry');
-                          const isPendingRdo = lowerVal.includes('pending at rdo');
-                          const isRejected = lowerVal.includes('reject') || lowerVal.includes('dismiss') || lowerVal.includes('disapprov');
-                          const isCompleted = lowerVal.includes('approved') || lowerVal.includes('regulariz') || lowerVal.includes('completed') || lowerVal.includes('orders issued') || lowerVal.includes('13-b');
 
-                          let cellBgClass = '';
-                          let textClass = 'text-slate-800';
+                  <tr className="sticky top-[46px] z-30 bg-[#164875]" style={{ height: '38px' }}>
+                    {parsedDetailedReport.header.map((colName: any, idx: number) => (
+                      <th
+                        key={idx}
+                        className="sticky top-[46px] z-30 bg-[#164875] py-2.5 px-3 border-b border-r border-slate-400/50 whitespace-nowrap font-bold text-white text-center shadow-xs text-[11px]"
+                        style={{ backgroundColor: '#164875' }}
+                      >
+                        {String(colName || '')}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
 
-                          if (isRejected) {
-                            cellBgClass = 'bg-rose-50 font-bold text-rose-800';
-                          } else if (isCompleted) {
-                            cellBgClass = 'bg-emerald-50 font-bold text-emerald-800';
-                          } else if (isPendingTah) {
-                            cellBgClass = 'bg-[#ffffc8]/90 font-bold text-amber-900';
-                          } else if (isPendingRdo) {
-                            cellBgClass = 'bg-[#ffedd5]/90 font-bold text-orange-950';
-                          }
+                <tbody className="divide-y divide-slate-200">
+                  {paginatedDetailedRows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={parsedDetailedReport.header.length || 1}
+                        className="py-8 text-center text-slate-400 border-r border-b border-slate-200"
+                      >
+                        No matching records found for "{reportSearch}".
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedDetailedRows.map((row, rIdx) => {
+                      const rowBg = rIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+                      return (
+                        <tr key={rIdx} className={`${rowBg} hover:bg-blue-50/60 transition-colors`}>
+                          {parsedDetailedReport.header.map((colName: any, cIdx: number) => {
+                            const val = row[cIdx] !== undefined && row[cIdx] !== null ? String(row[cIdx]) : '';
+                            const lowerVal = val.toLowerCase();
+                            const isPendingTah = lowerVal.includes('pending at tahsildar') || lowerVal.includes('field enquiry');
+                            const isPendingRdo = lowerVal.includes('pending at rdo');
+                            const isRejected = lowerVal.includes('reject') || lowerVal.includes('dismiss') || lowerVal.includes('disapprov');
+                            const isCompleted = lowerVal.includes('approved') || lowerVal.includes('regulariz') || lowerVal.includes('completed') || lowerVal.includes('orders issued') || lowerVal.includes('13-b');
 
-                          return (
-                            <td
-                              key={cIdx}
-                              className={`py-2 px-3 border-r border-b border-slate-200 whitespace-nowrap text-center text-[11px] font-medium ${cellBgClass || textClass}`}
-                            >
-                              {val}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                            let cellBgClass = '';
+                            let textClass = 'text-slate-800';
+
+                            if (isRejected) {
+                              cellBgClass = 'bg-rose-50 font-bold text-rose-800';
+                            } else if (isCompleted) {
+                              cellBgClass = 'bg-emerald-50 font-bold text-emerald-800';
+                            } else if (isPendingTah) {
+                              cellBgClass = 'bg-[#ffffc8]/90 font-bold text-amber-900';
+                            } else if (isPendingRdo) {
+                              cellBgClass = 'bg-[#ffedd5]/90 font-bold text-orange-950';
+                            }
+
+                            return (
+                              <td
+                                key={cIdx}
+                                className={`py-2 px-3 border-r border-b border-slate-200 whitespace-nowrap text-center text-[11px] font-medium ${cellBgClass || textClass}`}
+                              >
+                                {val}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls Bar */}
+            <div className="flex flex-wrap justify-between items-center gap-3 pt-3 border-t border-slate-200 text-xs">
+              <div className="text-slate-600 font-semibold">
+                Showing{' '}
+                <strong className="text-slate-900">
+                  {((currentPage - 1) * rowsPerPage + 1).toLocaleString('en-IN')}
+                </strong>{' '}
+                to{' '}
+                <strong className="text-slate-900">
+                  {Math.min(currentPage * rowsPerPage, filteredDetailedDataRows.length).toLocaleString('en-IN')}
+                </strong>{' '}
+                of{' '}
+                <strong className="text-slate-900">
+                  {filteredDetailedDataRows.length.toLocaleString('en-IN')}
+                </strong>{' '}
+                records
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(1)}
+                  className="p-1.5 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  title="First Page"
+                >
+                  <ChevronsLeft className="w-4 h-4 text-slate-700" />
+                </button>
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="px-2 py-1.5 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1 font-semibold text-slate-700"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Prev</span>
+                </button>
+
+                <span className="px-3 py-1 font-bold text-slate-800 bg-slate-100 rounded border border-slate-300">
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="px-2 py-1.5 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1 font-semibold text-slate-700"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(totalPages)}
+                  className="p-1.5 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  title="Last Page"
+                >
+                  <ChevronsRight className="w-4 h-4 text-slate-700" />
+                </button>
+              </div>
+            </div>
+          </>
         )}
 
         <div className="bg-slate-100 border border-slate-200 rounded-lg px-4 py-2.5 flex flex-wrap justify-between items-center text-xs text-slate-600 gap-3">
