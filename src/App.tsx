@@ -32,6 +32,7 @@ import { TapalRegisterView } from './components/TapalRegisterView';
 import { SadabainamaView } from './components/SadabainamaView';
 import { AppealCasesView } from './components/AppealCasesView';
 import { AdminView } from './components/AdminView';
+import { RdoPendencyView } from './components/RdoPendencyView';
 import { ColorSplashCursor } from './components/ColorSplashCursor';
 import { DEFAULT_SADABAINAMA_ABSTRACT, DEFAULT_SADABAINAMA_REPORT } from './data/sadabainamaData';
 import { INITIAL_APPEAL_CASES } from './data/appealCasesData';
@@ -992,6 +993,14 @@ export default function App() {
             onUpdateCase={handleUpdateAppealCase}
             onDeleteCase={handleDeleteAppealCasePrompt}
             onViewFinalOrder={handleViewAppealFinalOrder}
+            onShowToast={showToast}
+          />
+        )}
+
+        {/* RDO Login Pendency Tab View */}
+        {activeTab === 'rdoPendencyTab' && (
+          <RdoPendencyView
+            currentUser={currentUser}
             onShowToast={showToast}
           />
         )}

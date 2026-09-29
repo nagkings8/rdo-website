@@ -1,8 +1,15 @@
 import React from 'react';
-import { Home, FolderOpen, Mail, FileSpreadsheet, Users, Scale } from 'lucide-react';
+import { Home, FolderOpen, Mail, FileSpreadsheet, Users, Scale, Clock } from 'lucide-react';
 import { StaffUser } from '../types';
 
-export type ActiveTab = 'dashboardTab' | 'bhuBharatiTab' | 'tapalTab' | 'sadabainamaTab' | 'appealCasesTab' | 'adminTab';
+export type ActiveTab = 
+  | 'dashboardTab' 
+  | 'bhuBharatiTab' 
+  | 'tapalTab' 
+  | 'sadabainamaTab' 
+  | 'appealCasesTab' 
+  | 'rdoPendencyTab' 
+  | 'adminTab';
 
 interface NavigationProps {
   activeTab: ActiveTab;
@@ -51,6 +58,14 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, 
       color: 'hover:text-indigo-700 hover:border-indigo-500 hover:bg-indigo-50/80',
       activeClass: 'text-indigo-700 border-indigo-600 bg-gradient-to-b from-indigo-50 to-white shadow-xs font-black',
       iconBg: 'bg-indigo-100/70 text-indigo-700 group-hover:bg-indigo-600 group-hover:text-white',
+    },
+    {
+      id: 'rdoPendencyTab' as ActiveTab,
+      label: 'RDO Pendency',
+      icon: Clock,
+      color: 'hover:text-amber-600 hover:border-amber-500 hover:bg-amber-50/80',
+      activeClass: 'text-amber-800 border-amber-500 bg-gradient-to-b from-amber-50 to-white shadow-xs font-black',
+      iconBg: 'bg-amber-100/70 text-amber-800 group-hover:bg-amber-500 group-hover:text-slate-950',
     },
   ];
 

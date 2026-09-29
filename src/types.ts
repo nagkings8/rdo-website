@@ -227,3 +227,9 @@ export interface AuditLogEntry {
   userRole: string; // 'ADMIN' | 'STAFF'
   details: string; // Verbatim description of the action taken
 }
+
+export interface RdoPendencySheet {
+  sheetName: string;
+  headers: string[];
+  rows: any[][];
+}
