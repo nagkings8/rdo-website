@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { 
   Upload, 
   Trash2, 
@@ -32,6 +32,8 @@ import {
 import { safeSaveLocalStorage, safeGetLocalStorage } from '../utils/storage';
 import { printTableReport } from '../utils/printReport';
 import { StaffUser } from '../types';
+import { db } from '../utils/firebase';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 export interface RdoPendencySheet {
   sheetName: string;
@@ -52,6 +54,7 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
   const isViewer = !currentUser || currentUser?.role === 'VIEWER';
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoadingFirestore, setIsLoadingFirestore] = useState(true);
   const [sheetsData, setSheetsData] = useState<RdoPendencySheet[]>(() => 
     safeGetLocalStorage('rdo_pendency_sheets_local', [])
   );
@@ -71,6 +74,32 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
   const [rowsPerPage, setRowsPerPage] = useState(50);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Real-time Firestore Sync (vere systems lo instant ga data raavadaniki)
+  useEffect(() => {
+    setIsLoadingFirestore(true);
+    const docRef = doc(db, 'rdo_pendency', 'live_data');
+
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const cloudData = docSnap.data();
+          if (cloudData && Array.isArray(cloudData.sheets) && cloudData.sheets.length > 0) {
+            setSheetsData(cloudData.sheets);
+            safeSaveLocalStorage('rdo_pendency_sheets_local', cloudData.sheets);
+          }
+        }
+        setIsLoadingFirestore(false);
+      },
+      (error) => {
+        console.error('Firestore Realtime Sync Error:', error);
+        setIsLoadingFirestore(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   const isAbstractSheet = (name: string) => {
     const lower = String(name || '').toLowerCase().trim();
@@ -168,7 +197,6 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
         subText: 'PDC Regularisation'
       };
     }
-    // Specific match for Issue of PPB
     if (norm.includes('issue of ppb') || norm.includes('issue')) {
       return {
         borderColor: 'border-slate-200 hover:border-teal-500 hover:ring-2 hover:ring-teal-300 hover:shadow-teal-100',
@@ -178,7 +206,6 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
         subText: 'Issue of PPB'
       };
     }
-    // Specific match for Nala without PPB
     if (norm.includes('nala')) {
       return {
         borderColor: 'border-slate-200 hover:border-indigo-500 hover:ring-2 hover:ring-indigo-300 hover:shadow-indigo-100',
@@ -188,7 +215,6 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
         subText: 'Nala without PPB'
       };
     }
-    // Specific match for Land Nature Correction
     if (norm.includes('land nature') || norm.includes('nature') || norm === 'lnc') {
       return {
         borderColor: 'border-slate-200 hover:border-orange-500 hover:ring-2 hover:ring-orange-300 hover:shadow-orange-100',
@@ -198,7 +224,6 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
         subText: 'Land Nature Correction'
       };
     }
-    // Specific match for Organization of PPB
     if (norm.includes('org ppb') || norm.includes('organization') || norm.includes('org')) {
       return {
         borderColor: 'border-slate-200 hover:border-cyan-500 hover:ring-2 hover:ring-cyan-300 hover:shadow-cyan-100',
@@ -208,7 +233,6 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
         subText: 'Organization of PPB'
       };
     }
-    // Standalone PP (Prohibited Properties)
     if (norm === 'pp' || norm.includes('prohibited')) {
       return {
         borderColor: 'border-slate-200 hover:border-rose-500 hover:ring-2 hover:ring-rose-300 hover:shadow-rose-100',
@@ -237,7 +261,6 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
     };
   };
 
-  // Abstract Sheet Data Extraction for Second Screenshot Card Layout
   const abstractGrandTotalCards = useMemo(() => {
     const abstractSheet = sheetsData.find((s) => isAbstractSheet(s.sheetName));
     if (!abstractSheet || !abstractSheet.rows || abstractSheet.rows.length === 0) return [];
@@ -435,6 +458,7 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
     return filteredSingleSheetRows.slice(startIndex, startIndex + rowsPerPage);
   }, [filteredSingleSheetRows, currentPage, rowsPerPage]);
 
+  // Excel Upload Handler with Firestore Persistence
   const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -447,7 +471,7 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
     setIsUploading(true);
     const reader = new FileReader();
 
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
         const buffer = evt.target?.result;
         if (!buffer) {
@@ -498,14 +522,28 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
           return;
         }
 
+        // Local State Update
         setSheetsData(extractedSheets);
         safeSaveLocalStorage('rdo_pendency_sheets_local', extractedSheets);
+
+        // Save to Firebase Firestore Live Database
+        try {
+          const docRef = doc(db, 'rdo_pendency', 'live_data');
+          await setDoc(docRef, {
+            sheets: extractedSheets,
+            updatedAt: new Date().toISOString(),
+            updatedBy: currentUser?.name || 'Staff User'
+          });
+          onShowToast('Bhu Bharati Pendency data live Firestore lo save ayyindi!');
+        } catch (dbErr) {
+          console.error('Firestore save error:', dbErr);
+          onShowToast('Firestore lo save cheyyadam lo error vachindi, locally saved.');
+        }
+
         setActiveSheetIndex(0);
         setSelectedMandal('ALL');
         setSearchTerm('');
         setCurrentPage(1);
-
-        onShowToast(`Bhu Bharati Pendency (${extractedSheets.length} Sheets) load ayyayi!`);
       } catch (err) {
         console.error('Excel upload error:', err);
         onShowToast('Excel file read cheyyadam lo error vacchindi.');
@@ -518,10 +556,16 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
     e.target.value = '';
   };
 
-  const handleClear = () => {
+  const handleClear = async () => {
     setSheetsData([]);
     localStorage.removeItem('rdo_pendency_sheets_local');
-    onShowToast('Preview data clear cheyabadindhi.');
+    try {
+      const docRef = doc(db, 'rdo_pendency', 'live_data');
+      await setDoc(docRef, { sheets: [], updatedAt: new Date().toISOString() });
+    } catch (e) {
+      console.error('Firestore clear error:', e);
+    }
+    onShowToast('Data clear cheyabadindhi.');
   };
 
   const handleExportCSV = () => {
@@ -704,7 +748,7 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
         </div>
       </div>
 
-      {/* ABSTRACT GRAND TOTAL SUMMARY CARDS: 5 Per Row, Hover Lift (-translate-y-1.5) & Border Highlight Glow */}
+      {/* ABSTRACT GRAND TOTAL SUMMARY CARDS: 5 Per Row, Hover Lift & Border Highlight Glow */}
       {abstractGrandTotalCards.length > 0 && (
         <div className="space-y-2">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
@@ -1020,7 +1064,9 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
         {sheetsData.length === 0 ? (
           <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl space-y-3">
             <FileSpreadsheet className="w-12 h-12 text-slate-300 mx-auto" />
-            <div className="text-sm font-bold text-slate-700">No RDO Pendency Data Loaded Yet</div>
+            <div className="text-sm font-bold text-slate-700">
+              {isLoadingFirestore ? 'Loading Live Data from Cloud...' : 'No RDO Pendency Data Loaded Yet'}
+            </div>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
               {!isViewer 
                 ? "Please click Upload Pendency Excel above to load the file." 
