@@ -33,7 +33,7 @@ import { safeSaveLocalStorage, safeGetLocalStorage } from '../utils/storage';
 import { printTableReport } from '../utils/printReport';
 import { StaffUser } from '../types';
 import { db } from '../utils/firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, writeBatch, getDocs } from 'firebase/firestore';
 
 export interface RdoPendencySheet {
   sheetName: string;
@@ -54,7 +54,7 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
   const isViewer = !currentUser || currentUser?.role === 'VIEWER';
 
   const [isUploading, setIsUploading] = useState(false);
-  const [isLoadingFirestore, setIsLoadingFirestore] = useState(true);
+  const [isLoadingCloud, setIsLoadingCloud] = useState(true);
   const [sheetsData, setSheetsData] = useState<RdoPendencySheet[]>(() => 
     safeGetLocalStorage('rdo_pendency_sheets_local', [])
   );
@@ -75,26 +75,43 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Real-time Firestore Sync (vere systems lo instant ga data raavadaniki)
+  // Real-time Cloud Firestore Listener across all devices/systems
   useEffect(() => {
-    setIsLoadingFirestore(true);
-    const docRef = doc(db, 'rdo_pendency', 'live_data');
+    setIsLoadingCloud(true);
+    const colRef = collection(db, 'rdo_pendency_sheets');
 
     const unsubscribe = onSnapshot(
-      docRef,
-      (docSnap) => {
-        if (docSnap.exists()) {
-          const cloudData = docSnap.data();
-          if (cloudData && Array.isArray(cloudData.sheets) && cloudData.sheets.length > 0) {
-            setSheetsData(cloudData.sheets);
-            safeSaveLocalStorage('rdo_pendency_sheets_local', cloudData.sheets);
+      colRef,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const loadedSheets: RdoPendencySheet[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data && data.sheetName && data.headers) {
+              let parsedRows: any[][] = [];
+              try {
+                parsedRows = typeof data.rowsJson === 'string' ? JSON.parse(data.rowsJson) : (data.rows || []);
+              } catch (e) {
+                parsedRows = data.rows || [];
+              }
+              loadedSheets.push({
+                sheetName: data.sheetName,
+                headers: data.headers,
+                rows: parsedRows,
+              });
+            }
+          });
+
+          if (loadedSheets.length > 0) {
+            setSheetsData(loadedSheets);
+            safeSaveLocalStorage('rdo_pendency_sheets_local', loadedSheets);
           }
         }
-        setIsLoadingFirestore(false);
+        setIsLoadingCloud(false);
       },
       (error) => {
-        console.error('Firestore Realtime Sync Error:', error);
-        setIsLoadingFirestore(false);
+        console.error('Firestore Real-time Listener Error:', error);
+        setIsLoadingCloud(false);
       }
     );
 
@@ -157,7 +174,6 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
     'survey'
   ]);
 
-  // Card Icon, Subtext and Hover Glow Styling Configurations
   const getCardStyle = (label: string) => {
     const norm = label.toLowerCase().trim();
     
@@ -458,7 +474,7 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
     return filteredSingleSheetRows.slice(startIndex, startIndex + rowsPerPage);
   }, [filteredSingleSheetRows, currentPage, rowsPerPage]);
 
-  // Excel Upload Handler with Firestore Persistence
+  // Robust Sheet-by-Sheet Upload to Firestore (No 1MB Limit Issue)
   const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -526,18 +542,30 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
         setSheetsData(extractedSheets);
         safeSaveLocalStorage('rdo_pendency_sheets_local', extractedSheets);
 
-        // Save to Firebase Firestore Live Database
+        // Save each sheet to Firestore collection
         try {
-          const docRef = doc(db, 'rdo_pendency', 'live_data');
-          await setDoc(docRef, {
-            sheets: extractedSheets,
-            updatedAt: new Date().toISOString(),
-            updatedBy: currentUser?.name || 'Staff User'
+          const batch = writeBatch(db);
+
+          const oldSheets = await getDocs(collection(db, 'rdo_pendency_sheets'));
+          oldSheets.forEach((d) => batch.delete(d.ref));
+
+          extractedSheets.forEach((sheet, idx) => {
+            const sheetDocId = `sheet_${idx}_${sheet.sheetName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const docRef = doc(db, 'rdo_pendency_sheets', sheetDocId);
+            batch.set(docRef, {
+              order: idx,
+              sheetName: sheet.sheetName,
+              headers: sheet.headers,
+              rowsJson: JSON.stringify(sheet.rows),
+              updatedAt: new Date().toISOString(),
+            });
           });
-          onShowToast('Bhu Bharati Pendency data live Firestore lo save ayyindi!');
-        } catch (dbErr) {
+
+          await batch.commit();
+          onShowToast('Bhu Bharati Pendency live Cloud Firestore lo save ayyindi!');
+        } catch (dbErr: any) {
           console.error('Firestore save error:', dbErr);
-          onShowToast('Firestore lo save cheyyadam lo error vachindi, locally saved.');
+          onShowToast('Firestore save issue. Check console.');
         }
 
         setActiveSheetIndex(0);
@@ -560,8 +588,10 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
     setSheetsData([]);
     localStorage.removeItem('rdo_pendency_sheets_local');
     try {
-      const docRef = doc(db, 'rdo_pendency', 'live_data');
-      await setDoc(docRef, { sheets: [], updatedAt: new Date().toISOString() });
+      const oldSheets = await getDocs(collection(db, 'rdo_pendency_sheets'));
+      const batch = writeBatch(db);
+      oldSheets.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
     } catch (e) {
       console.error('Firestore clear error:', e);
     }
@@ -1065,7 +1095,7 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
           <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl space-y-3">
             <FileSpreadsheet className="w-12 h-12 text-slate-300 mx-auto" />
             <div className="text-sm font-bold text-slate-700">
-              {isLoadingFirestore ? 'Loading Live Data from Cloud...' : 'No RDO Pendency Data Loaded Yet'}
+              {isLoadingCloud ? 'Loading Live Data from Cloud Firestore...' : 'No RDO Pendency Data Loaded Yet'}
             </div>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
               {!isViewer 
