@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StaffUser } from '../types';
 import { 
   FileSpreadsheet, 
@@ -10,7 +10,8 @@ import {
   MapPin, 
   Phone, 
   Clock, 
-  Users
+  Users,
+  Building2
 } from 'lucide-react';
 import { ActiveTab } from './Navigation';
 
@@ -32,20 +33,24 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
 }) => {
+  const [imageError, setImageError] = useState(false);
+
+  // Model image source with fallbacks
+  const buildingPhotoUrl = "/rdo-building.jpg";
+
   return (
     <div className="space-y-6 max-w-[1440px] mx-auto pb-4">
       {/* ============================================================ */}
       {/* 1. HERO SECTION: EXACT MODEL WITH CURVED GREEN RIBBON */}
       {/* ============================================================ */}
       <div className="relative overflow-hidden bg-gradient-to-br from-[#ebf7f0] via-[#f4faf6] to-[#e8f5ed] rounded-3xl border border-emerald-100 shadow-xs p-6 md:p-10 lg:p-12">
-        {/* Soft Organic Leaf / Branch Watermarks */}
         <div className="absolute top-0 right-1/3 w-96 h-96 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
         
         {/* Bottom Curve Ribbon (Exact Green Ribbon from Model Photo) */}
         <div className="absolute -bottom-12 -left-10 w-[120%] h-36 bg-gradient-to-r from-emerald-500/20 via-emerald-600/30 to-teal-500/20 blur-xl transform -rotate-2 pointer-events-none" />
 
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          {/* Left Text Column (Identical to 1st Photo) */}
+          {/* Left Text Column */}
           <div className="lg:col-span-6 space-y-4">
             <div className="text-sm md:text-base font-bold text-emerald-800 tracking-wide">
               Welcome to
@@ -67,26 +72,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </div>
 
-          {/* Right Building Showcase Frame (Exact RDO Building Display) */}
+          {/* Right Building Showcase Frame */}
           <div className="lg:col-span-6">
             <div className="relative mx-auto max-w-lg lg:max-w-none group">
-              {/* Outer Glow */}
               <div className="absolute -inset-2 bg-gradient-to-r from-emerald-400/30 via-teal-400/20 to-sky-400/30 rounded-3xl blur-lg transition duration-500" />
 
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-white aspect-[16/10] bg-[#eef7f2]">
-                <img
-                  src="/rdo-building.jpg"
-                  onError={(e) => {
-                    // Fallback to model image placeholder if rdo-building.jpg is not yet added in public/
-                    (e.target as HTMLElement).style.display = 'none';
-                    const parent = (e.target as HTMLElement).parentElement;
-                    if (parent) {
-                      parent.style.backgroundImage = 'radial-gradient(circle at 50% 40%, #0d3b68 0%, #06182c 100%)';
-                    }
-                  }}
-                  alt="Revenue Divisional Office Huzurnagar Building"
-                  className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700"
-                />
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-white aspect-[16/10] bg-[#0c3559]">
+                {!imageError ? (
+                  <img
+                    src={buildingPhotoUrl}
+                    onError={() => setImageError(true)}
+                    alt="Revenue Divisional Office Huzurnagar Building"
+                    className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700"
+                  />
+                ) : (
+                  /* SVG Illustration Fallback matching the Office Architecture */
+                  <div className="w-full h-full bg-gradient-to-b from-[#134674] to-[#071d36] flex flex-col items-center justify-center text-white p-6 relative">
+                    <div className="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-amber-300 mb-3 shadow-lg">
+                      <Building2 className="w-10 h-10" />
+                    </div>
+                    <div className="text-base font-black tracking-widest text-amber-300 uppercase text-center">
+                      REVENUE DIVISIONAL OFFICE
+                    </div>
+                    <div className="text-xs font-semibold text-slate-300 mt-0.5 tracking-wider">
+                      HUZURNAGAR • SURYAPET DISTRICT
+                    </div>
+                  </div>
+                )}
 
                 {/* Overlaid Signboard Bar (Matching Model Image) */}
                 <div className="absolute top-4 inset-x-6 bg-[#0c3559]/95 border-2 border-sky-400/80 rounded-lg px-4 py-2 shadow-xl backdrop-blur-md flex items-center justify-center">
@@ -111,7 +123,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           className="group bg-gradient-to-b from-teal-50/70 via-white to-white rounded-2xl border border-teal-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-teal-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[280px]"
         >
           <div className="w-full flex flex-col items-center">
-            {/* Round Circle Icon Badge */}
             <div className="w-16 h-16 rounded-full bg-[#1b7a70] text-white flex items-center justify-center shadow-lg shadow-teal-700/25 group-hover:scale-110 transition-transform duration-300 mb-4">
               <FileSpreadsheet className="w-8 h-8" />
             </div>
@@ -124,7 +135,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </div>
 
-          {/* Bottom Round Arrow Button */}
           <div className="w-10 h-10 rounded-full bg-[#1b7a70] text-white flex items-center justify-center shadow-md group-hover:bg-[#135f57] group-hover:scale-110 transition-all mt-4">
             <ArrowRight className="w-4 h-4" />
           </div>
@@ -199,7 +209,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* CARD 5: Tapal Register (Appeal Registry in Photo) */}
+        {/* CARD 5: Tapal Register */}
         <div
           onClick={() => onNavigate('tapalTab')}
           className="group bg-gradient-to-b from-teal-50/70 via-white to-white rounded-2xl border border-teal-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-teal-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[280px]"
@@ -225,12 +235,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* ============================================================ */}
-      {/* 3. BOTTOM CITIZEN INFO STRIP (EXACT 4 ITEMS FROM MODEL PHOTO) */}
+      {/* 3. BOTTOM CITIZEN INFO STRIP (EXACT 4 ITEMS) */}
       {/* ============================================================ */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-4 md:p-5 shadow-2xs">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 divide-y md:divide-y-0 md:divide-x divide-slate-100">
           
-          {/* Info 1: Location */}
           <div className="flex items-center gap-3 pt-2 md:pt-0 md:px-3">
             <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-800 flex items-center justify-center shrink-0">
               <MapPin className="w-5 h-5" />
@@ -241,7 +250,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Info 2: Helpline */}
           <div className="flex items-center gap-3 pt-2 md:pt-0 md:px-3">
             <div className="w-10 h-10 rounded-full bg-teal-50 text-teal-800 flex items-center justify-center shrink-0">
               <Phone className="w-5 h-5" />
@@ -252,7 +260,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Info 3: Office Hours */}
           <div className="flex items-center gap-3 pt-2 md:pt-0 md:px-3">
             <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-800 flex items-center justify-center shrink-0">
               <Clock className="w-5 h-5" />
@@ -263,7 +270,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Info 4: Citizen Services */}
           <div className="flex items-center gap-3 pt-2 md:pt-0 md:px-3">
             <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center shrink-0">
               <Users className="w-5 h-5" />
