@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StaffUser } from '../types';
 import { 
   FileSpreadsheet, 
@@ -28,76 +28,75 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
 }) => {
-  // Reliable high-resolution government office building visual matching Model Photo 1
-  const buildingPhotoUrl = "https://images.unsplash.com/photo-1577495508048-b635879837f1?q=80&w=1400&auto=format&fit=crop";
+  // Direct file paths as confirmed in your VS Code workspace
+  const [imgSrc, setImgSrc] = useState<string>('/rdo-building.jpeg');
+
+  const handleImageError = () => {
+    // If /rdo-building.jpeg fails, try the one inside assets folder
+    if (imgSrc === '/rdo-building.jpeg') {
+      setImgSrc('/assets/rdo-building.jpg');
+    } else if (imgSrc === '/assets/rdo-building.jpg') {
+      setImgSrc('/rdo-building.jpg');
+    }
+  };
 
   return (
-    <div className="space-y-6 max-w-[1440px] mx-auto pb-4">
+    <div className="space-y-8 max-w-[1520px] mx-auto pb-6">
       {/* ============================================================ */}
-      {/* 1. HERO SECTION: EXACT MODEL WITH CURVED GREEN ACCENT */}
+      {/* 1. HERO STRIP: FULL WIDTH SEAMLESS PHOTO & GREEN WAVE CURVE */}
       {/* ============================================================ */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[#ebf7f0] via-[#f4faf6] to-[#e8f5ed] rounded-3xl border border-emerald-100 shadow-xs p-6 md:p-10 lg:p-12">
-        <div className="absolute top-0 right-1/3 w-96 h-96 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden bg-gradient-to-r from-[#ebf7f0] via-[#f3faf6] to-[#e4f3ea] rounded-3xl border border-emerald-100 shadow-sm min-h-[380px] lg:min-h-[440px] flex items-center">
         
-        {/* Bottom Curve Ribbon */}
-        <div className="absolute -bottom-12 -left-10 w-[120%] h-36 bg-gradient-to-r from-emerald-500/20 via-emerald-600/30 to-teal-500/20 blur-xl transform -rotate-2 pointer-events-none" />
+        {/* Decorative soft green organic leaves accent */}
+        <div className="absolute -top-16 -left-16 w-80 h-80 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
+        
+        {/* Big Seamless Building Photo on Right - Blending perfectly into background */}
+        <div className="absolute right-0 top-0 bottom-0 w-full lg:w-[62%] h-full pointer-events-none select-none overflow-hidden">
+          <img
+            src={imgSrc}
+            onError={handleImageError}
+            alt="Revenue Divisional Office Huzurnagar"
+            className="w-full h-full object-cover object-center lg:object-[center_35%]"
+          />
+          {/* Left subtle soft fade gradient overlay so text stays razor sharp */}
+          <div className="absolute inset-y-0 left-0 w-48 bg-gradient-to-r from-[#ebf7f0] via-[#ebf7f0]/80 to-transparent hidden lg:block" />
+        </div>
 
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          {/* Left Text Column */}
-          <div className="lg:col-span-6 space-y-4">
-            <div className="text-sm md:text-base font-bold text-emerald-800 tracking-wide">
-              Welcome to
-            </div>
+        {/* Bottom Curved Ribbon Wave Accent (Exact Model Ribbon) */}
+        <div className="absolute -bottom-10 inset-x-0 w-full h-24 bg-gradient-to-r from-emerald-500/25 via-emerald-600/35 to-teal-400/20 blur-md transform -rotate-1 pointer-events-none" />
 
-            <div className="space-y-1">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-[#0c3559] tracking-tight">
-                RDO Huzurnagar
-              </h1>
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-700">
-                Revenue Divisional Office
-              </h2>
-            </div>
-
-            <div className="w-24 h-1.5 bg-emerald-500 rounded-full" />
-
-            <p className="text-sm md:text-base text-slate-600 font-medium max-w-lg leading-relaxed pt-1">
-              Serving the people with transparency, accountability and efficiency.
-            </p>
+        {/* Left Welcome Text Box */}
+        <div className="relative z-10 p-8 sm:p-12 lg:p-14 max-w-2xl space-y-4">
+          <div className="text-base sm:text-lg font-bold text-emerald-800 tracking-wide">
+            Welcome to
           </div>
 
-          {/* Right Building Showcase Frame */}
-          <div className="lg:col-span-6">
-            <div className="relative mx-auto max-w-lg lg:max-w-none group">
-              <div className="absolute -inset-2 bg-gradient-to-r from-emerald-400/30 via-teal-400/20 to-sky-400/30 rounded-3xl blur-lg transition duration-500" />
-
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-white aspect-[16/10] bg-[#0c3559]">
-                <img
-                  src={buildingPhotoUrl}
-                  alt="Revenue Divisional Office Huzurnagar Building"
-                  className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
-                />
-
-                {/* Overlaid Signboard Bar */}
-                <div className="absolute top-4 inset-x-6 bg-[#0c3559]/95 border-2 border-sky-400/80 rounded-lg px-4 py-2 shadow-xl backdrop-blur-md flex items-center justify-center">
-                  <span className="text-xs sm:text-sm font-black tracking-widest uppercase text-white drop-shadow-md text-center">
-                    REVENUE DIVISIONAL OFFICE • HUZURNAGAR
-                  </span>
-                </div>
-              </div>
-            </div>
+          <div className="space-y-1">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#0c3559] tracking-tight drop-shadow-xs">
+              RDO Huzurnagar
+            </h1>
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-700">
+              Revenue Divisional Office
+            </h2>
           </div>
+
+          <div className="w-24 h-1.5 bg-emerald-500 rounded-full" />
+
+          <p className="text-sm sm:text-base text-slate-600 font-medium leading-relaxed pt-1">
+            Serving the people with transparency, accountability and efficiency.
+          </p>
         </div>
       </div>
 
       {/* ============================================================ */}
-      {/* 2. THE 5 SERVICE CARDS (MATCHING MODEL PHOTO 1) */}
+      {/* 2. THE 5 SERVICE TILES (EXACT FIRST PHOTO MODEL DESIGN) */}
       {/* ============================================================ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         
         {/* CARD 1: RDO Login Pending */}
         <div
           onClick={() => onNavigate('rdoPendencyTab')}
-          className="group bg-gradient-to-b from-teal-50/70 via-white to-white rounded-2xl border border-teal-100 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-teal-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[280px]"
+          className="group bg-gradient-to-b from-teal-50/70 via-white to-white rounded-2xl border border-teal-100 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-teal-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[290px]"
         >
           <div className="w-full flex flex-col items-center">
             <div className="w-16 h-16 rounded-full bg-[#1b7a70] text-white flex items-center justify-center shadow-lg shadow-teal-700/25 group-hover:scale-110 transition-transform duration-300 mb-4">
@@ -120,7 +119,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* CARD 2: Sadabainama */}
         <div
           onClick={() => onNavigate('sadabainamaTab')}
-          className="group bg-gradient-to-b from-sky-50/70 via-white to-white rounded-2xl border border-sky-100 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-sky-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[280px]"
+          className="group bg-gradient-to-b from-sky-50/70 via-white to-white rounded-2xl border border-sky-100 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-sky-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[290px]"
         >
           <div className="w-full flex flex-col items-center">
             <div className="w-16 h-16 rounded-full bg-[#1e78a6] text-white flex items-center justify-center shadow-lg shadow-sky-700/25 group-hover:scale-110 transition-transform duration-300 mb-4">
@@ -143,7 +142,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* CARD 3: Bhu Bharati Files */}
         <div
           onClick={() => onNavigate('bhuBharatiTab')}
-          className="group bg-gradient-to-b from-emerald-50/70 via-white to-white rounded-2xl border border-emerald-100 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-emerald-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[280px]"
+          className="group bg-gradient-to-b from-emerald-50/70 via-white to-white rounded-2xl border border-emerald-100 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-emerald-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[290px]"
         >
           <div className="w-full flex flex-col items-center">
             <div className="w-16 h-16 rounded-full bg-[#1c8b67] text-white flex items-center justify-center shadow-lg shadow-emerald-700/25 group-hover:scale-110 transition-transform duration-300 mb-4">
@@ -166,7 +165,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* CARD 4: Appeal Cases */}
         <div
           onClick={() => onNavigate('appealCasesTab')}
-          className="group bg-gradient-to-b from-blue-50/70 via-white to-white rounded-2xl border border-blue-100 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-blue-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[280px]"
+          className="group bg-gradient-to-b from-blue-50/70 via-white to-white rounded-2xl border border-blue-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-blue-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[290px]"
         >
           <div className="w-full flex flex-col items-center">
             <div className="w-16 h-16 rounded-full bg-[#2069b2] text-white flex items-center justify-center shadow-lg shadow-blue-700/25 group-hover:scale-110 transition-transform duration-300 mb-4">
@@ -189,7 +188,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* CARD 5: Tapal Register */}
         <div
           onClick={() => onNavigate('tapalTab')}
-          className="group bg-gradient-to-b from-teal-50/70 via-white to-white rounded-2xl border border-teal-100 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-teal-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[280px]"
+          className="group bg-gradient-to-b from-teal-50/70 via-white to-white rounded-2xl border border-teal-100 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-teal-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[290px]"
         >
           <div className="w-full flex flex-col items-center">
             <div className="w-16 h-16 rounded-full bg-[#237c6c] text-white flex items-center justify-center shadow-lg shadow-teal-800/25 group-hover:scale-110 transition-transform duration-300 mb-4">
