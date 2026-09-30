@@ -1,6 +1,26 @@
 import React from 'react';
 import { BhuFile, InwardTapal, OutwardDespatch, StaffUser, AppealCase } from '../types';
-import { FolderOpen, Mail, ArrowRight, PlusCircle, Send, Printer, Scale, FileSpreadsheet, Clock, CheckCircle2, AlertCircle, MapPin, Activity, Sparkles } from 'lucide-react';
+import { 
+  FolderOpen, 
+  Mail, 
+  ArrowRight, 
+  PlusCircle, 
+  Send, 
+  Printer, 
+  Scale, 
+  FileSpreadsheet, 
+  Clock, 
+  CheckCircle2, 
+  AlertCircle, 
+  MapPin, 
+  Activity, 
+  Sparkles,
+  FileCheck2,
+  FolderGit2,
+  ExternalLink,
+  ShieldCheck,
+  ArrowUpRight
+} from 'lucide-react';
 import { ActiveTab } from './Navigation';
 import { printTableReport } from '../utils/printReport';
 import { DEFAULT_SADABAINAMA_ABSTRACT } from '../data/sadabainamaData';
@@ -37,6 +57,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isViewer = !currentUser || currentUser?.role === 'VIEWER';
   const isAdmin = currentUser?.role === 'ADMIN';
   const isStaff = currentUser?.role === 'STAFF';
+
   // Bhu Bharati metrics
   const totalBhu = files.length;
   const pendingBhu = files.filter(f => f.status === 'Pending at RDO' || f.status === 'Received from MRO').length;
@@ -229,10 +250,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6">
       {/* ============================================================ */}
-      {/* TOP DASHBOARD BANNER (MATCHING APPEAL CASES STYLE) */}
+      {/* TOP DASHBOARD BANNER */}
       {/* ============================================================ */}
       <div className="bg-gradient-to-r from-[#06182c] via-[#0d2e53] to-[#06182c] text-white p-5 md:p-6 rounded-2xl shadow-xl border-t-2 border-amber-400 relative overflow-hidden">
-        {/* Top ambient glass reflection */}
         <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-300/60 to-transparent pointer-events-none" />
         <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -left-10 -top-10 w-72 h-72 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -281,7 +301,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* ============================================================ */}
-      {/* EXECUTIVE OPERATIONS QUICK ACTION COMMAND HUB */}
+      {/* QUICK ACTIONS ACTION COMMAND HUB */}
       {/* ============================================================ */}
       <div className="bg-gradient-to-r from-white via-slate-50 to-white backdrop-blur-md rounded-2xl border border-slate-200/90 p-3.5 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -346,137 +366,287 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Portal Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Portal 1: Bhu Bharati */}
-        <div
-          onClick={() => onNavigate('bhuBharatiTab')}
-          className="group relative overflow-hidden bg-gradient-to-br from-white/95 via-white/90 to-blue-50/50 backdrop-blur-md border-2 border-slate-200/80 border-t-4 border-t-blue-600 rounded-2xl p-5 cursor-pointer shadow-md hover:shadow-[0_20px_35px_-10px_rgba(37,99,235,0.3),0_4px_12px_rgba(37,99,235,0.1)] hover:border-blue-400 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between min-h-[210px]"
-        >
-          {/* Top glossy specular reflection */}
-          <div className="absolute inset-x-0 top-0 h-2/5 bg-gradient-to-b from-white/80 via-white/20 to-transparent pointer-events-none rounded-t-2xl" />
-          {/* Subtle bottom colorful aura on hover */}
-          <div className="absolute inset-0 bg-gradient-to-t from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-          <div className="relative z-10">
-            <div className="flex justify-between items-center mb-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/80 border border-blue-200 flex items-center justify-center text-blue-600 group-hover:scale-110 group-hover:bg-gradient-to-tr group-hover:from-blue-600 group-hover:to-indigo-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-blue-500/40 transition-all duration-300">
-                <FolderOpen className="w-6 h-6" />
+      {/* ============================================================ */}
+      {/* 5-BOX STRUCTURED GRID AS PER USER SKETCH WITH ATTRACTIVE SIDE WIDGETS */}
+      {/* ============================================================ */}
+      <div className="space-y-4">
+        
+        {/* ROW 1: RDO LOGIN PENDENCY & SADABAINAMA (2 BOXES) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          {/* Box 1: RDO Login Pendency */}
+          <div 
+            onClick={() => onNavigate('rdoPendencyTab')}
+            className="group relative overflow-hidden bg-white hover:bg-gradient-to-br hover:from-white hover:to-amber-50/50 rounded-2xl border-2 border-amber-300 hover:border-amber-500 p-5 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1.5 cursor-pointer flex flex-col justify-between min-h-[195px]"
+          >
+            <div className="absolute top-0 right-0 w-28 h-28 bg-amber-400/10 rounded-full blur-2xl group-hover:bg-amber-400/20 transition-all pointer-events-none" />
+            
+            <div>
+              <div className="flex items-start justify-between">
+                <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shadow-xs group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-slate-950 transition-all">
+                  <FileSpreadsheet className="w-6 h-6" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 bg-amber-100 text-amber-900 rounded-full border border-amber-200 shadow-xs">
+                  RDO Login Focus
+                </span>
               </div>
-              <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200/80 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-all duration-300 shadow-xs">
-                16 Modules
+
+              <h3 className="text-lg font-black text-slate-900 mt-3 group-hover:text-amber-700 transition-colors">
+                RDO Login Pendency
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed">
+                Consolidated live pendency across modules, mandal breakdown, unique files tracker with one-click print reports.
+              </p>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span className="font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200/60">
+                Live Module Monitoring
+              </span>
+              <span className="font-bold text-amber-600 group-hover:translate-x-1.5 transition-transform flex items-center gap-1">
+                Open Pendency View <ArrowUpRight className="w-4 h-4" />
               </span>
             </div>
-            <h3 className="text-lg font-black text-slate-900 group-hover:text-blue-700 transition-colors duration-200 mb-1">
-              Bhu Bharati Files
-            </h3>
-            <p className="text-xs text-slate-600 group-hover:text-slate-700 leading-relaxed transition-colors duration-200">
-              Log, track, filter and manage all revenue land files across 16 approved modules including Pending Mutation, Extent Correction, and Succession.
-            </p>
           </div>
-          <div className="relative z-10 flex justify-between items-center border-t border-slate-200/60 pt-3 mt-4 text-xs font-black text-blue-600 group-hover:text-blue-700 transition-colors">
-            <span>{totalBhu} Active Files</span>
-            <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1.5 transition-transform duration-300 text-blue-600" />
-          </div>
-        </div>
 
-        {/* Portal 2: Tapal Register */}
-        <div
-          onClick={() => onNavigate('tapalTab')}
-          className="group relative overflow-hidden bg-gradient-to-br from-white/95 via-white/90 to-amber-50/50 backdrop-blur-md border-2 border-slate-200/80 border-t-4 border-t-amber-500 rounded-2xl p-5 cursor-pointer shadow-md hover:shadow-[0_20px_35px_-10px_rgba(217,119,6,0.3),0_4px_12px_rgba(217,119,6,0.1)] hover:border-amber-400 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between min-h-[210px]"
-        >
-          {/* Top glossy specular reflection */}
-          <div className="absolute inset-x-0 top-0 h-2/5 bg-gradient-to-b from-white/80 via-white/20 to-transparent pointer-events-none rounded-t-2xl" />
-          {/* Subtle bottom colorful aura on hover */}
-          <div className="absolute inset-0 bg-gradient-to-t from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+          {/* Box 2: Sadabainama */}
+          <div 
+            onClick={() => onNavigate('sadabainamaTab')}
+            className="group relative overflow-hidden bg-white hover:bg-gradient-to-br hover:from-white hover:to-emerald-50/50 rounded-2xl border-2 border-emerald-300 hover:border-emerald-500 p-5 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1.5 cursor-pointer flex flex-col justify-between min-h-[195px]"
+          >
+            <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-400/10 rounded-full blur-2xl group-hover:bg-emerald-400/20 transition-all pointer-events-none" />
 
-          <div className="relative z-10">
-            <div className="flex justify-between items-center mb-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/80 border border-amber-200 flex items-center justify-center text-amber-600 group-hover:scale-110 group-hover:bg-gradient-to-tr group-hover:from-amber-500 group-hover:to-orange-500 group-hover:text-white group-hover:shadow-lg group-hover:shadow-amber-500/40 transition-all duration-300">
-                <Mail className="w-6 h-6" />
+            <div>
+              <div className="flex items-start justify-between">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shadow-xs group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                  <FileCheck2 className="w-6 h-6" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200 shadow-xs">
+                  Regularisation
+                </span>
               </div>
-              <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200/80 group-hover:bg-amber-500 group-hover:text-slate-950 group-hover:border-amber-500 transition-all duration-300 shadow-xs">
-                Inward &amp; Outward
+
+              <h3 className="text-lg font-black text-slate-900 mt-3 group-hover:text-emerald-700 transition-colors">
+                Sadabainama
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed">
+                Sadabainama abstract monitoring and detailed village-wise regularisation report with dual frozen headers and Excel upload.
+              </p>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200/60">
+                {abstractStats.totalApps} Apps • {abstractStats.approvedSyNos} Approved Sy.Nos
+              </span>
+              <span className="font-bold text-emerald-600 group-hover:translate-x-1.5 transition-transform flex items-center gap-1">
+                Explore Portal <ArrowUpRight className="w-4 h-4" />
               </span>
             </div>
-            <h3 className="text-lg font-black text-slate-900 group-hover:text-amber-700 transition-colors duration-200 mb-1">
-              Tapal Register
-            </h3>
-            <p className="text-xs text-slate-600 group-hover:text-slate-700 leading-relaxed transition-colors duration-200">
-              Dedicated ledger to record Inward Tapal received from MROs/citizens and manage Outward Despatches forwarded to IDOC Collectorate or other offices.
-            </p>
           </div>
-          <div className="relative z-10 flex justify-between items-center border-t border-slate-200/60 pt-3 mt-4 text-xs font-black text-amber-700 group-hover:text-amber-800 transition-colors">
-            <span>{totalInward} Tapals • {totalOutward} Despatches</span>
-            <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1.5 transition-transform duration-300 text-amber-600" />
-          </div>
+
         </div>
 
-        {/* Portal 3: Sadabainama */}
-        <div
-          onClick={() => onNavigate('sadabainamaTab')}
-          className="group relative overflow-hidden bg-gradient-to-br from-white/95 via-white/90 to-emerald-50/50 backdrop-blur-md border-2 border-slate-200/80 border-t-4 border-t-emerald-600 rounded-2xl p-5 cursor-pointer shadow-md hover:shadow-[0_20px_35px_-10px_rgba(16,185,129,0.3),0_4px_12px_rgba(16,185,129,0.1)] hover:border-emerald-400 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between min-h-[210px]"
-        >
-          {/* Top glossy specular reflection */}
-          <div className="absolute inset-x-0 top-0 h-2/5 bg-gradient-to-b from-white/80 via-white/20 to-transparent pointer-events-none rounded-t-2xl" />
-          {/* Subtle bottom colorful aura on hover */}
-          <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-          <div className="relative z-10">
-            <div className="flex justify-between items-center mb-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/80 border border-emerald-200 flex items-center justify-center text-emerald-700 group-hover:scale-110 group-hover:bg-gradient-to-tr group-hover:from-emerald-600 group-hover:to-teal-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-emerald-500/40 transition-all duration-300">
-                <FileSpreadsheet className="w-6 h-6" />
+        {/* ROW 2: CENTER HERO (BHU BHARATI FILES) WITH LEFT & RIGHT GAP WIDGETS */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+          
+          {/* Left Side Gap Widget: Live Division Pulse & Quick Stats */}
+          <div className="hidden lg:flex lg:col-span-3 bg-gradient-to-br from-slate-900 via-[#0a1f33] to-[#071726] rounded-2xl p-4.5 text-white shadow-md border border-slate-700/60 flex-col justify-between relative overflow-hidden">
+            <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-sky-500/10 rounded-full blur-xl pointer-events-none" />
+            
+            <div>
+              <div className="flex items-center gap-2 text-sky-400 text-xs font-black uppercase tracking-wider">
+                <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
+                <span>Division Status</span>
               </div>
-              <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600 transition-all duration-300 shadow-xs">
-                Regularisation
+              <div className="mt-3">
+                <div className="text-xl font-black text-white">7 Mandals</div>
+                <div className="text-[11.5px] text-slate-300 font-medium leading-tight mt-0.5">
+                  Revenue Division, Huzurnagar
+                </div>
+              </div>
+              
+              <div className="mt-4 space-y-2 text-[11px]">
+                <div className="flex items-center justify-between py-1.5 border-b border-white/10 text-slate-300">
+                  <span>Operating Section</span>
+                  <strong className="text-amber-300 font-black">D-Section</strong>
+                </div>
+                <div className="flex items-center justify-between py-1.5 border-b border-white/10 text-slate-300">
+                  <span>Sync Architecture</span>
+                  <strong className="text-emerald-400 font-black">Cloud Synced</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 pt-2 text-[10.5px] text-slate-400 flex items-center gap-1.5 border-t border-white/10">
+              <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              <span>Suryapet District, Telangana</span>
+            </div>
+          </div>
+
+          {/* Box 3: CENTER HERO - Bhu Bharati Files */}
+          <div 
+            onClick={() => onNavigate('bhuBharatiTab')}
+            className="lg:col-span-6 group relative overflow-hidden bg-gradient-to-b from-white via-white to-blue-50/40 rounded-2xl border-2 border-blue-400 hover:border-blue-600 p-6 shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1.5 cursor-pointer flex flex-col justify-between ring-4 ring-blue-500/10 min-h-[220px]"
+          >
+            <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all pointer-events-none" />
+            <div className="absolute -left-4 -bottom-4 w-28 h-28 bg-amber-400/10 rounded-full blur-xl pointer-events-none" />
+
+            <div>
+              <div className="flex items-start justify-between">
+                <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 group-hover:bg-blue-700 transition-all">
+                  <FolderGit2 className="w-7 h-7" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 bg-amber-400 text-slate-950 rounded-full shadow-xs flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-slate-950" />
+                    Core Registry
+                  </span>
+                  <span className="text-[10px] font-bold px-2.5 py-1 bg-blue-100 text-blue-800 rounded-full border border-blue-200">
+                    16 Modules
+                  </span>
+                </div>
+              </div>
+
+              <h2 className="text-xl font-black text-slate-900 mt-4 group-hover:text-blue-700 transition-colors">
+                Bhu Bharati Files
+              </h2>
+              <p className="text-xs text-slate-600 mt-1.5 font-medium leading-relaxed">
+                Log, track, filter and manage all revenue land files across 16 approved modules including Pending Mutation, Extent Correction, and Succession with instant search.
+              </p>
+            </div>
+
+            <div className="mt-5 pt-3.5 border-t border-blue-100 flex items-center justify-between">
+              <span className="font-extrabold text-xs text-blue-900 bg-blue-100/80 px-3 py-1 rounded-lg border border-blue-200/80">
+                {totalBhu} Active Files
+              </span>
+              <span className="font-black text-xs text-blue-600 group-hover:translate-x-1.5 transition-transform flex items-center gap-1">
+                Open Main Registry <ArrowUpRight className="w-4 h-4" />
               </span>
             </div>
-            <h3 className="text-lg font-black text-slate-900 group-hover:text-emerald-700 transition-colors duration-200 mb-1">
-              Sadabainama
-            </h3>
-            <p className="text-xs text-slate-600 group-hover:text-slate-700 leading-relaxed transition-colors duration-200">
-              Sadabainama abstract monitoring and detailed village-wise regularisation report with dual frozen headers and Excel upload.
-            </p>
           </div>
-          <div className="relative z-10 flex justify-between items-center border-t border-slate-200/60 pt-3 mt-4 text-xs font-black text-emerald-700 group-hover:text-emerald-800 transition-colors">
-            <span>{abstractStats.totalApps} Apps • {abstractStats.approvedSyNos} Approved Sy.Nos</span>
-            <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1.5 transition-transform duration-300 text-emerald-600" />
+
+          {/* Right Side Gap Widget: Official Revenue Portals Links */}
+          <div className="hidden lg:flex lg:col-span-3 bg-gradient-to-br from-slate-900 via-[#0a1f33] to-[#071726] rounded-2xl p-4.5 text-white shadow-md border border-slate-700/60 flex-col justify-between relative overflow-hidden">
+            <div className="absolute -top-8 -right-8 w-32 h-32 bg-amber-500/10 rounded-full blur-xl pointer-events-none" />
+
+            <div>
+              <div className="flex items-center gap-1.5 text-amber-300 text-xs font-black uppercase tracking-wider">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Revenue Portals</span>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                <a 
+                  href="https://bhubharati.telangana.gov.in" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="flex items-center justify-between p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-200 hover:text-white transition group"
+                >
+                  <span>Bhu Bharati TG</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-sky-400 group-hover:scale-110 transition-transform" />
+                </a>
+
+                <a 
+                  href="https://dharani.telangana.gov.in" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="flex items-center justify-between p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-200 hover:text-white transition group"
+                >
+                  <span>Dharani Portal</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+                </a>
+              </div>
+            </div>
+
+            <div className="mt-3 pt-2 text-[10.5px] text-slate-400 flex items-center justify-between border-t border-white/10">
+              <span>Huzurnagar SDM Court</span>
+              <strong className="text-amber-400 font-black">Act 2025</strong>
+            </div>
           </div>
+
         </div>
 
-        {/* Portal 4: Appeal Cases (COURT CASES & FINAL ORDERS) */}
-        <div
-          onClick={() => onNavigate('appealCasesTab')}
-          className="group relative overflow-hidden bg-gradient-to-br from-white/95 via-white/90 to-indigo-50/50 backdrop-blur-md border-2 border-slate-200/80 border-t-4 border-t-indigo-600 rounded-2xl p-5 cursor-pointer shadow-md hover:shadow-[0_20px_35px_-10px_rgba(99,102,241,0.3),0_4px_12px_rgba(99,102,241,0.1)] hover:border-indigo-400 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between min-h-[210px]"
-        >
-          {/* Top glossy specular reflection */}
-          <div className="absolute inset-x-0 top-0 h-2/5 bg-gradient-to-b from-white/80 via-white/20 to-transparent pointer-events-none rounded-t-2xl" />
-          {/* Subtle bottom colorful aura on hover */}
-          <div className="absolute inset-0 bg-gradient-to-t from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+        {/* ROW 3: TAPAL REGISTER & APPEAL CASES (2 BOXES) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          {/* Box 4: Tapal Register */}
+          <div 
+            onClick={() => onNavigate('tapalTab')}
+            className="group relative overflow-hidden bg-white hover:bg-gradient-to-br hover:from-white hover:to-amber-50/50 rounded-2xl border-2 border-amber-300 hover:border-amber-500 p-5 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1.5 cursor-pointer flex flex-col justify-between min-h-[195px]"
+          >
+            <div className="absolute top-0 right-0 w-28 h-28 bg-amber-400/10 rounded-full blur-2xl group-hover:bg-amber-400/20 transition-all pointer-events-none" />
 
-          <div className="relative z-10">
-            <div className="flex justify-between items-center mb-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/80 border border-indigo-200 flex items-center justify-center text-indigo-700 group-hover:scale-110 group-hover:bg-gradient-to-tr group-hover:from-indigo-600 group-hover:to-purple-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-indigo-500/40 transition-all duration-300">
-                <Scale className="w-6 h-6" />
+            <div>
+              <div className="flex items-start justify-between">
+                <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shadow-xs group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-slate-950 transition-all">
+                  <Mail className="w-6 h-6" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 bg-amber-100 text-amber-900 rounded-full border border-amber-200 shadow-xs">
+                  Inward &amp; Outward
+                </span>
               </div>
-              <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200/80 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition-all duration-300 shadow-xs">
-                Revenue Court
+
+              <h3 className="text-lg font-black text-slate-900 mt-3 group-hover:text-amber-700 transition-colors">
+                Tapal Register
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed">
+                Dedicated ledger to record Inward Tapal received from MROs/citizens and manage Outward Despatches forwarded to IDOC Collectorate or other offices.
+              </p>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span className="font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200/60">
+                {totalInward} Tapals • {totalOutward} Despatches
+              </span>
+              <span className="font-bold text-amber-600 group-hover:translate-x-1.5 transition-transform flex items-center gap-1">
+                Open Ledger <ArrowUpRight className="w-4 h-4" />
               </span>
             </div>
-            <h3 className="text-lg font-black text-slate-900 group-hover:text-indigo-700 transition-colors duration-200 mb-1">
-              Appeal Cases
-            </h3>
-            <p className="text-xs text-slate-600 group-hover:text-slate-700 leading-relaxed transition-colors duration-200">
-              RDO Court Revenue Appeal cases register, cause lists, hearings, and signed Final Orders copy upload &amp; verification (RoR, Tenancy, Inams).
-            </p>
           </div>
-          <div className="relative z-10 flex justify-between items-center border-t border-slate-200/60 pt-3 mt-4 text-xs font-black text-indigo-700 group-hover:text-indigo-800 transition-colors">
-            <span>{totalAppeals} Appeals • {finalOrdersCount} Final Orders</span>
-            <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1.5 transition-transform duration-300 text-indigo-600" />
+
+          {/* Box 5: Appeal Cases */}
+          <div 
+            onClick={() => onNavigate('appealCasesTab')}
+            className="group relative overflow-hidden bg-white hover:bg-gradient-to-br hover:from-white hover:to-indigo-50/50 rounded-2xl border-2 border-indigo-300 hover:border-indigo-500 p-5 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1.5 cursor-pointer flex flex-col justify-between min-h-[195px]"
+          >
+            <div className="absolute top-0 right-0 w-28 h-28 bg-indigo-400/10 rounded-full blur-2xl group-hover:bg-indigo-400/20 transition-all pointer-events-none" />
+
+            <div>
+              <div className="flex items-start justify-between">
+                <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center shadow-xs group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                  <Scale className="w-6 h-6" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 bg-indigo-100 text-indigo-800 rounded-full border border-indigo-200 shadow-xs">
+                  Revenue Court
+                </span>
+              </div>
+
+              <h3 className="text-lg font-black text-slate-900 mt-3 group-hover:text-indigo-700 transition-colors">
+                Appeal Cases
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed">
+                RDO Court Revenue Appeal cases register, cause lists, hearings, and signed Final Orders copy upload &amp; verification (RoR, Tenancy, Inams).
+              </p>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span className="font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-lg border border-indigo-200/60">
+                {totalAppeals} Appeals • {finalOrdersCount} Final Orders
+              </span>
+              <span className="font-bold text-indigo-600 group-hover:translate-x-1.5 transition-transform flex items-center gap-1">
+                Court Register <ArrowUpRight className="w-4 h-4" />
+              </span>
+            </div>
           </div>
+
         </div>
+
       </div>
 
+      {/* ============================================================ */}
+      {/* DETAILED DRILL-DOWN DASHBOARDS */}
+      {/* ============================================================ */}
+      
       {/* BHU BHARATI DASHBOARD METRICS */}
       <div className="relative overflow-hidden bg-gradient-to-br from-white/95 via-white/90 to-slate-50/80 backdrop-blur-md border border-slate-200/90 border-t-4 border-t-blue-600 rounded-2xl p-5 md:p-6 shadow-sm">
         <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-200/70 pb-4 mb-5">
@@ -544,7 +714,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Card 1: Total Bhu Bharati Files */}
           <div
             onClick={() => onNavigate('bhuBharatiTab', { status: '' })}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-blue-50/20 to-blue-100/30 border border-slate-200/80 border-l-[6px] border-l-blue-600 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(37,99,235,0.28)] hover:border-blue-400 hover:bg-gradient-to-br hover:from-white hover:to-blue-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -561,7 +730,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 2: Pending at RDO */}
           <div
             onClick={() => onNavigate('bhuBharatiTab', { status: 'Pending at RDO' })}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-amber-50/20 to-amber-100/30 border border-slate-200/80 border-l-[6px] border-l-amber-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(217,119,6,0.28)] hover:border-amber-400 hover:bg-gradient-to-br hover:from-white hover:to-amber-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -578,7 +746,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 3: Forwarded to Collectorate */}
           <div
             onClick={() => onNavigate('bhuBharatiTab', { status: 'Forwarded to Collectorate' })}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-sky-50/20 to-sky-100/30 border border-slate-200/80 border-l-[6px] border-l-sky-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(14,165,233,0.28)] hover:border-sky-400 hover:bg-gradient-to-br hover:from-white hover:to-sky-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -595,7 +762,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 4: Returned to MRO */}
           <div
             onClick={() => onNavigate('bhuBharatiTab', { status: 'Returned to MRO' })}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-red-50/20 to-red-100/30 border border-slate-200/80 border-l-[6px] border-l-red-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(239,68,68,0.28)] hover:border-red-400 hover:bg-gradient-to-br hover:from-white hover:to-red-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -612,7 +778,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 5: Returned from Collectorate */}
           <div
             onClick={() => onNavigate('bhuBharatiTab', { status: 'Returned from Collectorate' })}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-rose-50/20 to-rose-100/30 border border-slate-200/80 border-l-[6px] border-l-rose-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(244,63,94,0.28)] hover:border-rose-400 hover:bg-gradient-to-br hover:from-white hover:to-rose-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -629,7 +794,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 6: Disposed / Completed */}
           <div
             onClick={() => onNavigate('bhuBharatiTab', { status: 'Completed' })}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-emerald-50/20 to-emerald-100/30 border border-slate-200/80 border-l-[6px] border-l-emerald-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(16,185,129,0.28)] hover:border-emerald-400 hover:bg-gradient-to-br hover:from-white hover:to-emerald-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -713,7 +877,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Card 1: Total Inwards */}
           <div
             onClick={() => onNavigate('tapalTab', { type: 'inward', status: '' })}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-blue-50/20 to-blue-100/30 border border-slate-200/80 border-l-[6px] border-l-blue-600 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(37,99,235,0.28)] hover:border-blue-400 hover:bg-gradient-to-br hover:from-white hover:to-blue-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -730,7 +893,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 2: Under Scrutiny */}
           <div
             onClick={() => onNavigate('tapalTab', { type: 'inward', status: 'Under Scrutiny' })}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-amber-50/20 to-amber-100/30 border border-slate-200/80 border-l-[6px] border-l-amber-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(217,119,6,0.28)] hover:border-amber-400 hover:bg-gradient-to-br hover:from-white hover:to-amber-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -747,7 +909,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 3: Disposed Inwards */}
           <div
             onClick={() => onNavigate('tapalTab', { type: 'inward', status: 'Disposed' })}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-emerald-50/20 to-emerald-100/30 border border-slate-200/80 border-l-[6px] border-l-emerald-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(16,185,129,0.28)] hover:border-emerald-400 hover:bg-gradient-to-br hover:from-white hover:to-emerald-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -764,7 +925,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 4: Forwarded to MRO (Outward) */}
           <div
             onClick={() => onNavigate('tapalTab', { type: 'outward', sentTo: 'Forwarded to MRO' })}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-sky-50/20 to-sky-100/30 border border-slate-200/80 border-l-[6px] border-l-sky-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(14,165,233,0.28)] hover:border-sky-400 hover:bg-gradient-to-br hover:from-white hover:to-sky-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -781,7 +941,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 5: Forwarded to Collectorate (Outward) */}
           <div
             onClick={() => onNavigate('tapalTab', { type: 'outward', sentTo: 'Forwarded to Collectorate' })}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-purple-50/20 to-purple-100/30 border border-slate-200/80 border-l-[6px] border-l-purple-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(168,85,247,0.28)] hover:border-purple-400 hover:bg-gradient-to-br hover:from-white hover:to-purple-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -798,7 +957,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 6: Total Outward Despatches */}
           <div
             onClick={() => onNavigate('tapalTab', { type: 'outward' })}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-rose-50/20 to-rose-100/30 border border-slate-200/80 border-l-[6px] border-l-rose-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(244,63,94,0.28)] hover:border-rose-400 hover:bg-gradient-to-br hover:from-white hover:to-rose-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -817,7 +975,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* SADABAINAMA DASHBOARD METRICS (IMMEDIATELY AFTER TAPAL REGISTER) */}
+      {/* SADABAINAMA DASHBOARD METRICS */}
       <div className="relative overflow-hidden bg-gradient-to-br from-white/95 via-white/90 to-slate-50/80 backdrop-blur-md border border-slate-200/90 border-t-4 border-t-emerald-600 rounded-2xl p-5 md:p-6 shadow-sm">
         <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-200/70 pb-4 mb-5">
           <div className="flex items-center gap-2.5 text-lg font-black text-slate-900">
@@ -841,7 +999,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {/* Card 1: Total Applications */}
           <div
             onClick={() => onNavigate('sadabainamaTab')}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-blue-50/20 to-blue-100/30 border border-slate-200/80 border-l-[6px] border-l-blue-600 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(37,99,235,0.28)] hover:border-blue-400 hover:bg-gradient-to-br hover:from-white hover:to-blue-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -858,7 +1015,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 2: Pending at Tahsildar */}
           <div
             onClick={() => onNavigate('sadabainamaTab')}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-amber-50/20 to-amber-100/30 border border-slate-200/80 border-l-[6px] border-l-amber-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(217,119,6,0.28)] hover:border-amber-400 hover:bg-gradient-to-br hover:from-white hover:to-amber-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -875,7 +1031,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 3: Pending at RDO */}
           <div
             onClick={() => onNavigate('sadabainamaTab')}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-purple-50/20 to-purple-100/30 border border-slate-200/80 border-l-[6px] border-l-purple-600 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(147,51,234,0.28)] hover:border-purple-400 hover:bg-gradient-to-br hover:from-white hover:to-purple-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -892,7 +1047,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 4: Approved Sy.Nos */}
           <div
             onClick={() => onNavigate('sadabainamaTab')}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-emerald-50/20 to-emerald-100/30 border border-slate-200/80 border-l-[6px] border-l-emerald-600 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(16,185,129,0.28)] hover:border-emerald-400 hover:bg-gradient-to-br hover:from-white hover:to-emerald-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -909,7 +1063,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 5: Total Survey Numbers */}
           <div
             onClick={() => onNavigate('sadabainamaTab')}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-teal-50/20 to-teal-100/30 border border-slate-200/80 border-l-[6px] border-l-teal-600 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(20,184,166,0.28)] hover:border-teal-400 hover:bg-gradient-to-br hover:from-white hover:to-teal-50/70 hover:-translate-y-1.5 transition-all duration-300 col-span-2 sm:col-span-1"
@@ -982,7 +1135,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Card 1: Total Appeal Cases */}
           <div
             onClick={() => onNavigate('appealCasesTab')}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-indigo-50/20 to-indigo-100/30 border border-slate-200/80 border-l-[6px] border-l-indigo-600 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(99,102,241,0.28)] hover:border-indigo-400 hover:bg-gradient-to-br hover:from-white hover:to-indigo-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -999,7 +1151,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 2: Under Hearing / Trial */}
           <div
             onClick={() => onNavigate('appealCasesTab')}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-amber-50/20 to-amber-100/30 border border-slate-200/80 border-l-[6px] border-l-amber-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(217,119,6,0.28)] hover:border-amber-400 hover:bg-gradient-to-br hover:from-white hover:to-amber-50/70 hover:-translate-y-1.5 transition-all duration-300"
@@ -1016,7 +1167,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 3: Final Orders Issued */}
           <div
             onClick={() => onNavigate('appealCasesTab')}
             className="group relative overflow-hidden bg-gradient-to-br from-white via-emerald-50/20 to-emerald-100/30 border border-slate-200/80 border-l-[6px] border-l-emerald-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(16,185,129,0.28)] hover:border-emerald-400 hover:bg-gradient-to-br hover:from-white hover:to-emerald-50/70 hover:-translate-y-1.5 transition-all duration-300"

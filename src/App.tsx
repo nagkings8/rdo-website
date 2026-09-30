@@ -178,7 +178,7 @@ export default function App() {
       safeSaveLocalStorage('rdo_appeal_cases', list);
     });
 
-    // 1. Staff Users & Passwords Firestore Cloud Listener
+    // Staff Users & Passwords Firestore Cloud Listener
     const unsubStaff = onSnapshot(doc(db, 'system_auth', 'staff_users'), (snapshot) => {
       if (snapshot.exists() && snapshot.data()?.users) {
         try {
@@ -198,7 +198,7 @@ export default function App() {
       }
     });
 
-    // 2. Admin Profile & Password Firestore Cloud Listener
+    // Admin Profile & Password Firestore Cloud Listener
     const unsubAdmin = onSnapshot(doc(db, 'system_auth', 'admin_profile'), (snapshot) => {
       if (snapshot.exists() && snapshot.data()?.profile) {
         try {
@@ -236,7 +236,6 @@ export default function App() {
     };
   }, []);
 
-  // Direct Firestore Attachment Handler
   const getUniversalAttachment = async (key: string): Promise<string | null> => {
     try {
       const snap = await getDoc(doc(db, 'attachments', key));
