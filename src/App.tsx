@@ -891,8 +891,8 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-100 via-slate-50 to-slate-100 text-slate-900 font-sans antialiased selection:bg-amber-400 selection:text-slate-950">
       <ColorSplashCursor />
 
-      {/* TOP STICKY BAR: HEADER, TICKER & NAVIGATION */}
-      <div className="sticky top-0 z-50 w-full shadow-md bg-[#061122]">
+      {/* TOP STICKY BAR: OFFICIAL GOVT THEME (DEEP TEAL/GREEN & EMERALD BORDER) */}
+      <div className="sticky top-0 z-50 w-full shadow-md bg-[#0b3323] border-b-2 border-emerald-500">
         <Header
           currentUser={currentUser}
           onOpenLogin={() => setIsLoginModalOpen(true)}
@@ -905,11 +905,11 @@ export default function App() {
           onGoHome={() => setActiveTab('dashboardTab')}
         />
 
-        {/* Scrolling Glowing Announcement Ticker */}
+        {/* Official Announcement Ticker */}
         <NoticeTicker />
 
-        {/* Mobile App View Horizontal Scrolling Navigation Bar */}
-        <div className="w-full bg-[#0a1b33]/90 border-t border-slate-800/80 overflow-x-auto no-scrollbar py-1">
+        {/* Navigation Bar Strip: Deep Govt Green */}
+        <div className="w-full bg-[#08261a]/95 border-t border-emerald-600/30 overflow-x-auto no-scrollbar py-1">
           <div className="max-w-[1520px] mx-auto px-2 sm:px-4 flex items-center gap-1 sm:gap-2">
             <Navigation
               activeTab={activeTab}
