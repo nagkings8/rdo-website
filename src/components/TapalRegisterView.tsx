@@ -39,6 +39,8 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
 }) => {
   const isAdmin = currentUser?.role === 'ADMIN';
   const isViewer = !currentUser || currentUser?.role === 'VIEWER';
+  const isOfficial = !isViewer;
+
   // Inward filters
   const [inwardSearch, setInwardSearch] = useState('');
   const [inwardMandal, setInwardMandal] = useState('');
@@ -162,6 +164,7 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
       subtitle: 'Revenue Divisional Office, Huzurnagar • Suryapet District',
       period: 'Official Inward Correspondence Register',
       landscape: true,
+      isOfficial,
     });
   };
 
@@ -211,16 +214,14 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
       subtitle: 'Revenue Divisional Office, Huzurnagar • Suryapet District',
       period: 'Official Outward Despatch Register',
       landscape: true,
+      isOfficial,
     });
   };
 
   return (
     <div className="space-y-6">
-      {/* ============================================================ */}
-      {/* TOP DASHBOARD BANNER (MATCHING APPEAL CASES STYLE) */}
-      {/* ============================================================ */}
+      {/* TOP DASHBOARD BANNER */}
       <div className="bg-gradient-to-r from-[#0d1d36] via-[#163a69] to-[#0d1d36] text-white p-5 md:p-6 rounded-2xl shadow-xl border-t-2 border-amber-400 relative overflow-hidden">
-        {/* Top ambient glass reflection */}
         <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-300/60 to-transparent pointer-events-none" />
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -left-10 -top-10 w-64 h-64 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -253,7 +254,6 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
             </div>
           </div>
 
-          {/* Quick Stats Pill */}
           <div className="flex items-center gap-2.5 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/15 shadow-sm">
             <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0" />
             <div>
@@ -271,11 +271,8 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
         </div>
       </div>
 
-      {/* ============================================================ */}
-      {/* SUMMARY STAT CARDS (5 GLOSSY & COLORFUL CARDS) */}
-      {/* ============================================================ */}
+      {/* SUMMARY STAT CARDS */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
-        {/* Card 1: Total Inward Tapals */}
         <div
           onClick={() => setInwardStatus('')}
           className={`group relative overflow-hidden backdrop-blur-md rounded-2xl p-4.5 cursor-pointer transition-all duration-300 ${
@@ -286,9 +283,7 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
         >
           <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/80 via-white/15 to-transparent pointer-events-none rounded-t-2xl" />
           <div className="relative z-10 flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-[11px] font-black uppercase tracking-wider text-blue-900">
-              Total Inward
-            </span>
+            <span className="text-[11px] font-black uppercase tracking-wider text-blue-900">Total Inward</span>
             <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-200">
               <Mail className="w-4 h-4" />
             </div>
@@ -296,12 +291,9 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
           <div className="relative z-10 text-3xl font-black text-blue-950 group-hover:text-blue-600 group-hover:scale-105 origin-left transition-all duration-300">
             {tapalStats.totalInward}
           </div>
-          <p className="relative z-10 text-[11px] text-blue-700 font-semibold mt-0.5">
-            Letters &amp; files received →
-          </p>
+          <p className="relative z-10 text-[11px] text-blue-700 font-semibold mt-0.5">Letters &amp; files received →</p>
         </div>
 
-        {/* Card 2: Under Scrutiny */}
         <div
           onClick={() => setInwardStatus(inwardStatus === 'Under Scrutiny' ? '' : 'Under Scrutiny')}
           className={`group relative overflow-hidden backdrop-blur-md rounded-2xl p-4.5 cursor-pointer transition-all duration-300 ${
@@ -312,9 +304,7 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
         >
           <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/80 via-white/15 to-transparent pointer-events-none rounded-t-2xl" />
           <div className="relative z-10 flex items-center justify-between mb-1">
-            <span className="text-[11px] font-black uppercase tracking-wider text-amber-800">
-              Under Scrutiny
-            </span>
+            <span className="text-[11px] font-black uppercase tracking-wider text-amber-800">Under Scrutiny</span>
             <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors duration-200">
               <Clock className="w-4 h-4" />
             </div>
@@ -322,12 +312,9 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
           <div className="relative z-10 text-3xl font-black text-amber-700 group-hover:text-amber-600 group-hover:scale-105 origin-left transition-all duration-300">
             {tapalStats.inwardScrutiny}
           </div>
-          <p className="relative z-10 text-[11px] text-amber-700 font-semibold mt-0.5">
-            Active examination in seat →
-          </p>
+          <p className="relative z-10 text-[11px] text-amber-700 font-semibold mt-0.5">Active examination in seat →</p>
         </div>
 
-        {/* Card 3: Inward Disposed */}
         <div
           onClick={() => setInwardStatus(inwardStatus === 'Disposed' ? '' : 'Disposed')}
           className={`group relative overflow-hidden backdrop-blur-md rounded-2xl p-4.5 cursor-pointer transition-all duration-300 ${
@@ -338,9 +325,7 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
         >
           <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/80 via-white/15 to-transparent pointer-events-none rounded-t-2xl" />
           <div className="relative z-10 flex items-center justify-between mb-1">
-            <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800">
-              Inward Disposed
-            </span>
+            <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800">Inward Disposed</span>
             <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-200">
               <CheckCircle2 className="w-4 h-4" />
             </div>
@@ -348,12 +333,9 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
           <div className="relative z-10 text-3xl font-black text-emerald-700 group-hover:text-emerald-600 group-hover:scale-105 origin-left transition-all duration-300">
             {tapalStats.inwardDisposed}
           </div>
-          <p className="relative z-10 text-[11px] text-emerald-700 font-semibold mt-0.5">
-            Disposed with replies →
-          </p>
+          <p className="relative z-10 text-[11px] text-emerald-700 font-semibold mt-0.5">Disposed with replies →</p>
         </div>
 
-        {/* Card 4: Total Outward Despatch */}
         <div
           onClick={() => {
             setOutwardSentTo('');
@@ -368,9 +350,7 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
         >
           <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/80 via-white/15 to-transparent pointer-events-none rounded-t-2xl" />
           <div className="relative z-10 flex items-center justify-between mb-1">
-            <span className="text-[11px] font-black uppercase tracking-wider text-purple-800">
-              Outward Despatch
-            </span>
+            <span className="text-[11px] font-black uppercase tracking-wider text-purple-800">Outward Despatch</span>
             <div className="w-7 h-7 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors duration-200">
               <Send className="w-4 h-4" />
             </div>
@@ -378,12 +358,9 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
           <div className="relative z-10 text-3xl font-black text-purple-700 group-hover:text-purple-600 group-hover:scale-105 origin-left transition-all duration-300">
             {tapalStats.totalOutward}
           </div>
-          <p className="relative z-10 text-[11px] text-purple-700 font-semibold mt-0.5">
-            Official letters sent →
-          </p>
+          <p className="relative z-10 text-[11px] text-purple-700 font-semibold mt-0.5">Official letters sent →</p>
         </div>
 
-        {/* Card 5: Collectorate & MROs */}
         <div
           onClick={() => setOutwardSentTo(outwardSentTo === 'Collectorate' ? '' : 'Collectorate')}
           className={`group relative overflow-hidden backdrop-blur-md rounded-2xl p-4.5 cursor-pointer transition-all duration-300 col-span-2 sm:col-span-1 ${
@@ -394,9 +371,7 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
         >
           <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/80 via-white/15 to-transparent pointer-events-none rounded-t-2xl" />
           <div className="relative z-10 flex items-center justify-between mb-1">
-            <span className="text-[11px] font-black uppercase tracking-wider text-teal-800">
-              Collectorate &amp; MRO
-            </span>
+            <span className="text-[11px] font-black uppercase tracking-wider text-teal-800">Collectorate &amp; MRO</span>
             <div className="w-7 h-7 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors duration-200">
               <Building2 className="w-4 h-4" />
             </div>
@@ -420,16 +395,18 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {/* Public and Staff Can Print Inward Register */}
+            <button
+              onClick={handlePrintInwards}
+              className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+              title="Print Inward Tapal Table"
+            >
+              <Printer className="w-3.5 h-3.5 text-sky-300" />
+              <span>Print Inward Register</span>
+            </button>
+
             {!isViewer && (
               <>
-                <button
-                  onClick={handlePrintInwards}
-                  className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-                  title="Print Inward Tapal Table"
-                >
-                  <Printer className="w-3.5 h-3.5 text-sky-300" />
-                  <span>Print Inward Register</span>
-                </button>
                 <button
                   onClick={() => exportInwardToCSV(inwards)}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
@@ -599,7 +576,6 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
                           </>
                         )}
 
-                        {/* Delete Inward: ADMIN ONLY */}
                         {isAdmin && (
                           <button
                             onClick={() => onDeleteInward(tapal)}
@@ -629,16 +605,18 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {/* Public and Staff Can Print Outward Register */}
+            <button
+              onClick={handlePrintOutwards}
+              className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+              title="Print Outward Despatch Table"
+            >
+              <Printer className="w-3.5 h-3.5 text-sky-300" />
+              <span>Print Outward Register</span>
+            </button>
+
             {!isViewer && (
               <>
-                <button
-                  onClick={handlePrintOutwards}
-                  className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-                  title="Print Outward Despatch Table"
-                >
-                  <Printer className="w-3.5 h-3.5 text-sky-300" />
-                  <span>Print Outward Register</span>
-                </button>
                 <button
                   onClick={() => exportOutwardToCSV(outwards)}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
@@ -818,9 +796,6 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
-                          )}
-                          {isViewer && !isAdmin && (
-                            <span className="text-[11px] text-slate-400">-</span>
                           )}
                         </div>
                       </td>
