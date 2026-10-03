@@ -45,13 +45,14 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
 }) => {
   const isAdmin = currentUser?.role === 'ADMIN';
   const isViewer = !currentUser || currentUser?.role === 'VIEWER';
+  const isOfficial = !isViewer;
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMandal, setSelectedMandal] = useState('');
   const [selectedVillage, setSelectedVillage] = useState('');
   const [selectedModule, setSelectedModule] = useState('');
   const [selectedStatus, setSelectedStatus] = useState(initialStatusFilter);
 
-  // Update village options when mandal changes
   const villageOptions = useMemo(() => {
     if (!selectedMandal) return [];
     return MANDAL_VILLAGES[selectedMandal] || [];
@@ -70,7 +71,6 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
     setSelectedStatus('');
   };
 
-  // Detailed Metric Counts for the Abstract Dashboard (Merged Pending at RDO & Received from MRO)
   const totalFiles = files.length;
   const pendingCount = files.filter(
     (f) => f.status === 'Pending at RDO' || f.status === 'Received from MRO'
@@ -80,7 +80,6 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
   const returnedCount = files.filter((f) => f.status === 'Returned to MRO').length;
   const returnedCollCount = files.filter((f) => f.status === 'Returned from Collectorate').length;
 
-  // Filtered files list with combined status matching
   const filteredFiles = useMemo(() => {
     return files.filter((f) => {
       const q = searchTerm.toLowerCase();
@@ -95,7 +94,6 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
       const matchVillage = selectedVillage === '' || f.village === selectedVillage;
       const matchModule = selectedModule === '' || f.module === selectedModule;
 
-      // Smart Status match: Merging "Pending at RDO" and "Received from MRO"
       let matchStatus = true;
       if (selectedStatus === 'Pending at RDO' || selectedStatus === 'Received from MRO') {
         matchStatus = f.status === 'Pending at RDO' || f.status === 'Received from MRO';
@@ -117,8 +115,6 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
   };
 
   const handlePrintTable = () => {
-    const isOfficial = !isViewer;
-
     const tableHeader = `
       <tr>
         <th style="width: 35px; background: #164875; color: #fff;">S.No</th>
@@ -177,15 +173,13 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
       subtitle: 'Revenue Divisional Office, Huzurnagar • Suryapet District',
       period: 'Active Revenue Land Files Register',
       landscape: true,
-      isOfficial: isOfficial,
+      isOfficial,
     });
   };
 
   return (
     <div className="space-y-6">
-      {/* ============================================================ */}
       {/* TOP DASHBOARD BANNER */}
-      {/* ============================================================ */}
       <div className="bg-gradient-to-r from-[#07203b] via-[#0d3b68] to-[#07203b] text-white p-5 md:p-6 rounded-2xl shadow-xl border-t-2 border-amber-400 relative overflow-hidden">
         <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-300/60 to-transparent pointer-events-none" />
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -236,9 +230,7 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
         </div>
       </div>
 
-      {/* ============================================================ */}
-      {/* BHU BHARATI FILES ABSTRACT DASHBOARD (16 REVENUE MODULES) */}
-      {/* ============================================================ */}
+      {/* BHU BHARATI FILES ABSTRACT DASHBOARD */}
       <div className="relative overflow-hidden bg-gradient-to-br from-white/95 via-white/90 to-slate-50/80 backdrop-blur-md border border-slate-200/90 border-t-4 border-t-blue-600 rounded-2xl p-5 md:p-6 shadow-sm">
         <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-200/70 pb-4 mb-5">
           <div className="flex items-center gap-2.5 text-lg font-black text-slate-900">
@@ -252,7 +244,7 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
           </span>
         </div>
 
-        {/* Division File Movement & Resolution Ratio Progress Bar */}
+        {/* File Movement Progress Bar */}
         <div className="bg-slate-50/80 border border-slate-200/90 rounded-xl p-3.5 mb-5 shadow-2xs">
           <div className="flex flex-wrap items-center justify-between text-xs font-bold text-slate-700 mb-2 gap-2">
             <span className="flex items-center gap-1.5">
@@ -293,129 +285,102 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
           </div>
         </div>
 
-        {/* 6 Metric Status Cards */}
+        {/* 6 Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Card 1: Total Files */}
           <div
             onClick={() => setSelectedStatus('')}
-            className={`group relative overflow-hidden bg-gradient-to-br from-white via-blue-50/20 to-blue-100/30 border border-slate-200/80 border-l-[6px] border-l-blue-600 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(37,99,235,0.28)] hover:border-blue-400 hover:bg-gradient-to-br hover:from-white hover:to-blue-50/70 hover:-translate-y-1.5 transition-all duration-300 ${
+            className={`group relative overflow-hidden bg-gradient-to-br from-white via-blue-50/20 to-blue-100/30 border border-slate-200/80 border-l-[6px] border-l-blue-600 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(37,99,235,0.28)] hover:border-blue-400 hover:-translate-y-1.5 transition-all duration-300 ${
               selectedStatus === '' ? 'ring-2 ring-blue-500/40 bg-blue-50/40' : ''
             }`}
           >
-            <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/80 via-white/15 to-transparent pointer-events-none rounded-t-2xl" />
-            <div className="text-[11px] font-black text-blue-800 tracking-wider uppercase group-hover:text-blue-900 transition-colors">
+            <div className="text-[11px] font-black text-blue-800 tracking-wider uppercase">
               TOTAL BHU BHARATI FILES
             </div>
-            <div className="text-3xl md:text-4xl font-black text-blue-900 group-hover:text-blue-600 my-1 tracking-tight group-hover:scale-105 origin-left transition-transform duration-300">
+            <div className="text-3xl md:text-4xl font-black text-blue-900 group-hover:text-blue-600 my-1">
               {totalFiles}
             </div>
-            <div className="text-xs font-bold text-blue-600 group-hover:text-blue-700 flex items-center gap-1 group-hover:translate-x-1 transition-all">
-              Across All 7 Mandals →
-            </div>
+            <div className="text-xs font-bold text-blue-600">Across All 7 Mandals →</div>
           </div>
 
-          {/* Card 2: Pending at RDO (Click selects both Pending at RDO & Received from MRO) */}
           <div
             onClick={() => setSelectedStatus(selectedStatus === 'Pending at RDO' || selectedStatus === 'Received from MRO' ? '' : 'Pending at RDO')}
-            className={`group relative overflow-hidden bg-gradient-to-br from-white via-amber-50/20 to-amber-100/30 border border-slate-200/80 border-l-[6px] border-l-amber-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(217,119,6,0.28)] hover:border-amber-400 hover:bg-gradient-to-br hover:from-white hover:to-amber-50/70 hover:-translate-y-1.5 transition-all duration-300 ${
+            className={`group relative overflow-hidden bg-gradient-to-br from-white via-amber-50/20 to-amber-100/30 border border-slate-200/80 border-l-[6px] border-l-amber-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(217,119,6,0.28)] hover:border-amber-400 hover:-translate-y-1.5 transition-all duration-300 ${
               selectedStatus === 'Pending at RDO' || selectedStatus === 'Received from MRO' ? 'ring-2 ring-amber-500/40 bg-amber-50/40' : ''
             }`}
           >
-            <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/80 via-white/15 to-transparent pointer-events-none rounded-t-2xl" />
-            <div className="text-[11px] font-black text-amber-800 tracking-wider uppercase group-hover:text-amber-900 transition-colors">
+            <div className="text-[11px] font-black text-amber-800 tracking-wider uppercase">
               PENDING AT RDO
             </div>
-            <div className="text-3xl md:text-4xl font-black text-amber-600 group-hover:text-amber-500 my-1 tracking-tight group-hover:scale-105 origin-left transition-transform duration-300">
+            <div className="text-3xl md:text-4xl font-black text-amber-600 my-1">
               {pendingCount}
             </div>
-            <div className="text-xs font-bold text-amber-700 group-hover:text-amber-800 flex items-center gap-1 group-hover:translate-x-1 transition-all">
-              Action In-Progress / Received →
-            </div>
+            <div className="text-xs font-bold text-amber-700">Action In-Progress / Received →</div>
           </div>
 
-          {/* Card 3: Forwarded to Collectorate */}
           <div
             onClick={() => setSelectedStatus(selectedStatus === 'Forwarded to Collectorate' ? '' : 'Forwarded to Collectorate')}
-            className={`group relative overflow-hidden bg-gradient-to-br from-white via-sky-50/20 to-sky-100/30 border border-slate-200/80 border-l-[6px] border-l-sky-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(14,165,233,0.28)] hover:border-sky-400 hover:bg-gradient-to-br hover:from-white hover:to-sky-50/70 hover:-translate-y-1.5 transition-all duration-300 ${
+            className={`group relative overflow-hidden bg-gradient-to-br from-white via-sky-50/20 to-sky-100/30 border border-slate-200/80 border-l-[6px] border-l-sky-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(14,165,233,0.28)] hover:border-sky-400 hover:-translate-y-1.5 transition-all duration-300 ${
               selectedStatus === 'Forwarded to Collectorate' ? 'ring-2 ring-sky-500/40 bg-sky-50/40' : ''
             }`}
           >
-            <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/80 via-white/15 to-transparent pointer-events-none rounded-t-2xl" />
-            <div className="text-[11px] font-black text-sky-800 tracking-wider uppercase group-hover:text-sky-900 transition-colors">
+            <div className="text-[11px] font-black text-sky-800 tracking-wider uppercase">
               FORWARDED TO COLLECTORATE
             </div>
-            <div className="text-3xl md:text-4xl font-black text-sky-600 group-hover:text-sky-500 my-1 tracking-tight group-hover:scale-105 origin-left transition-transform duration-300">
+            <div className="text-3xl md:text-4xl font-black text-sky-600 my-1">
               {forwardedCount}
             </div>
-            <div className="text-xs font-bold text-sky-600 group-hover:text-sky-700 flex items-center gap-1 group-hover:translate-x-1 transition-all">
-              Under IDOC Review →
-            </div>
+            <div className="text-xs font-bold text-sky-600">Under IDOC Review →</div>
           </div>
 
-          {/* Card 4: Returned to MRO */}
           <div
             onClick={() => setSelectedStatus(selectedStatus === 'Returned to MRO' ? '' : 'Returned to MRO')}
-            className={`group relative overflow-hidden bg-gradient-to-br from-white via-red-50/20 to-red-100/30 border border-slate-200/80 border-l-[6px] border-l-red-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(239,68,68,0.28)] hover:border-red-400 hover:bg-gradient-to-br hover:from-white hover:to-red-50/70 hover:-translate-y-1.5 transition-all duration-300 ${
+            className={`group relative overflow-hidden bg-gradient-to-br from-white via-red-50/20 to-red-100/30 border border-slate-200/80 border-l-[6px] border-l-red-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(239,68,68,0.28)] hover:border-red-400 hover:-translate-y-1.5 transition-all duration-300 ${
               selectedStatus === 'Returned to MRO' ? 'ring-2 ring-red-500/40 bg-red-50/40' : ''
             }`}
           >
-            <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/80 via-white/15 to-transparent pointer-events-none rounded-t-2xl" />
-            <div className="text-[11px] font-black text-red-800 tracking-wider uppercase group-hover:text-red-900 transition-colors">
+            <div className="text-[11px] font-black text-red-800 tracking-wider uppercase">
               RETURNED TO MRO
             </div>
-            <div className="text-3xl md:text-4xl font-black text-red-600 group-hover:text-red-500 my-1 tracking-tight group-hover:scale-105 origin-left transition-transform duration-300">
+            <div className="text-3xl md:text-4xl font-black text-red-600 my-1">
               {returnedCount}
             </div>
-            <div className="text-xs font-bold text-red-600 group-hover:text-red-700 flex items-center gap-1 group-hover:translate-x-1 transition-all">
-              Clarification Sought →
-            </div>
+            <div className="text-xs font-bold text-red-600">Clarification Sought →</div>
           </div>
 
-          {/* Card 5: Returned from Collectorate */}
           <div
             onClick={() => setSelectedStatus(selectedStatus === 'Returned from Collectorate' ? '' : 'Returned from Collectorate')}
-            className={`group relative overflow-hidden bg-gradient-to-br from-white via-rose-50/20 to-rose-100/30 border border-slate-200/80 border-l-[6px] border-l-rose-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(244,63,94,0.28)] hover:border-rose-400 hover:bg-gradient-to-br hover:from-white hover:to-rose-50/70 hover:-translate-y-1.5 transition-all duration-300 ${
+            className={`group relative overflow-hidden bg-gradient-to-br from-white via-rose-50/20 to-rose-100/30 border border-slate-200/80 border-l-[6px] border-l-rose-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(244,63,94,0.28)] hover:border-rose-400 hover:-translate-y-1.5 transition-all duration-300 ${
               selectedStatus === 'Returned from Collectorate' ? 'ring-2 ring-rose-500/40 bg-rose-50/40' : ''
             }`}
           >
-            <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/80 via-white/15 to-transparent pointer-events-none rounded-t-2xl" />
-            <div className="text-[11px] font-black text-rose-800 tracking-wider uppercase group-hover:text-rose-900 transition-colors">
+            <div className="text-[11px] font-black text-rose-800 tracking-wider uppercase">
               RETURNED FROM COLLECTORATE
             </div>
-            <div className="text-3xl md:text-4xl font-black text-rose-600 group-hover:text-rose-500 my-1 tracking-tight group-hover:scale-105 origin-left transition-transform duration-300">
+            <div className="text-3xl md:text-4xl font-black text-rose-600 my-1">
               {returnedCollCount}
             </div>
-            <div className="text-xs font-bold text-rose-600 group-hover:text-rose-700 flex items-center gap-1 group-hover:translate-x-1 transition-all">
-              Re-examination Required →
-            </div>
+            <div className="text-xs font-bold text-rose-600">Re-examination Required →</div>
           </div>
 
-          {/* Card 6: Disposed / Completed */}
           <div
             onClick={() => setSelectedStatus(selectedStatus === 'Completed' ? '' : 'Completed')}
-            className={`group relative overflow-hidden bg-gradient-to-br from-white via-emerald-50/20 to-emerald-100/30 border border-slate-200/80 border-l-[6px] border-l-emerald-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(16,185,129,0.28)] hover:border-emerald-400 hover:bg-gradient-to-br hover:from-white hover:to-emerald-50/70 hover:-translate-y-1.5 transition-all duration-300 ${
+            className={`group relative overflow-hidden bg-gradient-to-br from-white via-emerald-50/20 to-emerald-100/30 border border-slate-200/80 border-l-[6px] border-l-emerald-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(16,185,129,0.28)] hover:border-emerald-400 hover:-translate-y-1.5 transition-all duration-300 ${
               selectedStatus === 'Completed' ? 'ring-2 ring-emerald-500/40 bg-emerald-50/40' : ''
             }`}
           >
-            <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/80 via-white/15 to-transparent pointer-events-none rounded-t-2xl" />
-            <div className="text-[11px] font-black text-emerald-800 tracking-wider uppercase group-hover:text-emerald-900 transition-colors">
+            <div className="text-[11px] font-black text-emerald-800 tracking-wider uppercase">
               DISPOSED / COMPLETED
             </div>
-            <div className="text-3xl md:text-4xl font-black text-emerald-600 group-hover:text-emerald-500 my-1 tracking-tight group-hover:scale-105 origin-left transition-transform duration-300">
+            <div className="text-3xl md:text-4xl font-black text-emerald-600 my-1">
               {completedCount}
             </div>
-            <div className="text-xs font-bold text-emerald-700 group-hover:text-emerald-800 flex items-center gap-1 group-hover:translate-x-1 transition-all">
-              Final Orders Issued →
-            </div>
+            <div className="text-xs font-bold text-emerald-700">Final Orders Issued →</div>
           </div>
         </div>
       </div>
 
-      {/* ============================================================ */}
       {/* MAIN TABLE CONTAINER */}
-      {/* ============================================================ */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 md:p-6 shadow-xs space-y-4">
-        {/* Header section */}
         <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-100 pb-4">
           <div>
             <h2 className="text-xl font-black text-slate-900">Bhu Bharati Files Master Register</h2>
@@ -463,7 +428,7 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
               placeholder="Search App No / Name / Survey..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:border-blue-500 focus:outline-none"
             />
           </div>
 
@@ -474,9 +439,7 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
           >
             <option value="">All Mandals</option>
             {MANDAL_LIST.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
+              <option key={m} value={m}>{m}</option>
             ))}
           </select>
 
@@ -488,9 +451,7 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
           >
             <option value="">{selectedMandal ? 'All Villages' : 'Select Mandal First'}</option>
             {villageOptions.map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
+              <option key={v} value={v}>{v}</option>
             ))}
           </select>
 
@@ -501,13 +462,10 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
           >
             <option value="">All 16 Modules</option>
             {REVENUE_MODULES.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
+              <option key={m} value={m}>{m}</option>
             ))}
           </select>
 
-          {/* Unified Status Selector */}
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
@@ -604,28 +562,33 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
                         <span className="text-[11px] text-slate-400">No File</span>
                       )}
                     </td>
+
+                    {/* ACTIONS COLUMN: Print Tracking Slip button is always visible to Public and Staff */}
                     <td className="py-2.5 px-3 text-center">
                       <div className="flex items-center justify-center gap-1.5">
+                        {/* 1. Status Update: Staff Only */}
                         {!isViewer && (
-                          <>
-                            <button
-                              onClick={() => onUpdateStatus(f)}
-                              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-2 py-1 rounded text-[11px] inline-flex items-center gap-1 transition cursor-pointer shadow-xs"
-                              title="Update File Status Movement"
-                            >
-                              <RefreshCw className="w-3 h-3" />
-                              <span>Status</span>
-                            </button>
-                            <button
-                              onClick={() => onPrintSlip(f)}
-                              className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-2 py-1 rounded text-[11px] inline-flex items-center gap-1 transition cursor-pointer shadow-xs"
-                              title="Print Official Tracking Slip"
-                            >
-                              <Printer className="w-3.5 h-3.5" />
-                            </button>
-                          </>
+                          <button
+                            onClick={() => onUpdateStatus(f)}
+                            className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-2 py-1 rounded text-[11px] inline-flex items-center gap-1 transition cursor-pointer shadow-xs"
+                            title="Update File Status Movement"
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                            <span>Status</span>
+                          </button>
                         )}
 
+                        {/* 2. Official Tracking Slip: Always Visible to Everyone */}
+                        <button
+                          onClick={() => onPrintSlip(f)}
+                          className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-2.5 py-1 rounded text-[11px] inline-flex items-center gap-1 transition cursor-pointer shadow-xs"
+                          title="Print Tracking Slip (Public / Official Copy)"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-amber-300" />
+                          <span className="hidden sm:inline">Slip</span>
+                        </button>
+
+                        {/* 3. Delete: Admin Only */}
                         {isAdmin && (
                           <button
                             onClick={() => onDeleteFile(f)}

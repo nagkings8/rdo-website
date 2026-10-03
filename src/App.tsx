@@ -1107,6 +1107,7 @@ export default function App() {
           setSelectedFileForSlip(null);
         }}
         file={selectedFileForSlip}
+        currentUser={currentUser}
         onShowToast={showToast}
       />
 
