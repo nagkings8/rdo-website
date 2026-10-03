@@ -10,6 +10,7 @@ export interface PrintReportPayload {
   landscape?: boolean;
   tableHtml: string;
   fileName?: string;
+  isOfficial?: boolean;
 }
 
 export const generatePrintHtml = (payload: PrintReportPayload, autoPrint = false): string => {
@@ -19,6 +20,7 @@ export const generatePrintHtml = (payload: PrintReportPayload, autoPrint = false
     period,
     landscape = false,
     tableHtml,
+    isOfficial = false,
   } = payload;
 
   const currentDate = new Date().toLocaleDateString('en-IN', {
@@ -39,6 +41,45 @@ export const generatePrintHtml = (payload: PrintReportPayload, autoPrint = false
     title.toLowerCase().includes('cause list') ||
     title.toLowerCase().includes('case') ||
     (subtitle && subtitle.toLowerCase().includes('court'));
+
+  // Signature Block: Kevalam Staff/Admin login ayithey mathrame kanipisthundhi
+  const signatureSection = isOfficial
+    ? `
+    <div class="footer-sign">
+      <div class="sign-box">
+        <div style="color: #64748b; font-weight: normal;">${isCourtDoc ? 'Court Prepared by:' : 'Prepared by:'}</div>
+        <div style="margin-top: 26px; font-weight: 800; color: #0f172a;">
+          ${isCourtDoc ? 'Bench Clerk / Superintendent' : 'Senior Assistant / D Section'}
+        </div>
+        <div style="font-size: 7.5pt; color: #64748b; font-weight: normal;">
+          ${isCourtDoc ? 'Appeal Cases Section • RDO Huzurnagar' : 'RDO Office, Huzurnagar'}
+        </div>
+      </div>
+      <div class="sign-box">
+        <div style="color: #64748b; font-weight: normal;">Verified by:</div>
+        <div style="margin-top: 26px; font-weight: 800; color: #0f172a;">
+          Divisional Administrative Officer (DAO)
+        </div>
+        <div style="font-size: 7.5pt; color: #64748b; font-weight: normal;">
+          RDO Office, Huzurnagar
+        </div>
+      </div>
+      <div class="sign-box">
+        <div style="color: #64748b; font-weight: normal;">${isCourtDoc ? 'Bench Presiding Officer:' : 'Approved by:'}</div>
+        <div style="margin-top: 26px; font-weight: 800; color: #0f172a;">
+          ${isCourtDoc ? 'Revenue Divisional Officer & SDM' : 'Revenue Divisional Officer (RDO)'}
+        </div>
+        <div style="font-size: 7.5pt; color: #64748b; font-weight: normal;">
+          Huzurnagar Division
+        </div>
+      </div>
+    </div>
+    `
+    : `
+    <div style="margin-top: 22px; padding: 6px 10px; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 8.5pt; color: #64748b; text-align: center;">
+      * Computer generated informational summary for public verification. (Unsigned copy)
+    </div>
+    `;
 
   return `<!DOCTYPE html>
 <html>
@@ -137,9 +178,6 @@ export const generatePrintHtml = (payload: PrintReportPayload, autoPrint = false
         text-align: center;
         letter-spacing: 0.2px;
       }
-      table {
-        page-break-inside: auto !important;
-      }
       tbody {
         page-break-inside: auto !important;
       }
@@ -174,14 +212,6 @@ export const generatePrintHtml = (payload: PrintReportPayload, autoPrint = false
         border-top: 2px solid #334155;
         border-bottom: 2px solid #334155;
       }
-      .total-tahsildar {
-        background-color: #fef08a !important;
-        font-weight: 900 !important;
-      }
-      .total-rdo {
-        background-color: #fed7aa !important;
-        font-weight: 900 !important;
-      }
       .footer-sign {
         margin-top: 18px;
         display: flex;
@@ -196,9 +226,6 @@ export const generatePrintHtml = (payload: PrintReportPayload, autoPrint = false
       .sign-box {
         text-align: center;
       }
-      .no-print {
-        display: none !important;
-      }
     </style>
   </head>
   <body>
@@ -210,9 +237,15 @@ export const generatePrintHtml = (payload: PrintReportPayload, autoPrint = false
           <div class="office-title">${subtitle}</div>
           <div class="report-title">${title}</div>
         </div>
-        <div style="width: ${landscape ? '56px' : '68px'}; flex-shrink: 0; text-align: center; font-size: ${landscape ? '7.5pt' : '8.5pt'}; font-weight: 800; color: #0f3b63; border: 1.5px solid #0f3b63; border-radius: 4px; padding: 4px 2px; line-height: 1.25;">
-          OFFICIAL<br/>COPY
-        </div>
+        ${
+          isOfficial
+            ? `<div style="width: ${landscape ? '56px' : '68px'}; flex-shrink: 0; text-align: center; font-size: ${landscape ? '7.5pt' : '8.5pt'}; font-weight: 800; color: #0f3b63; border: 1.5px solid #0f3b63; border-radius: 4px; padding: 4px 2px; line-height: 1.25;">
+                OFFICIAL<br/>COPY
+              </div>`
+            : `<div style="width: ${landscape ? '56px' : '68px'}; flex-shrink: 0; text-align: center; font-size: ${landscape ? '7.5pt' : '8.5pt'}; font-weight: 700; color: #64748b; border: 1px solid #94a3b8; border-radius: 4px; padding: 4px 2px; line-height: 1.25;">
+                PUBLIC<br/>COPY
+              </div>`
+        }
       </div>
       <div class="meta-bar">
         <span>District: Suryapet &nbsp;|&nbsp; Division: Huzurnagar</span>
@@ -224,35 +257,8 @@ export const generatePrintHtml = (payload: PrintReportPayload, autoPrint = false
       ${tableHtml}
     </div>
 
-    <div class="footer-sign">
-      <div class="sign-box">
-        <div style="color: #64748b; font-weight: normal;">${isCourtDoc ? 'Court Prepared by:' : 'Prepared by:'}</div>
-        <div style="margin-top: 26px; font-weight: 800; color: #0f172a;">
-          ${isCourtDoc ? 'Bench Clerk / Superintendent' : 'Senior Assistant / D Section'}
-        </div>
-        <div style="font-size: 7.5pt; color: #64748b; font-weight: normal;">
-          ${isCourtDoc ? 'Appeal Cases Section • RDO Huzurnagar' : 'RDO Office, Huzurnagar'}
-        </div>
-      </div>
-      <div class="sign-box">
-        <div style="color: #64748b; font-weight: normal;">Verified by:</div>
-        <div style="margin-top: 26px; font-weight: 800; color: #0f172a;">
-          Divisional Administrative Officer (DAO)
-        </div>
-        <div style="font-size: 7.5pt; color: #64748b; font-weight: normal;">
-          RDO Office, Huzurnagar
-        </div>
-      </div>
-      <div class="sign-box">
-        <div style="color: #64748b; font-weight: normal;">${isCourtDoc ? 'Bench Presiding Officer:' : 'Approved by:'}</div>
-        <div style="margin-top: 26px; font-weight: 800; color: #0f172a;">
-          ${isCourtDoc ? 'Revenue Divisional Officer & SDM' : 'Revenue Divisional Officer (RDO)'}
-        </div>
-        <div style="font-size: 7.5pt; color: #64748b; font-weight: normal;">
-          Huzurnagar Division
-        </div>
-      </div>
-    </div>
+    ${signatureSection}
+
     ${
       autoPrint
         ? `<script>
@@ -277,6 +283,7 @@ export const printTableReport = (
     period?: string;
     landscape?: boolean;
     fileName?: string;
+    isOfficial?: boolean;
   }
 ) => {
   const payload: PrintReportPayload = {
@@ -286,6 +293,7 @@ export const printTableReport = (
     landscape: options.landscape,
     tableHtml,
     fileName: options.fileName,
+    isOfficial: options.isOfficial ?? false,
   };
 
   // Dispatch custom event to open the in-app interactive Print Preview Modal
