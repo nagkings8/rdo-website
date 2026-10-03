@@ -16,8 +16,8 @@ import {
   AlertCircle, 
   Layers, 
   ShieldAlert, 
-  Eye,
-  Activity
+  Eye, 
+  Activity 
 } from 'lucide-react';
 import { exportBhuBharatiToCSV } from '../utils/storage';
 import { printTableReport } from '../utils/printReport';
@@ -81,7 +81,7 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
   const returnedCollCount = files.filter((f) => f.status === 'Returned from Collectorate').length;
 
   const filteredFiles = useMemo(() => {
-    return files.filter(f => {
+    return files.filter((f) => {
       const q = searchTerm.toLowerCase();
       const matchSearch =
         (f.appNumber || '').toLowerCase().includes(q) ||
@@ -127,7 +127,9 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
       </tr>
     `;
 
-    const tableRows = filteredFiles.map((f, i) => `
+    const tableRows = filteredFiles
+      .map(
+        (f, i) => `
       <tr>
         <td style="text-align: center; font-weight: bold; border: 1px solid #94a3b8; padding: 5px;">${i + 1}</td>
         <td style="font-weight: bold; border: 1px solid #94a3b8; padding: 5px;">${f.appNumber}</td>
@@ -141,7 +143,9 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
         <td style="border: 1px solid #94a3b8; padding: 5px;">${f.assignedSeat || '-'}</td>
         <td style="text-align: center; border: 1px solid #94a3b8; padding: 5px;">${f.receivedDate}</td>
       </tr>
-    `).join('');
+    `
+      )
+      .join('');
 
     const tableHtml = `
       <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
@@ -406,7 +410,7 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {/* Print Files Register Button: Always visible to everyone (Public and Staff) */}
+            {/* Print Files Register Button: Public and Staff users iddariki visible */}
             <button
               onClick={handlePrintTable}
               className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
