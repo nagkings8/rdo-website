@@ -11,7 +11,8 @@ import {
   Loader2, 
   Phone, 
   Smartphone, 
-  Check 
+  Check,
+  User
 } from 'lucide-react';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
@@ -37,17 +38,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onUpdateStaffPassword,
 }) => {
   const [role, setRole] = useState<'STAFF' | 'ADMIN'>('STAFF');
-  const [selectedStaffId, setSelectedStaffId] = useState<string>(
-    staff[0]?.id ? String(staff[0].id) : ''
-  );
+  const [selectedStaffId, setSelectedStaffId] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
   const [activeView, setActiveView] = useState<'LOGIN' | 'FORGOT_PASSWORD'>('LOGIN');
 
   // OTP Self-Reset State
-  const [forgotStaffId, setForgotStaffId] = useState<string>(
-    staff[0]?.id ? String(staff[0].id) : ''
-  );
+  const [forgotStaffId, setForgotStaffId] = useState<string>('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [resetNewPassword, setResetNewPassword] = useState('');
@@ -94,13 +91,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     };
   }, [isOpen]);
 
-  useEffect(() => {
-    if (staff.length > 0 && !selectedStaffId) {
-      setSelectedStaffId(String(staff[0].id));
-      setForgotStaffId(String(staff[0].id));
-    }
-  }, [staff, selectedStaffId]);
-
   if (!isOpen) return null;
 
   const currentStaffList = cloudStaffList.length > 0 ? cloudStaffList : staff;
@@ -110,6 +100,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const handleClose = () => {
     setActiveView('LOGIN');
     setPassword('');
+    setSelectedStaffId('');
+    setForgotStaffId('');
     setOtpSent(false);
     setOtpCode('');
     setResetNewPassword('');
@@ -141,7 +133,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         }
 
         if (password !== expectedAdminPassword) {
-          onShowToast('❌ Incorrect Administrator password.');
+          onShowToast('Incorrect Administrator password.');
           setIsVerifying(false);
           return;
         }
@@ -158,6 +150,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         handleClose();
         onShowToast(`Welcome, ${currentAdmin.name}! Signed in successfully.`);
       } else {
+        if (!selectedStaffId) {
+          onShowToast('Please select your staff profile to continue.');
+          setIsVerifying(false);
+          return;
+        }
+
         let activeList = currentStaffList;
         try {
           const staffSnap = await getDoc(doc(db, 'system_auth', 'staff_users'));
@@ -177,7 +175,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
         const expectedStaffPassword = selected.password || 'staff';
         if (password !== expectedStaffPassword) {
-          onShowToast(`❌ Incorrect password for ${selected.name}.`);
+          onShowToast(`Incorrect password for ${selected.name}.`);
           setIsVerifying(false);
           return;
         }
@@ -194,6 +192,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   // Send OTP to Registered Mobile Number
   const handleSendOtp = async () => {
+    if (!forgotStaffId) {
+      onShowToast('Please select your staff profile first.');
+      return;
+    }
+
     const target = currentStaffList.find((s) => String(s.id) === forgotStaffId);
     if (!target) {
       onShowToast('Please select your staff profile.');
@@ -201,7 +204,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
 
     if (!target.phone || target.phone.trim().length < 10) {
-      onShowToast('⚠️ Mobile number not registered for this staff. Please contact Admin.');
+      onShowToast('Mobile number not registered for this staff. Please contact Admin.');
       return;
     }
 
@@ -212,7 +215,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
     try {
       setIsSendingOtp(true);
-      onShowToast(`Sending SMS OTP to ${target.phone.slice(0, 3)}****${target.phone.slice(-3)}...`);
+      onShowToast(`Sending SMS OTP to registered mobile number...`);
 
       if (!recaptchaVerifierRef.current) {
         recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
@@ -224,7 +227,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       const confirmation = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifierRef.current);
       setConfirmationResult(confirmation);
       setOtpSent(true);
-      onShowToast('✅ 6-digit OTP sent successfully via SMS!');
+      onShowToast('6-digit OTP sent successfully via SMS!');
     } catch (err: any) {
       console.error('OTP Send Error:', err);
       if (recaptchaVerifierRef.current) {
@@ -283,13 +286,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }
 
       setCloudStaffList(updatedList);
-      onShowToast(`✅ Password reset successful for ${target.name}! You can now login.`);
+      onShowToast(`Password reset successful for ${target.name}! You can now login.`);
       setSelectedStaffId(String(target.id));
       setPassword('');
       handleClose();
     } catch (err: any) {
       console.error('OTP verify err:', err);
-      onShowToast('❌ Invalid OTP. Please enter the correct code.');
+      onShowToast('Invalid OTP. Please enter the correct code.');
     } finally {
       setIsVerifyingOtp(false);
     }
@@ -297,14 +300,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-3 overflow-y-auto">
-      {/* Invisible reCAPTCHA container */}
       <div id="recaptcha-container"></div>
 
       <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transition-all my-6">
         {/* Header */}
-        <div className="bg-[#061122] text-white px-5 py-4 flex justify-between items-center border-b-2 border-amber-500">
+        <div className="bg-gradient-to-r from-[#0b3323] via-[#0e3d2a] to-[#0b3323] text-white px-5 py-4 flex justify-between items-center border-b-2 border-emerald-500">
           <h3 className="font-bold text-sm text-white flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300">
               {activeView === 'FORGOT_PASSWORD' ? (
                 <Smartphone className="w-4 h-4" />
               ) : (
@@ -328,11 +330,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {/* FORGOT PASSWORD VIEW */}
         {activeView === 'FORGOT_PASSWORD' ? (
           <div className="p-5 md:p-6 space-y-4 text-xs max-h-[85vh] overflow-y-auto">
-            {/* OPTION 1: Mobile OTP */}
             <div className="bg-slate-50 border border-slate-300 rounded-xl p-3.5 space-y-3">
               <div className="flex items-center gap-2 font-bold text-slate-900 border-b border-slate-200 pb-2">
-                <Smartphone className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>Option 1: Reset via Free Mobile SMS OTP</span>
+                <Smartphone className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Option 1: Reset via Registered Mobile SMS OTP</span>
               </div>
 
               {!otpSent ? (
@@ -344,8 +345,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     <select
                       value={forgotStaffId}
                       onChange={(e) => setForgotStaffId(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-xs font-medium"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-xs font-medium focus:border-emerald-600 focus:outline-none"
                     >
+                      <option value="">-- Choose Your Staff Profile --</option>
                       {activeStaffList.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.name} ({s.phone ? `${s.phone.slice(0, 3)}****${s.phone.slice(-3)}` : 'No Phone'})
@@ -356,9 +358,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   <button
                     type="button"
-                    disabled={isSendingOtp}
+                    disabled={isSendingOtp || !forgotStaffId}
                     onClick={handleSendOtp}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg transition flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
                   >
                     {isSendingOtp ? (
                       <>
@@ -386,7 +388,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       value={otpCode}
                       maxLength={6}
                       onChange={(e) => setOtpCode(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-center font-mono font-bold tracking-widest text-sm focus:border-blue-600 focus:outline-none"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-center font-mono font-bold tracking-widest text-sm focus:border-emerald-600 focus:outline-none"
                     />
                   </div>
 
@@ -401,7 +403,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         placeholder="Enter new password"
                         value={resetNewPassword}
                         onChange={(e) => setResetNewPassword(e.target.value)}
-                        className="w-full pl-3 pr-9 py-2 border border-slate-300 rounded-lg font-mono text-xs focus:border-blue-600 focus:outline-none"
+                        className="w-full pl-3 pr-9 py-2 border border-slate-300 rounded-lg font-mono text-xs focus:border-emerald-600 focus:outline-none"
                       />
                       <button
                         type="button"
@@ -423,7 +425,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       placeholder="Re-enter new password"
                       value={resetConfirmPassword}
                       onChange={(e) => setResetConfirmPassword(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs focus:border-blue-600 focus:outline-none"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs focus:border-emerald-600 focus:outline-none"
                     />
                   </div>
 
@@ -431,14 +433,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setOtpSent(false)}
-                      className="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 rounded-lg text-xs"
+                      className="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 rounded-lg text-xs cursor-pointer"
                     >
                       Resend
                     </button>
                     <button
                       type="submit"
                       disabled={isVerifyingOtp}
-                      className="w-2/3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-1.5 shadow-xs"
+                      className="w-2/3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                     >
                       {isVerifyingOtp ? (
                         <>
@@ -497,8 +499,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         ) : (
           /* STANDARD LOGIN VIEW */
           <form onSubmit={handleSubmit} className="p-5 md:p-6 space-y-4 text-xs">
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-600 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-[11px] text-emerald-950 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
               <span>
                 Registers are open to view. Login is required for Section Staff &amp; Administrator entries.
               </span>
@@ -515,11 +517,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   }}
                   className={`py-2 px-3 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     role === 'STAFF'
-                      ? 'bg-white text-blue-900 shadow-sm border border-slate-200/80'
+                      ? 'bg-white text-emerald-900 shadow-sm border border-slate-200/80 font-black'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <UserCheck className="w-4 h-4 text-blue-600" />
+                  <UserCheck className="w-4 h-4 text-emerald-700" />
                   <span>Section Staff</span>
                 </button>
                 <button
@@ -530,11 +532,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   }}
                   className={`py-2 px-3 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     role === 'ADMIN'
-                      ? 'bg-[#061122] text-amber-400 shadow-sm border border-amber-500/40'
+                      ? 'bg-[#0b3323] text-amber-300 shadow-sm border border-emerald-500/40 font-black'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <ShieldCheck className="w-4 h-4 text-amber-500" />
+                  <ShieldCheck className="w-4 h-4 text-amber-400" />
                   <span>Administrator</span>
                 </button>
               </div>
@@ -549,8 +551,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   required
                   value={selectedStaffId}
                   onChange={(e) => setSelectedStaffId(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-slate-300 rounded-xl font-medium focus:border-blue-600 focus:outline-none bg-white shadow-2xs"
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-xl font-medium focus:border-emerald-600 focus:outline-none bg-white shadow-2xs text-slate-800"
                 >
+                  <option value="">-- Choose Your Staff Profile --</option>
                   {activeStaffList.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} — {s.cadre}
@@ -561,7 +564,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             ) : (
               <div className="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-[#061122] text-amber-400 flex items-center justify-center font-bold">
+                  <div className="w-8 h-8 rounded-lg bg-[#0b3323] text-amber-300 flex items-center justify-center font-bold">
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div>
@@ -580,19 +583,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <label className="font-bold text-slate-700">
                   Password <span className="text-rose-500">*</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setForgotStaffId(selectedStaffId);
-                    setOtpSent(false);
-                    setOtpCode('');
-                    setActiveView('FORGOT_PASSWORD');
-                  }}
-                  className="text-[11px] text-blue-600 hover:text-blue-800 font-bold hover:underline cursor-pointer flex items-center gap-1"
-                >
-                  <Smartphone className="w-3 h-3 text-blue-600" />
-                  <span>Forgot / Reset via OTP?</span>
-                </button>
+                {role === 'STAFF' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotStaffId(selectedStaffId);
+                      setOtpSent(false);
+                      setOtpCode('');
+                      setActiveView('FORGOT_PASSWORD');
+                    }}
+                    className="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    <Smartphone className="w-3 h-3 text-emerald-600" />
+                    <span>Forgot / Reset via OTP?</span>
+                  </button>
+                )}
               </div>
               <div className="relative">
                 <input
@@ -601,7 +606,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   placeholder={role === 'ADMIN' ? 'Enter administrator password' : 'Enter staff password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-3 pr-10 py-2.5 border border-slate-300 rounded-xl focus:border-blue-600 focus:outline-none shadow-2xs text-xs font-mono"
+                  className="w-full pl-3 pr-10 py-2.5 border border-slate-300 rounded-xl focus:border-emerald-600 focus:outline-none shadow-2xs text-xs font-mono"
                 />
                 <button
                   type="button"
@@ -616,7 +621,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <button
               type="submit"
               disabled={isVerifying}
-              className="w-full text-white font-bold py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:-translate-y-0.5 mt-2 text-xs bg-[#134674] hover:bg-[#0f3b63] disabled:opacity-50"
+              className="w-full text-white font-bold py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:-translate-y-0.5 mt-2 text-xs bg-[#0b3323] hover:bg-[#072418] disabled:opacity-50"
             >
               {isVerifying ? (
                 <>
