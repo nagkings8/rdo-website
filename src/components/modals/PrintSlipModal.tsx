@@ -25,7 +25,6 @@ export const PrintSlipModal: React.FC<PrintSlipModalProps> = ({
 
   if (!isOpen || !file) return null;
 
-  // Login ayyi unte true (Official), lekunte false (Public)
   const isOfficial = currentUser && currentUser.role !== 'VIEWER';
 
   const handleDownloadPdf = async () => {
@@ -65,7 +64,7 @@ export const PrintSlipModal: React.FC<PrintSlipModalProps> = ({
 
       pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
       pdf.save(`RDO_File_Tracking_Slip_${file.appNumber}.pdf`);
-      onShowToast(`Slip for Application #${file.appNumber} downloaded as PDF!`);
+      onShowToast(`Official Slip for Application #${file.appNumber} downloaded as PDF!`);
     } catch (err: any) {
       console.error('Slip PDF error:', err);
       onShowToast('Error creating PDF slip. Please try again.');
@@ -119,7 +118,7 @@ export const PrintSlipModal: React.FC<PrintSlipModalProps> = ({
         <html>
           <head>
             <meta charset="utf-8" />
-            <title>Tracking Slip - ${file.appNumber}</title>
+            <title>Official Tracking Slip - ${file.appNumber}</title>
             <style>
               @page {
                 size: A4 portrait;
@@ -144,6 +143,7 @@ export const PrintSlipModal: React.FC<PrintSlipModalProps> = ({
                 width: 100%;
                 max-width: 720px;
                 margin: 0 auto;
+                page-break-inside: avoid !important;
               }
               .header-table {
                 width: 100%;
@@ -276,7 +276,7 @@ export const PrintSlipModal: React.FC<PrintSlipModalProps> = ({
                   <td class="title-center">
                     <div class="govt-title">GOVERNMENT OF TELANGANA</div>
                     <div class="rdo-title">REVENUE DIVISIONAL OFFICE, HUZURNAGAR</div>
-                    <div class="sub-title">D SECTION – FILE TRACKING ACKNOWLEDGEMENT SLIP</div>
+                    <div class="sub-title">D SECTION – OFFICIAL FILE TRACKING ACKNOWLEDGEMENT SLIP</div>
                   </td>
                   <td style="width: 65px; text-align: right;">
                     <div class="slip-badge">
@@ -380,7 +380,7 @@ export const PrintSlipModal: React.FC<PrintSlipModalProps> = ({
             <span className="bg-amber-500 text-slate-950 font-black text-[10px] px-2 py-0.5 rounded tracking-wider uppercase">
               BHU BHARATI
             </span>
-            <h3 className="font-extrabold text-sm text-white">File Tracking Slip</h3>
+            <h3 className="font-extrabold text-sm text-white">Official File Tracking Slip</h3>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -437,7 +437,7 @@ export const PrintSlipModal: React.FC<PrintSlipModalProps> = ({
                   REVENUE DIVISIONAL OFFICE, HUZURNAGAR
                 </div>
                 <div style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', color: '#000000' }}>
-                  D SECTION – FILE TRACKING ACKNOWLEDGEMENT SLIP
+                  D SECTION – OFFICIAL FILE TRACKING ACKNOWLEDGEMENT SLIP
                 </div>
               </div>
               <div style={{ width: '60px', flexShrink: 0, textAlign: 'right' }}>

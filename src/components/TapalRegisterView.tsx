@@ -395,7 +395,6 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {/* Public and Staff Can Print Inward Register */}
             <button
               onClick={handlePrintInwards}
               className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
@@ -605,7 +604,6 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {/* Public and Staff Can Print Outward Register */}
             <button
               onClick={handlePrintOutwards}
               className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
