@@ -70,16 +70,17 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
     setSelectedStatus('');
   };
 
-  // Detailed Metric Counts for the Abstract Dashboard
+  // Detailed Metric Counts for the Abstract Dashboard (Merged Pending at RDO & Received from MRO)
   const totalFiles = files.length;
   const pendingCount = files.filter(
     (f) => f.status === 'Pending at RDO' || f.status === 'Received from MRO'
   ).length;
   const forwardedCount = files.filter((f) => f.status === 'Forwarded to Collectorate').length;
-  const completedCount = files.filter((f) => f.status === 'Completed').length;
+  const completedCount = files.filter((f) => f.status === 'Completed' || f.status === 'Disposed').length;
   const returnedCount = files.filter((f) => f.status === 'Returned to MRO').length;
   const returnedCollCount = files.filter((f) => f.status === 'Returned from Collectorate').length;
 
+  // Filtered files list with combined status matching
   const filteredFiles = useMemo(() => {
     return files.filter((f) => {
       const q = searchTerm.toLowerCase();
@@ -93,7 +94,14 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
       const matchMandal = selectedMandal === '' || f.mandal === selectedMandal;
       const matchVillage = selectedVillage === '' || f.village === selectedVillage;
       const matchModule = selectedModule === '' || f.module === selectedModule;
-      const matchStatus = selectedStatus === '' || f.status === selectedStatus;
+
+      // Smart Status match: Merging "Pending at RDO" and "Received from MRO"
+      let matchStatus = true;
+      if (selectedStatus === 'Pending at RDO' || selectedStatus === 'Received from MRO') {
+        matchStatus = f.status === 'Pending at RDO' || f.status === 'Received from MRO';
+      } else if (selectedStatus !== '') {
+        matchStatus = f.status === selectedStatus;
+      }
 
       return matchSearch && matchMandal && matchVillage && matchModule && matchStatus;
     });
@@ -287,6 +295,7 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
 
         {/* 6 Metric Status Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Card 1: Total Files */}
           <div
             onClick={() => setSelectedStatus('')}
             className={`group relative overflow-hidden bg-gradient-to-br from-white via-blue-50/20 to-blue-100/30 border border-slate-200/80 border-l-[6px] border-l-blue-600 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(37,99,235,0.28)] hover:border-blue-400 hover:bg-gradient-to-br hover:from-white hover:to-blue-50/70 hover:-translate-y-1.5 transition-all duration-300 ${
@@ -305,10 +314,11 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
             </div>
           </div>
 
+          {/* Card 2: Pending at RDO (Click selects both Pending at RDO & Received from MRO) */}
           <div
-            onClick={() => setSelectedStatus(selectedStatus === 'Pending at RDO' ? '' : 'Pending at RDO')}
+            onClick={() => setSelectedStatus(selectedStatus === 'Pending at RDO' || selectedStatus === 'Received from MRO' ? '' : 'Pending at RDO')}
             className={`group relative overflow-hidden bg-gradient-to-br from-white via-amber-50/20 to-amber-100/30 border border-slate-200/80 border-l-[6px] border-l-amber-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(217,119,6,0.28)] hover:border-amber-400 hover:bg-gradient-to-br hover:from-white hover:to-amber-50/70 hover:-translate-y-1.5 transition-all duration-300 ${
-              selectedStatus === 'Pending at RDO' ? 'ring-2 ring-amber-500/40 bg-amber-50/40' : ''
+              selectedStatus === 'Pending at RDO' || selectedStatus === 'Received from MRO' ? 'ring-2 ring-amber-500/40 bg-amber-50/40' : ''
             }`}
           >
             <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/80 via-white/15 to-transparent pointer-events-none rounded-t-2xl" />
@@ -319,10 +329,11 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
               {pendingCount}
             </div>
             <div className="text-xs font-bold text-amber-700 group-hover:text-amber-800 flex items-center gap-1 group-hover:translate-x-1 transition-all">
-              Action In-Progress →
+              Action In-Progress / Received →
             </div>
           </div>
 
+          {/* Card 3: Forwarded to Collectorate */}
           <div
             onClick={() => setSelectedStatus(selectedStatus === 'Forwarded to Collectorate' ? '' : 'Forwarded to Collectorate')}
             className={`group relative overflow-hidden bg-gradient-to-br from-white via-sky-50/20 to-sky-100/30 border border-slate-200/80 border-l-[6px] border-l-sky-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(14,165,233,0.28)] hover:border-sky-400 hover:bg-gradient-to-br hover:from-white hover:to-sky-50/70 hover:-translate-y-1.5 transition-all duration-300 ${
@@ -341,6 +352,7 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
             </div>
           </div>
 
+          {/* Card 4: Returned to MRO */}
           <div
             onClick={() => setSelectedStatus(selectedStatus === 'Returned to MRO' ? '' : 'Returned to MRO')}
             className={`group relative overflow-hidden bg-gradient-to-br from-white via-red-50/20 to-red-100/30 border border-slate-200/80 border-l-[6px] border-l-red-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(239,68,68,0.28)] hover:border-red-400 hover:bg-gradient-to-br hover:from-white hover:to-red-50/70 hover:-translate-y-1.5 transition-all duration-300 ${
@@ -359,6 +371,7 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
             </div>
           </div>
 
+          {/* Card 5: Returned from Collectorate */}
           <div
             onClick={() => setSelectedStatus(selectedStatus === 'Returned from Collectorate' ? '' : 'Returned from Collectorate')}
             className={`group relative overflow-hidden bg-gradient-to-br from-white via-rose-50/20 to-rose-100/30 border border-slate-200/80 border-l-[6px] border-l-rose-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(244,63,94,0.28)] hover:border-rose-400 hover:bg-gradient-to-br hover:from-white hover:to-rose-50/70 hover:-translate-y-1.5 transition-all duration-300 ${
@@ -377,6 +390,7 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
             </div>
           </div>
 
+          {/* Card 6: Disposed / Completed */}
           <div
             onClick={() => setSelectedStatus(selectedStatus === 'Completed' ? '' : 'Completed')}
             className={`group relative overflow-hidden bg-gradient-to-br from-white via-emerald-50/20 to-emerald-100/30 border border-slate-200/80 border-l-[6px] border-l-emerald-500 rounded-2xl p-4.5 cursor-pointer shadow-xs hover:shadow-[0_12px_26px_-6px_rgba(16,185,129,0.28)] hover:border-emerald-400 hover:bg-gradient-to-br hover:from-white hover:to-emerald-50/70 hover:-translate-y-1.5 transition-all duration-300 ${
@@ -410,7 +424,6 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {/* Print Files Register Button: Public and Staff users iddariki visible */}
             <button
               onClick={handlePrintTable}
               className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
@@ -494,17 +507,18 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
             ))}
           </select>
 
+          {/* Unified Status Selector */}
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="text-xs bg-white border border-slate-300 rounded-md py-1.5 px-2.5 focus:border-blue-500 focus:outline-none"
+            className="text-xs bg-white border border-slate-300 rounded-md py-1.5 px-2.5 focus:border-blue-500 focus:outline-none font-medium"
           >
             <option value="">All Statuses</option>
-            {FILE_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
+            <option value="Pending at RDO">Pending at RDO (Received from MRO)</option>
+            <option value="Forwarded to Collectorate">Forwarded to Collectorate</option>
+            <option value="Returned from Collectorate">Returned from Collectorate</option>
+            <option value="Returned to MRO">Returned to MRO</option>
+            <option value="Completed">Completed / Disposed</option>
           </select>
 
           <button
@@ -612,7 +626,6 @@ export const BhuBharatiView: React.FC<BhuBharatiViewProps> = ({
                           </>
                         )}
 
-                        {/* Delete button: ADMIN ONLY */}
                         {isAdmin && (
                           <button
                             onClick={() => onDeleteFile(f)}
