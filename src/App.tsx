@@ -153,32 +153,48 @@ export default function App() {
     const unsubFiles = onSnapshot(collection(db, 'bhu_files'), (snapshot) => {
       const list: BhuFile[] = [];
       snapshot.forEach((d) => list.push(d.data() as BhuFile));
-      setFiles(list);
-      safeSaveLocalStorage('rdo_files', list);
+      if (list.length > 0) {
+        list.sort((a, b) => Number(b.id) - Number(a.id));
+        setFiles(list);
+        safeSaveLocalStorage('rdo_files', list);
+      }
+    }, (err) => {
+      console.error('Bhu Files Sync Error:', err);
     });
 
     const unsubInwards = onSnapshot(collection(db, 'inward_tapals'), (snapshot) => {
       const list: InwardTapal[] = [];
       snapshot.forEach((d) => list.push(d.data() as InwardTapal));
-      setInwards(list);
-      safeSaveLocalStorage('rdo_inward_tapal', list);
+      if (list.length > 0) {
+        setInwards(list);
+        safeSaveLocalStorage('rdo_inward_tapal', list);
+      }
+    }, (err) => {
+      console.error('Inwards Sync Error:', err);
     });
 
     const unsubOutwards = onSnapshot(collection(db, 'outward_despatches'), (snapshot) => {
       const list: OutwardDespatch[] = [];
       snapshot.forEach((d) => list.push(d.data() as OutwardDespatch));
-      setOutwards(list);
-      safeSaveLocalStorage('rdo_outward', list);
+      if (list.length > 0) {
+        setOutwards(list);
+        safeSaveLocalStorage('rdo_outward', list);
+      }
+    }, (err) => {
+      console.error('Outwards Sync Error:', err);
     });
 
     const unsubAppeals = onSnapshot(collection(db, 'appeal_cases'), (snapshot) => {
       const list: AppealCase[] = [];
       snapshot.forEach((d) => list.push(d.data() as AppealCase));
-      setAppealCases(list);
-      safeSaveLocalStorage('rdo_appeal_cases', list);
+      if (list.length > 0) {
+        setAppealCases(list);
+        safeSaveLocalStorage('rdo_appeal_cases', list);
+      }
+    }, (err) => {
+      console.error('Appeals Sync Error:', err);
     });
 
-    // Staff Users & Passwords Firestore Cloud Listener
     const unsubStaff = onSnapshot(doc(db, 'system_auth', 'staff_users'), (snapshot) => {
       if (snapshot.exists() && snapshot.data()?.users) {
         try {
@@ -198,7 +214,6 @@ export default function App() {
       }
     });
 
-    // Admin Profile & Password Firestore Cloud Listener
     const unsubAdmin = onSnapshot(doc(db, 'system_auth', 'admin_profile'), (snapshot) => {
       if (snapshot.exists() && snapshot.data()?.profile) {
         try {
@@ -345,29 +360,37 @@ export default function App() {
     });
   };
 
+  // Direct Firestore Write + Instant Multi-Device Sync
   const handleSaveFile = async (newFile: BhuFile) => {
-    const fileToSave = { ...newFile };
-    if (fileToSave.fileAttachment) {
-      const key = fileToSave.attachmentKey || `bhu_${fileToSave.id}`;
-      await saveUniversalAttachment(key, fileToSave.fileAttachment);
-      fileToSave.attachmentKey = key;
-      fileToSave.hasAttachment = true;
-      delete fileToSave.fileAttachment;
-    }
-    const updated = [fileToSave, ...files.filter((f) => f.id !== fileToSave.id)];
-    setFiles(updated);
-    safeSaveLocalStorage('rdo_files', updated);
     try {
+      const fileToSave = { ...newFile };
+      if (fileToSave.fileAttachment) {
+        const key = fileToSave.attachmentKey || `bhu_${fileToSave.id}`;
+        await saveUniversalAttachment(key, fileToSave.fileAttachment);
+        fileToSave.attachmentKey = key;
+        fileToSave.hasAttachment = true;
+        delete fileToSave.fileAttachment;
+      }
+
+      // 1. Direct Cloud Firestore Write First
       await setDoc(doc(db, 'bhu_files', String(fileToSave.id)), fileToSave);
-    } catch (err) {
+
+      // 2. Update Local State
+      const updated = [fileToSave, ...files.filter((f) => f.id !== fileToSave.id)];
+      setFiles(updated);
+      safeSaveLocalStorage('rdo_files', updated);
+
+      logActivity(
+        'Bhu Bharati',
+        fileToSave.appNumber,
+        'ENTRY',
+        `New Bhu Bharati file registered for ${fileToSave.applicantName}, Village: ${fileToSave.village}, Mandal: ${fileToSave.mandal}, Module: ${fileToSave.module}.`
+      );
+      showToast(`File ${fileToSave.appNumber} saved & synced to all systems!`);
+    } catch (err: any) {
       console.error('Firebase save error:', err);
+      showToast(`Cloud Sync Error: ${err.message || 'Check Firestore network'}`);
     }
-    logActivity(
-      'Bhu Bharati',
-      fileToSave.appNumber,
-      'ENTRY',
-      `New Bhu Bharati file registered for ${fileToSave.applicantName}, Village: ${fileToSave.village}, Mandal: ${fileToSave.mandal}, Module: ${fileToSave.module}.`
-    );
   };
 
   const handleUpdateFileStatus = (file: BhuFile) => {
@@ -376,20 +399,23 @@ export default function App() {
   };
 
   const handleSaveFileStatus = async (updatedFile: BhuFile) => {
-    const updated = files.map((f) => (f.id === updatedFile.id ? updatedFile : f));
-    setFiles(updated);
-    safeSaveLocalStorage('rdo_files', updated);
     try {
       await setDoc(doc(db, 'bhu_files', String(updatedFile.id)), updatedFile);
-    } catch (err) {
+      const updated = files.map((f) => (f.id === updatedFile.id ? updatedFile : f));
+      setFiles(updated);
+      safeSaveLocalStorage('rdo_files', updated);
+
+      logActivity(
+        'Bhu Bharati',
+        updatedFile.appNumber,
+        'STATUS_CHANGE',
+        `Status updated to "${updatedFile.status}". Remarks: ${updatedFile.remarks || 'Scrutiny updated'}.`
+      );
+      showToast(`Status updated & synced across all systems!`);
+    } catch (err: any) {
       console.error('Firebase update error:', err);
+      showToast(`Cloud Sync Error: ${err.message || 'Could not update status'}`);
     }
-    logActivity(
-      'Bhu Bharati',
-      updatedFile.appNumber,
-      'STATUS_CHANGE',
-      `Status updated to "${updatedFile.status}". Remarks: ${updatedFile.remarks || 'Scrutiny updated'}.`
-    );
   };
 
   const handleSwitchToStatusFromModal = (fileId: number) => {
@@ -439,14 +465,10 @@ export default function App() {
     );
     setPendingDeleteAction(() => async () => {
       if (file.attachmentKey) await deleteUniversalAttachment(file.attachmentKey);
+      await deleteDoc(doc(db, 'bhu_files', String(file.id)));
       const updated = files.filter((f) => f.id !== file.id);
       setFiles(updated);
       safeSaveLocalStorage('rdo_files', updated);
-      try {
-        await deleteDoc(doc(db, 'bhu_files', String(file.id)));
-      } catch (err) {
-        console.error('Firebase delete error:', err);
-      }
       logActivity(
         'Bhu Bharati',
         file.appNumber,
@@ -490,7 +512,8 @@ export default function App() {
     safeSaveLocalStorage('rdo_inward_tapal', updated);
     try {
       await setDoc(doc(db, 'inward_tapals', String(tapalToSave.id)), tapalToSave);
-    } catch (err) {
+      showToast(`Inward Tapal #${tapalToSave.inwardNo} synced to cloud!`);
+    } catch (err: any) {
       console.error('Firebase inward save error:', err);
     }
   };
@@ -555,14 +578,10 @@ export default function App() {
     );
     setPendingDeleteAction(() => async () => {
       if (tapal.attachmentKey) await deleteUniversalAttachment(tapal.attachmentKey);
+      await deleteDoc(doc(db, 'inward_tapals', String(tapal.id)));
       const updated = inwards.filter((t) => t.id !== tapal.id);
       setInwards(updated);
       safeSaveLocalStorage('rdo_inward_tapal', updated);
-      try {
-        await deleteDoc(doc(db, 'inward_tapals', String(tapal.id)));
-      } catch (err) {
-        console.error('Firebase delete error:', err);
-      }
       logActivity('Tapal Inward', tapal.inwardNo, 'DELETE', `Inward Tapal #${tapal.inwardNo} deleted.`);
       showToast(`Inward Tapal (${tapal.inwardNo}) deleted successfully.`);
     });
@@ -658,14 +677,10 @@ export default function App() {
     );
     setPendingDeleteAction(() => async () => {
       if (outward.attachmentKey) await deleteUniversalAttachment(outward.attachmentKey);
+      await deleteDoc(doc(db, 'outward_despatches', String(outward.id)));
       const updated = outwards.filter((o) => o.id !== outward.id);
       setOutwards(updated);
       safeSaveLocalStorage('rdo_outward', updated);
-      try {
-        await deleteDoc(doc(db, 'outward_despatches', String(outward.id)));
-      } catch (err) {
-        console.error('Firebase delete outward error:', err);
-      }
       logActivity('Tapal Outward', outward.outwardNo, 'DELETE', `Outward #${outward.outwardNo} deleted.`);
       showToast(`Outward Despatch (${outward.outwardNo}) deleted successfully.`);
     });
@@ -726,14 +741,10 @@ export default function App() {
     );
     setPendingDeleteAction(() => async () => {
       if (appealCase.attachmentKey) await deleteUniversalAttachment(appealCase.attachmentKey);
+      await deleteDoc(doc(db, 'appeal_cases', String(appealCase.id)));
       const updated = appealCases.filter((c) => c.id !== appealCase.id);
       setAppealCases(updated);
       safeSaveLocalStorage('rdo_appeal_cases', updated);
-      try {
-        await deleteDoc(doc(db, 'appeal_cases', String(appealCase.id)));
-      } catch (err) {
-        console.error('Firebase delete error:', err);
-      }
       logActivity('Appeal Cases', appealCase.caseNo, 'DELETE', `Appeal Case #${appealCase.caseNo} deleted.`);
       showToast(`Appeal Case (${appealCase.caseNo}) deleted successfully.`);
     });
@@ -996,7 +1007,6 @@ export default function App() {
           />
         )}
 
-        {/* RDO Login Pendency Tab View */}
         {activeTab === 'rdoPendencyTab' && (
           <RdoPendencyView
             currentUser={currentUser}
