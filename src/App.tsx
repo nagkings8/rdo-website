@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from './utils/firebase';
 import {
@@ -53,6 +53,27 @@ import { AddUserModal } from './components/modals/AddUserModal';
 import { ChangePasswordModal } from './components/modals/ChangePasswordModal';
 import { PrintReportPayload } from './utils/printReport';
 
+// URL Routing Mapping
+const TAB_ROUTES: Record<ActiveTab, string> = {
+  dashboardTab: '/',
+  bhuBharatiTab: '/bhu-bharati',
+  tapalTab: '/tapal-register',
+  sadabainamaTab: '/sadabainama',
+  appealCasesTab: '/appeal-cases',
+  rdoPendencyTab: '/rdo-pendency',
+  adminTab: '/admin',
+};
+
+const getTabFromPath = (path: string): ActiveTab => {
+  const cleanPath = path.toLowerCase().replace(/\/$/, '') || '/';
+  for (const [tab, route] of Object.entries(TAB_ROUTES)) {
+    if (cleanPath === route.toLowerCase()) {
+      return tab as ActiveTab;
+    }
+  }
+  return 'dashboardTab';
+};
+
 export default function App() {
   const [files, setFiles] = useState<BhuFile[]>(() =>
     safeGetLocalStorage('rdo_files', INITIAL_FILES)
@@ -91,8 +112,46 @@ export default function App() {
     safeGetLocalStorage('rdo_audit_logs', INITIAL_AUDIT_LOGS)
   );
 
-  const [currentUser, setCurrentUser] = useState<StaffUser | null>(null);
-  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboardTab');
+  // Persistent User Session Across Refreshes
+  const [currentUser, setCurrentUserState] = useState<StaffUser | null>(() => {
+    return safeGetLocalStorage<StaffUser | null>('rdo_logged_user', null);
+  });
+
+  const handleSetCurrentUser = (user: StaffUser | null) => {
+    setCurrentUserState(user);
+    if (user) {
+      safeSaveLocalStorage('rdo_logged_user', user);
+    } else {
+      localStorage.removeItem('rdo_logged_user');
+    }
+  };
+
+  // URL-Aware Active Tab
+  const [activeTab, setActiveTabState] = useState<ActiveTab>(() => {
+    if (typeof window !== 'undefined') {
+      return getTabFromPath(window.location.pathname);
+    }
+    return 'dashboardTab';
+  });
+
+  const setActiveTab = useCallback((targetTab: ActiveTab) => {
+    setActiveTabState(targetTab);
+    const targetRoute = TAB_ROUTES[targetTab] || '/';
+    if (typeof window !== 'undefined' && window.location.pathname !== targetRoute) {
+      window.history.pushState(null, '', targetRoute);
+    }
+  }, []);
+
+  // Back/Forward Navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const currentTab = getTabFromPath(window.location.pathname);
+      setActiveTabState(currentTab);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const [bhuInitialStatus, setBhuInitialStatus] = useState<string>('');
@@ -147,7 +206,7 @@ export default function App() {
     };
   }, []);
 
-  // Real-time Firestore Listeners with Instant Delete Propagation
+  // Real-time Firestore Listeners
   useEffect(() => {
     const unsubFiles = onSnapshot(collection(db, 'bhu_files'), (snapshot) => {
       const list: BhuFile[] = [];
@@ -216,10 +275,14 @@ export default function App() {
           if (Array.isArray(list) && list.length > 0) {
             setStaff(list);
             safeSaveLocalStorage('rdo_staff', list);
-            setCurrentUser((prev) => {
+            setCurrentUserState((prev) => {
               if (!prev) return null;
               const found = list.find((u) => u.id === prev.id);
-              return found || prev;
+              if (found) {
+                safeSaveLocalStorage('rdo_logged_user', found);
+                return found;
+              }
+              return prev;
             });
           }
         } catch (err) {
@@ -235,9 +298,9 @@ export default function App() {
           if (prof) {
             setAdminProfile(prof);
             safeSaveLocalStorage('rdo_admin_profile', prof);
-            setCurrentUser((prev) => {
+            setCurrentUserState((prev) => {
               if (prev && prev.role === 'ADMIN') {
-                return {
+                const adminUser: StaffUser = {
                   id: prof.id || 999,
                   name: prof.name,
                   role: 'ADMIN',
@@ -245,6 +308,8 @@ export default function App() {
                   phone: prof.phone,
                   active: true,
                 };
+                safeSaveLocalStorage('rdo_logged_user', adminUser);
+                return adminUser;
               }
               return prev;
             });
@@ -374,7 +439,6 @@ export default function App() {
     });
   };
 
-  // Direct Firestore Write + Local State Sync for Bhu Bharati
   const handleSaveFile = async (newFile: BhuFile) => {
     try {
       const fileToSave: BhuFile = {
@@ -461,7 +525,6 @@ export default function App() {
     setIsPdfModalOpen(true);
   };
 
-  // Admin Permanent Delete for Bhu Bharati File
   const handleDeleteBhuFilePrompt = (file: BhuFile) => {
     if (currentUser?.role !== 'ADMIN') {
       showToast('⚠️ Access restricted: Only Administrator can delete records.');
@@ -494,7 +557,6 @@ export default function App() {
     setIsDeleteModalOpen(true);
   };
 
-  // Inward Tapal Handling
   const handleSaveInward = async (savedTapal: InwardTapal) => {
     const tapalToSave = { ...savedTapal };
     if (tapalToSave.fileAttachment) {
@@ -578,7 +640,6 @@ export default function App() {
     setIsPdfModalOpen(true);
   };
 
-  // Admin Permanent Delete for Inward Tapal
   const handleDeleteInwardPrompt = (tapal: InwardTapal) => {
     if (currentUser?.role !== 'ADMIN') {
       showToast('⚠️ Access restricted: Only Administrator can delete records.');
@@ -604,7 +665,6 @@ export default function App() {
     setIsDeleteModalOpen(true);
   };
 
-  // Outward Despatch Handling
   const handleOpenOutward = (linkedId?: number) => {
     setEditingOutward(null);
     setPreselectedInwardId(linkedId || null);
@@ -679,7 +739,6 @@ export default function App() {
     setIsPdfModalOpen(true);
   };
 
-  // Admin Permanent Delete for Outward Despatch
   const handleDeleteOutwardPrompt = (outward: OutwardDespatch) => {
     if (currentUser?.role !== 'ADMIN') {
       showToast('⚠️ Access restricted: Only Administrator can delete records.');
@@ -705,7 +764,6 @@ export default function App() {
     setIsDeleteModalOpen(true);
   };
 
-  // Appeal Cases Handling
   const handleSaveAppealCase = async (newCase: AppealCase, rawFileString?: string) => {
     let caseToSave = { ...newCase };
     if (rawFileString) {
@@ -746,7 +804,6 @@ export default function App() {
     showToast(`Appeal Case ${updatedCase.caseNo} updated successfully.`);
   };
 
-  // Admin Permanent Delete for Appeal Case
   const handleDeleteAppealCasePrompt = (appealCase: AppealCase) => {
     if (currentUser?.role !== 'ADMIN') {
       showToast('⚠️ Access restricted: Only Administrator can delete records.');
@@ -801,7 +858,6 @@ export default function App() {
     }
   };
 
-  // Staff & Admin Management
   const handleToggleUserStatus = async (id: number) => {
     const updated = staff.map((u) => (u.id === id ? { ...u, active: !u.active } : u));
     setStaff(updated);
@@ -835,7 +891,7 @@ export default function App() {
     setStaff(updated);
     safeSaveLocalStorage('rdo_staff', updated);
     if (currentUser && currentUser.id === updatedMember.id) {
-      setCurrentUser(updatedMember);
+      handleSetCurrentUser(updatedMember);
     }
     try {
       await setDoc(doc(db, 'system_auth', 'staff_users'), {
@@ -852,7 +908,7 @@ export default function App() {
     setStaff(updated);
     safeSaveLocalStorage('rdo_staff', updated);
     if (currentUser && currentUser.id === staffId) {
-      setCurrentUser(null);
+      handleSetCurrentUser(null);
       setActiveTab('dashboardTab');
     }
     try {
@@ -869,14 +925,15 @@ export default function App() {
     setAdminProfile(newProfile);
     safeSaveLocalStorage('rdo_admin_profile', newProfile);
     if (currentUser && currentUser.role === 'ADMIN') {
-      setCurrentUser({
+      const updatedUser: StaffUser = {
         id: newProfile.id || 999,
         name: newProfile.name,
         role: 'ADMIN',
         cadre: newProfile.cadre,
         phone: newProfile.phone,
         active: true,
-      });
+      };
+      handleSetCurrentUser(updatedUser);
     }
     try {
       await setDoc(doc(db, 'system_auth', 'admin_profile'), {
@@ -893,7 +950,7 @@ export default function App() {
     setStaff(updated);
     safeSaveLocalStorage('rdo_staff', updated);
     if (currentUser && currentUser.id === staffId) {
-      setCurrentUser({ ...currentUser, password: newPassword });
+      handleSetCurrentUser({ ...currentUser, password: newPassword });
     }
     try {
       await setDoc(doc(db, 'system_auth', 'staff_users'), {
@@ -929,7 +986,7 @@ export default function App() {
           currentUser={currentUser}
           onOpenLogin={() => setIsLoginModalOpen(true)}
           onLogout={() => {
-            setCurrentUser(null);
+            handleSetCurrentUser(null);
             if (activeTab === 'adminTab') setActiveTab('dashboardTab');
             showToast('Signed out.');
           }}
@@ -1169,7 +1226,7 @@ export default function App() {
         onClose={() => setIsLoginModalOpen(false)}
         staff={staff}
         adminProfile={adminProfile}
-        onLogin={setCurrentUser}
+        onLogin={handleSetCurrentUser}
         onShowToast={showToast}
         onUpdateStaffPassword={handleUpdateStaffPassword}
       />
