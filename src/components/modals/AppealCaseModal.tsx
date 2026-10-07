@@ -29,15 +29,36 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
 }) => {
   const todayStr = new Date().toISOString().split('T')[0];
 
+  const safeAppealTypes = Array.isArray(APPEAL_TYPES) && APPEAL_TYPES.length > 0 ? APPEAL_TYPES : [
+    'Bhu Bharati Appeal (Sec 15(1) r/w Rule 14)',
+    'Mutation on Transfer (Sec 5)',
+    'Succession / Will (Sec 7)',
+    'Sadabainama Regularisation (Sec 6)',
+    'Other Revenue Appeal'
+  ];
+
+  const safeAppealStatuses = Array.isArray(APPEAL_STATUSES) && APPEAL_STATUSES.length > 0 ? APPEAL_STATUSES : [
+    'Under Hearing',
+    'Stay in Force',
+    'Reserved for Orders',
+    'Final Order Issued - Allowed',
+    'Final Order Issued - Dismissed',
+    'Final Order Issued - Remanded'
+  ];
+
+  const safeMandalList = Array.isArray(MANDAL_LIST) && MANDAL_LIST.length > 0 ? MANDAL_LIST : [
+    'HUZURNAGAR', 'CHINTHALAPALEM', 'GARIDEPALLY', 'MATTAMPALLY', 'MELLACHERVU', 'NEREDUCHERLA', 'PALAKEEDU'
+  ];
+
   const [caseNo, setCaseNo] = useState('');
   const [registrationNo, setRegistrationNo] = useState('');
   const [registrationDate, setRegistrationDate] = useState('');
   const [cnrNumber, setCnrNumber] = useState('');
-  const [appealType, setAppealType] = useState<string>(APPEAL_TYPES[0]);
+  const [appealType, setAppealType] = useState<string>(safeAppealTypes[0]);
   const [isManualAppealEntry, setIsManualAppealEntry] = useState(false);
   const [otherSectionDetail, setOtherSectionDetail] = useState('');
   const [bhuBharatiActSection, setBhuBharatiActSection] = useState('Section 15(1) read with Rule 14 of Telangana Bhu Bharati Rules, 2025');
-  const [mandal, setMandal] = useState<string>(MANDAL_LIST[0]);
+  const [mandal, setMandal] = useState<string>(safeMandalList[0]);
   const [village, setVillage] = useState<string>('');
   const [surveyNo, setSurveyNo] = useState('');
   const [extent, setExtent] = useState('');
@@ -56,13 +77,13 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
   const [stagePurpose, setStagePurpose] = useState('SUMMONS & NOTICE ISSUED');
   const [impugnedOrderNo, setImpugnedOrderNo] = useState('');
   const [impugnedOrderDate, setImpugnedOrderDate] = useState('');
-  const [status, setStatus] = useState<string>(APPEAL_STATUSES[4]); // default: Under Hearing
+  const [status, setStatus] = useState<string>('Under Hearing');
   const [finalOrderNo, setFinalOrderNo] = useState('');
   const [finalOrderDate, setFinalOrderDate] = useState('');
   const [finalOrderSummary, setFinalOrderSummary] = useState('');
   const [remarks, setRemarks] = useState('');
 
-  // Case History Entries (Image 2 style)
+  // Case History Entries
   const [caseHistory, setCaseHistory] = useState<CaseHistoryEntry[]>([]);
   const [showAddHistoryRow, setShowAddHistoryRow] = useState(false);
   const [newHistBusinessDate, setNewHistBusinessDate] = useState(todayStr);
@@ -76,57 +97,65 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Helper to add days
+  // Helper to add days safely
   const addDays = (baseDate: string, days: number) => {
-    const d = new Date(baseDate || todayStr);
-    d.setDate(d.getDate() + days);
-    return d.toISOString().split('T')[0];
+    try {
+      const d = new Date(baseDate || todayStr);
+      if (isNaN(d.getTime())) return todayStr;
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split('T')[0];
+    } catch {
+      return todayStr;
+    }
   };
 
   const handleAppealTypeChange = (val: string) => {
-    setAppealType(val);
-    if (val === 'Other Revenue Appeal') {
+    const safeVal = String(val || '');
+    setAppealType(safeVal);
+    if (safeVal === 'Other Revenue Appeal') {
       if (bhuBharatiActSection.includes('Bhu Bharati Rules')) {
         setBhuBharatiActSection('');
       }
-    } else if (val.includes('RoR Rectification')) {
+    } else if (safeVal.includes('RoR Rectification')) {
       setBhuBharatiActSection('Section 15(1) read with Rule 14 of Telangana Bhu Bharati Rules, 2025');
-    } else if (val.includes('Mutation on Transfer')) {
+    } else if (safeVal.includes('Mutation on Transfer')) {
       setBhuBharatiActSection('Section 15(1) read with Section 5 of Telangana Bhu Bharati Act, 2025');
-    } else if (val.includes('Succession / Will')) {
+    } else if (safeVal.includes('Succession / Will')) {
       setBhuBharatiActSection('Section 15(1) read with Section 7 of Telangana Bhu Bharati Act, 2025');
-    } else if (val.includes('Bhudhaar & Passbook')) {
+    } else if (safeVal.includes('Bhudhaar & Passbook')) {
       setBhuBharatiActSection('Section 15(1) read with Section 9 & 10 of Telangana Bhu Bharati Act, 2025');
-    } else if (val.includes('Sadabainama')) {
+    } else if (safeVal.includes('Sadabainama')) {
       setBhuBharatiActSection('Section 6(1) & (5) of Telangana Bhu Bharati Act, 2025');
-    } else if (val.includes('Court Decree')) {
+    } else if (safeVal.includes('Court Decree')) {
       setBhuBharatiActSection('Section 8 of Telangana Bhu Bharati Act, 2025');
-    } else if (val.includes('Tenancy Act')) {
+    } else if (safeVal.includes('Tenancy Act')) {
       setBhuBharatiActSection('Section 90 of Tenancy & Agricultural Lands Act, 1950');
-    } else if (val.includes('Inams Abolition')) {
+    } else if (safeVal.includes('Inams Abolition')) {
       setBhuBharatiActSection('Section 24 of Inams Abolition Act, 1955');
-    } else if (val.includes('Assigned Lands')) {
+    } else if (safeVal.includes('Assigned Lands')) {
       setBhuBharatiActSection('Section 4A / 4B of Assigned Lands (POT) Act 9 of 1977');
-    } else if (val.includes('Schedule A')) {
+    } else if (safeVal.includes('Schedule A')) {
       setBhuBharatiActSection('Schedule A - RoR Correction (Survey No / Extent / NALA)');
     }
   };
 
   useEffect(() => {
+    if (!isOpen) return;
+
     if (caseToEdit) {
       setCaseNo(caseToEdit.caseNo || '');
-      setRegistrationNo(caseToEdit.registrationNo || caseToEdit.caseNo.replace(/[^0-9/]/g, '') || '');
-      setRegistrationDate(caseToEdit.registrationDate || caseToEdit.filingDate || '');
-      setCnrNumber(caseToEdit.cnrNumber || `TSHZNR04${String(caseToEdit.id).slice(-6)}2026`);
+      setRegistrationNo(caseToEdit.registrationNo || String(caseToEdit.caseNo || '').replace(/[^0-9/]/g, '') || '');
+      setRegistrationDate(caseToEdit.registrationDate || caseToEdit.filingDate || todayStr);
+      setCnrNumber(caseToEdit.cnrNumber || `TSHZNR04${String(caseToEdit.id || Date.now()).slice(-6)}2026`);
       
-      const isKnownType = APPEAL_TYPES.includes(caseToEdit.appealType as any);
-      if (!isKnownType) {
+      const isKnownType = safeAppealTypes.includes(caseToEdit.appealType as any);
+      if (!isKnownType && caseToEdit.appealType) {
         setIsManualAppealEntry(true);
-        setAppealType(caseToEdit.appealType || '');
-        setOtherSectionDetail(caseToEdit.bhuBharatiActSection || caseToEdit.appealType || '');
+        setAppealType(caseToEdit.appealType);
+        setOtherSectionDetail(caseToEdit.bhuBharatiActSection || caseToEdit.appealType);
       } else {
         setIsManualAppealEntry(false);
-        setAppealType(caseToEdit.appealType || APPEAL_TYPES[0]);
+        setAppealType(caseToEdit.appealType || safeAppealTypes[0]);
         if (caseToEdit.appealType === 'Other Revenue Appeal') {
           setOtherSectionDetail(caseToEdit.bhuBharatiActSection || '');
         } else {
@@ -135,77 +164,75 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
       }
 
       setBhuBharatiActSection(caseToEdit.bhuBharatiActSection || 'Section 15(1) read with Rule 14 of Telangana Bhu Bharati Rules, 2025');
-      setMandal(caseToEdit.mandal || MANDAL_LIST[0]);
+      setMandal(caseToEdit.mandal || safeMandalList[0]);
       setVillage(caseToEdit.village || '');
       setSurveyNo(caseToEdit.surveyNo || '');
       setExtent(caseToEdit.extent || '');
       setAppellantName(caseToEdit.appellantName || '');
       setAppellantAdvocate(caseToEdit.appellantAdvocate || '');
-      setRespondentName(caseToEdit.respondentName || '');
-      setRespondentAdvocate(caseToEdit.respondentAdvocate || '');
-      setFilingDate(caseToEdit.filingDate || '');
+      setRespondentName(caseToEdit.respondentName || 'Tahsildar & Others');
+      setRespondentAdvocate(caseToEdit.respondentAdvocate || 'Government Pleader for Revenue');
+      setFilingDate(caseToEdit.filingDate || todayStr);
       setNoticeIssuedDate(caseToEdit.noticeIssuedDate || '');
       setNoticeServedDate(caseToEdit.noticeServedDate || '');
-      setFirstHearingDate(caseToEdit.firstHearingDate || caseToEdit.filingDate || '');
+      setFirstHearingDate(caseToEdit.firstHearingDate || caseToEdit.filingDate || todayStr);
       setHearingDate(caseToEdit.hearingDate || '');
       setNextHearingDate(caseToEdit.nextHearingDate || '');
       setStagePurpose(caseToEdit.stagePurpose ? caseToEdit.stagePurpose.replace(/\s*\([\u0C00-\u0C7F\s\/&,.-]+\)/g, '').trim() : 'SUMMONS & NOTICE ISSUED');
       setImpugnedOrderNo(caseToEdit.impugnedOrderNo || '');
       setImpugnedOrderDate(caseToEdit.impugnedOrderDate || '');
-      setStatus(caseToEdit.status || APPEAL_STATUSES[4]);
+      setStatus(caseToEdit.status || 'Under Hearing');
       setFinalOrderNo(caseToEdit.finalOrderNo || '');
       setFinalOrderDate(caseToEdit.finalOrderDate || '');
       setFinalOrderSummary(caseToEdit.finalOrderSummary || '');
       setRemarks(caseToEdit.remarks || '');
       setAttachedFileName(caseToEdit.finalOrderFileName || '');
       setAttachedFileBase64(caseToEdit.finalOrderFile || null);
-      setCaseHistory(caseToEdit.caseHistory || []);
+      setCaseHistory(Array.isArray(caseToEdit.caseHistory) ? caseToEdit.caseHistory : []);
     } else {
-      setCaseNo('');
-      setRegistrationNo('');
+      const randomId = Math.floor(100 + Math.random() * 900);
+      setCaseNo(`ROR/A/${randomId}/2026`);
+      setRegistrationNo(`${randomId}/2026`);
       setRegistrationDate(todayStr);
-      setCnrNumber('');
-      setAppealType(APPEAL_TYPES[0]);
+      setCnrNumber(`TSHZNR04000${randomId}2026`);
+      setAppealType(safeAppealTypes[0]);
       setIsManualAppealEntry(false);
       setOtherSectionDetail('');
-      setBhuBharatiActSection('');
-      setMandal(MANDAL_LIST[0]);
-      const vList = MANDAL_VILLAGES[MANDAL_LIST[0]] || [];
+      setBhuBharatiActSection('Section 15(1) read with Rule 14 of Telangana Bhu Bharati Rules, 2025');
+      setMandal(safeMandalList[0]);
+      
+      const vList = (MANDAL_VILLAGES && MANDAL_VILLAGES[safeMandalList[0]]) || [];
       setVillage(vList[0] || '');
       setSurveyNo('');
       setExtent('');
       setAppellantName('');
       setAppellantAdvocate('');
-      setRespondentName('');
-      setRespondentAdvocate('');
+      setRespondentName('Tahsildar & Others');
+      setRespondentAdvocate('Government Pleader for Revenue');
       
-      // Default dates
       setFilingDate(todayStr);
       setNoticeIssuedDate('');
       setNoticeServedDate('');
-      setFirstHearingDate('');
-      setHearingDate('');
-      setNextHearingDate('');
+      setFirstHearingDate(addDays(todayStr, 14));
+      setHearingDate(addDays(todayStr, 14));
+      setNextHearingDate(addDays(todayStr, 14));
       setStagePurpose('SUMMONS & NOTICE ISSUED');
       setImpugnedOrderNo('');
       setImpugnedOrderDate('');
-      setStatus("Under Hearing");
+      setStatus('Under Hearing');
       setFinalOrderNo('');
       setFinalOrderDate('');
       setFinalOrderSummary('');
       setRemarks('');
       setAttachedFileBase64(null);
       setAttachedFileName('');
-
-      // Fresh empty case history
       setCaseHistory([]);
     }
   }, [caseToEdit, isOpen]);
 
-  // When mandal changes, update available villages
   const handleMandalChange = (m: string) => {
     setMandal(m);
-    const vList = MANDAL_VILLAGES[m] || [];
+    const vList = (MANDAL_VILLAGES && MANDAL_VILLAGES[m]) || [];
     setVillage(vList[0] || '');
   };
 
@@ -259,7 +286,6 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
     setHearingDate(newHistHearingDate);
     setStagePurpose(newHistPurpose);
 
-    // Reset row inputs
     setNewHistHearingDate(addDays(newHistHearingDate, 14));
     setNewHistProceedings('');
     setShowAddHistoryRow(false);
@@ -281,7 +307,6 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
       return;
     }
 
-    // STRICT FILING DATE VALIDATION: FUTURE DATE NOT ALLOWED
     if (filingDate && filingDate > todayStr) {
       onShowToast('Filing Date cannot be a future date! Enter today or a past date.');
       return;
@@ -299,7 +324,6 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      // Ensure history contains at least initial notice and hearing
       let finalHistory = [...caseHistory];
       if (finalHistory.length === 0) {
         finalHistory.push({
@@ -314,9 +338,8 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
         });
       }
 
-      // If final order is marked and not yet in history, append final order row
       if (status.includes('Final Order') && finalOrderDate) {
-        const hasFinalOrderInHistory = finalHistory.some(h => h.purpose.includes('FINAL ORDER') || h.businessDate === finalOrderDate);
+        const hasFinalOrderInHistory = finalHistory.some(h => (h.purpose || '').includes('FINAL ORDER') || h.businessDate === finalOrderDate);
         if (!hasFinalOrderInHistory) {
           finalHistory.push({
             id: `CH-${Date.now()}-final`,
@@ -350,7 +373,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
         appealType: finalAppealType,
         bhuBharatiActSection: finalSection,
         mandal,
-        village: village || (MANDAL_VILLAGES[mandal]?.[0] || ''),
+        village: village || (MANDAL_VILLAGES && MANDAL_VILLAGES[mandal] ? MANDAL_VILLAGES[mandal][0] : ''),
         surveyNo: surveyNo.trim(),
         extent: extent.trim(),
         appellantName: appellantName.trim(),
@@ -366,7 +389,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
         stagePurpose: stagePurpose.trim(),
         impugnedOrderNo: impugnedOrderNo.trim(),
         impugnedOrderDate: impugnedOrderDate || filingDate,
-        status,
+        status: status || 'Under Hearing',
         finalOrderNo: finalOrderNo.trim(),
         finalOrderDate: finalOrderDate || (status.includes('Final Order') ? todayStr : ''),
         finalOrderSummary: finalOrderSummary.trim(),
@@ -387,6 +410,8 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
   };
 
   if (!isOpen) return null;
+
+  const currentVillages = (MANDAL_VILLAGES && MANDAL_VILLAGES[mandal]) ? MANDAL_VILLAGES[mandal] : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
@@ -540,7 +565,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                       autoFocus
                     />
                     <datalist id="appeal-types-datalist">
-                      {APPEAL_TYPES.map((t) => (
+                      {safeAppealTypes.map((t) => (
                         <option key={t} value={t} />
                       ))}
                     </datalist>
@@ -554,7 +579,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                     onChange={(e) => handleAppealTypeChange(e.target.value)}
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:border-blue-500 focus:outline-none font-semibold text-blue-900 text-xs"
                   >
-                    {APPEAL_TYPES.map((t) => (
+                    {safeAppealTypes.map((t) => (
                       <option key={t} value={t}>
                         {t}
                       </option>
@@ -562,7 +587,6 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                   </select>
                 )}
 
-                {/* Instant Section Entry Card when Other Revenue Appeal is clicked/selected */}
                 {!isManualAppealEntry && appealType === 'Other Revenue Appeal' && (
                   <div className="mt-2.5 p-3 bg-amber-50/95 border-2 border-amber-400 rounded-xl space-y-2 animate-in fade-in zoom-in-95 duration-150 shadow-xs">
                     <div className="flex items-center justify-between">
@@ -619,7 +643,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                 )}
               </div>
 
-              {/* STRICT FILING DATE: NO FUTURE DATE ALLOWED */}
+              {/* STRICT FILING DATE */}
               <div className="bg-amber-50/70 p-2.5 rounded-lg border border-amber-300/80">
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-amber-950 font-black flex items-center gap-1">
@@ -682,37 +706,6 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                   }}
                   className="w-full px-3 py-1.5 bg-white border border-blue-300 rounded-md focus:border-blue-500 focus:outline-none font-semibold text-xs text-blue-900"
                 />
-                <div className="flex flex-wrap gap-1 mt-1.5">
-                  {(appealType.includes('Bhu Bharati') || appealType.includes('Sadabainama')
-                    ? [
-                        'Sec 15(1) r/w Rule 14 (RoR Rectification)',
-                        'Sec 6(1) & (5) (Sadabainama Regularisation)',
-                        'Sec 15(1) r/w Sec 5 (Mutation Appeal)',
-                        'Sec 15(1) r/w Sec 9 & 10 (Passbook Issue)',
-                      ]
-                    : [
-                        'Section 90 of Tenancy & Agrl Lands Act, 1950',
-                        'Section 24 of Inams Abolition Act, 1955',
-                        'Section 4A / 4B of Assigned Lands (POT) Act 9/1977',
-                        'Section 64 of RFCTLARR (Land Acquisition) Act, 2013',
-                        'Section 19 of WALTA Act, 2002',
-                      ]
-                  ).map((preset) => (
-                    <button
-                      type="button"
-                      key={preset}
-                      onClick={() => {
-                        setBhuBharatiActSection(preset);
-                        if (appealType === 'Other Revenue Appeal') {
-                          setOtherSectionDetail(preset);
-                        }
-                      }}
-                      className="text-[9.5px] bg-white hover:bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded transition cursor-pointer"
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -758,7 +751,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                   onChange={(e) => handleMandalChange(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:border-blue-500 focus:outline-none font-bold"
                 >
-                  {MANDAL_LIST.map((m) => (
+                  {safeMandalList.map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>
@@ -773,7 +766,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                   onChange={(e) => setVillage(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:border-blue-500 focus:outline-none font-semibold"
                 >
-                  {(MANDAL_VILLAGES[mandal] || []).map((v) => (
+                  {currentVillages.map((v) => (
                     <option key={v} value={v}>
                       {v}
                     </option>
@@ -805,7 +798,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
             </div>
           </div>
 
-          {/* Section 2: Parties & Counsels (Image 1 Style) */}
+          {/* Section 2: Parties & Counsels */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
             <h4 className="font-black text-slate-800 flex items-center gap-2 text-xs uppercase tracking-wider text-blue-900">
               <Scale className="w-4 h-4 text-blue-700" />
@@ -871,7 +864,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
             </div>
           </div>
 
-          {/* Section 3: Case Status, Notices & Next Hearing (Court Status Card - Image 1 & 2) */}
+          {/* Section 3: Case Status, Notices & Next Hearing */}
           <div className="bg-amber-50/40 p-4 rounded-xl border-2 border-amber-300/80 space-y-4">
             <div className="flex items-center justify-between">
               <h4 className="font-black text-amber-950 flex items-center gap-2 text-xs uppercase tracking-wider">
@@ -884,7 +877,6 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {/* First Hearing Date */}
               <div>
                 <label className="block text-slate-700 font-bold mb-1">
                   First Hearing Date
@@ -897,7 +889,6 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                 />
               </div>
 
-              {/* Notice Issued Date */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-slate-700 font-bold">
@@ -926,7 +917,6 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                 />
               </div>
 
-              {/* Notice Served Date */}
               <div>
                 <label className="block text-slate-700 font-bold mb-1">
                   Notice Served Date
@@ -948,9 +938,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
               </div>
             </div>
 
-            {/* Next Hearing Date & Stage */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-              {/* Next Hearing Date with quick selectors */}
               <div className="bg-white p-3 rounded-lg border-2 border-amber-400 shadow-xs">
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-amber-950 font-black text-xs flex items-center gap-1">
@@ -1005,7 +993,6 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                 </div>
               </div>
 
-              {/* Case Stage */}
               <div className="bg-white p-3 rounded-lg border border-slate-300">
                 <label className="block text-slate-800 font-black text-xs mb-1">
                   Case Stage / Purpose of Hearing
@@ -1032,7 +1019,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
               </div>
             </div>
 
-            {/* Case History Table (Image 2 style) */}
+            {/* Case History Timeline */}
             <div className="bg-white rounded-xl border border-amber-200 overflow-hidden mt-3">
               <div className="bg-amber-100/70 px-3 py-2 border-b border-amber-200 flex items-center justify-between">
                 <div className="flex items-center gap-1.5 font-black text-amber-950 text-xs">
@@ -1049,7 +1036,6 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                 </button>
               </div>
 
-              {/* Add Entry Sub-Form */}
               {showAddHistoryRow && (
                 <div className="p-3 bg-amber-50/60 border-b border-amber-200 space-y-2">
                   <span className="font-bold text-amber-950 text-[11px] block">
@@ -1123,7 +1109,6 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                 </div>
               )}
 
-              {/* Timeline Table */}
               <div className="overflow-x-auto max-h-48 overflow-y-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="bg-slate-100 text-slate-700 border-b border-slate-200">
@@ -1180,7 +1165,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
             </div>
           </div>
 
-          {/* Section 4: Final Order & Judgment Details (If Case is Disposed) */}
+          {/* Section 4: Final Order Details */}
           <div className="bg-blue-50/60 p-4 rounded-xl border-2 border-blue-200 space-y-4">
             <div className="flex items-center justify-between">
               <h4 className="font-black text-blue-900 flex items-center gap-2 text-xs uppercase tracking-wider">
@@ -1210,7 +1195,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                   }}
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:border-blue-500 focus:outline-none font-bold text-blue-900"
                 >
-                  {APPEAL_STATUSES.map((s) => (
+                  {safeAppealStatuses.map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>
@@ -1323,7 +1308,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
               />
             </div>
 
-            {/* Drag and Drop File Upload Area */}
+            {/* Drag & Drop File Upload */}
             <div>
               <label className="block text-slate-800 font-black mb-1.5 flex items-center justify-between">
                 <span>Upload Signed Final Order Document / Scan (PDF, Image)</span>
