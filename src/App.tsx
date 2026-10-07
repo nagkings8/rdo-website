@@ -131,14 +131,37 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [toastMsg]);
 
-  const handleSetCurrentUser = (user: StaffUser | null) => {
+  const handleSetCurrentUser = useCallback((user: StaffUser | null) => {
     setCurrentUserState(user);
     if (user) {
       safeSaveLocalStorage('rdo_logged_user', user);
     } else {
       localStorage.removeItem('rdo_logged_user');
     }
-  };
+  }, []);
+
+  const [activeTab, setActiveTabState] = useState<ActiveTab>(() => {
+    if (typeof window !== 'undefined') {
+      return getTabFromPath(window.location.pathname);
+    }
+    return 'dashboardTab';
+  });
+
+  const setActiveTab = useCallback((targetTab: ActiveTab) => {
+    setActiveTabState(targetTab);
+    const targetRoute = TAB_ROUTES[targetTab] || '/';
+    if (typeof window !== 'undefined' && window.location.pathname !== targetRoute) {
+      window.history.pushState(null, '', targetRoute);
+    }
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    handleSetCurrentUser(null);
+    if (activeTab === 'adminTab') {
+      setActiveTab('dashboardTab');
+    }
+    showToast('Signed out successfully.');
+  }, [activeTab, handleSetCurrentUser, setActiveTab]);
 
   // 15-MINUTE IDLE INACTIVITY AUTO-LOGOUT LOGIC
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -148,15 +171,13 @@ export default function App() {
       clearTimeout(idleTimerRef.current);
     }
 
-    // Only set auto-logout timer if a user is actively logged in
     if (currentUser) {
       idleTimerRef.current = setTimeout(() => {
-        handleSetCurrentUser(null);
-        setActiveTab('dashboardTab');
+        handleLogout();
         showToast('⚠️ Session expired due to 15 minutes of inactivity. Please login again.');
-      }, 15 * 60 * 1000); // 15 Minutes
+      }, 15 * 60 * 1000);
     }
-  }, [currentUser]);
+  }, [currentUser, handleLogout]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -174,21 +195,6 @@ export default function App() {
       events.forEach((evt) => window.removeEventListener(evt, handleUserActivity));
     };
   }, [currentUser, resetIdleTimer]);
-
-  const [activeTab, setActiveTabState] = useState<ActiveTab>(() => {
-    if (typeof window !== 'undefined') {
-      return getTabFromPath(window.location.pathname);
-    }
-    return 'dashboardTab';
-  });
-
-  const setActiveTab = useCallback((targetTab: ActiveTab) => {
-    setActiveTabState(targetTab);
-    const targetRoute = TAB_ROUTES[targetTab] || '/';
-    if (typeof window !== 'undefined' && window.location.pathname !== targetRoute) {
-      window.history.pushState(null, '', targetRoute);
-    }
-  }, []);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -1039,10 +1045,9 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-100 via-slate-50 to-slate-100 text-slate-900 font-sans antialiased selection:bg-amber-400 selection:text-slate-950">
       <ColorSplashCursor />
 
-      {/* TOP STICKY BAR: OFFICIAL GOVT THEME WITH MOBILE HAMBURGER BUTTON */}
+      {/* TOP STICKY BAR: OFFICIAL GOVT THEME WITH HEADER PROFILE AT RIGHT CORNER */}
       <div className="sticky top-0 z-40 w-full shadow-md bg-[#0b3323] border-b-2 border-emerald-500">
         <div className="flex items-center justify-between">
-          {/* Mobile Hamburger Button */}
           <button
             onClick={() => setIsMobileMenuOpen(true)}
             className="lg:hidden ml-3 p-2 text-emerald-200 hover:text-white rounded-xl hover:bg-white/10 cursor-pointer"
@@ -1055,11 +1060,7 @@ export default function App() {
             <Header
               currentUser={currentUser}
               onOpenLogin={() => setIsLoginModalOpen(true)}
-              onLogout={() => {
-                handleSetCurrentUser(null);
-                if (activeTab === 'adminTab') setActiveTab('dashboardTab');
-                showToast('Signed out.');
-              }}
+              onLogout={handleLogout}
               onOpenChangePassword={() => setIsChangePasswordModalOpen(true)}
               onGoHome={() => setActiveTab('dashboardTab')}
             />
@@ -1071,11 +1072,12 @@ export default function App() {
 
       {/* MAIN BODY CONTAINER WITH LEFT SIDEBAR NAVIGATION */}
       <div className="flex-1 flex w-full">
-        {/* Left Sidebar Navigation (Desktop Collapsible Mini Bar + Mobile Slide Drawer) */}
+        {/* Left Sidebar with bottom logout action */}
         <Navigation
           activeTab={activeTab}
           onTabChange={setActiveTab}
           currentUser={currentUser}
+          onLogout={handleLogout}
           isOpenMobile={isMobileMenuOpen}
           onCloseMobile={() => setIsMobileMenuOpen(false)}
         />
