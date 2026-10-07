@@ -206,7 +206,7 @@ export default function App() {
     };
   }, []);
 
-  // Real-time Firestore Listeners
+  // Real-time Firestore Listeners with Instant Delete Propagation
   useEffect(() => {
     const unsubFiles = onSnapshot(collection(db, 'bhu_files'), (snapshot) => {
       const list: BhuFile[] = [];

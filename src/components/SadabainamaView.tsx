@@ -58,7 +58,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
   const [abstractSearch, setAbstractSearch] = useState('');
   const [reportSearch, setReportSearch] = useState('');
   const [selectedAbstractCard, setSelectedAbstractCard] = useState<'all' | 'pending_tahsildar' | 'pending_rdo' | 'approved_synos' | 'total_surveys'>('all');
-  const [selectedDetailFilter, setSelectedDetailFilter] = useState<'all' | 'approved' | 'rejected' | 'pending_tahsildar' | 'pending_rdo'>('all');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(50);
@@ -103,7 +102,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
 
   useEffect(() => {
     const unsubAbstract = onSnapshot(doc(db, 'sadabainama_data', 'abstract'), (snap) => {
-      if (snap.exists() && snap.data()?.rows) {
+      if (snap.exists() && snap.data()?.rows && !snap.data()?.cleared) {
         try {
           const rows = JSON.parse(snap.data().rows);
           onUpdateAbstract(rows);
@@ -111,14 +110,21 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
         } catch (e) {
           console.error(e);
         }
+      } else {
+        // Document deleted or marked as cleared -> Clear state immediately
+        onUpdateAbstract(null);
+        localStorage.removeItem('rdo_sadabainama_abstract');
       }
     }, (error) => {
       console.error('Firestore Abstract sync error:', error);
     });
 
     const unsubReportMeta = onSnapshot(doc(db, 'sadabainama_data', 'report_meta'), (snap) => {
-      if (snap.exists()) {
+      if (snap.exists() && !snap.data()?.cleared) {
         fetchDetailedReportFromChunks();
+      } else {
+        onUpdateReport(null);
+        localStorage.removeItem('rdo_sadabainama_report');
       }
     }, (error) => {
       console.error('Firestore Report sync error:', error);
@@ -130,8 +136,9 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     };
   }, [onUpdateAbstract, onUpdateReport]);
 
-  const currentAbstract = abstractData || DEFAULT_SADABAINAMA_ABSTRACT;
-  const currentReport = reportData || DEFAULT_SADABAINAMA_REPORT;
+  // Strict empty handling: Only render data if it genuinely exists
+  const currentAbstract = abstractData;
+  const currentReport = reportData;
 
   const abstractFileInputRef = useRef<HTMLInputElement>(null);
   const reportFileInputRef = useRef<HTMLInputElement>(null);
@@ -173,6 +180,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           const rowsJson = JSON.stringify(rawRows);
           await setDoc(doc(db, 'sadabainama_data', 'abstract'), {
             rows: rowsJson,
+            cleared: false,
             updatedAt: new Date().toISOString(),
             updatedBy: currentUser?.name || 'Staff'
           });
@@ -202,6 +210,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           await setDoc(doc(db, 'sadabainama_data', 'report_meta'), {
             totalRows: rawRows.length,
             totalChunks,
+            cleared: false,
             updatedAt: new Date().toISOString(),
             updatedBy: currentUser?.name || 'Staff'
           });
@@ -225,10 +234,19 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
   const handleClear = async (type: 'abstract' | 'report') => {
     try {
       if (type === 'abstract') {
+        // Step 1: Mark cleared and delete from Firestore
+        await setDoc(doc(db, 'sadabainama_data', 'abstract'), {
+          cleared: true,
+          rows: '',
+          updatedAt: new Date().toISOString()
+        });
         await deleteDoc(doc(db, 'sadabainama_data', 'abstract'));
-        onUpdateAbstract(null);
+
+        // Step 2: Clear local storage & state
         localStorage.removeItem('rdo_sadabainama_abstract');
+        onUpdateAbstract(null);
         setAbstractSearch('');
+        setSelectedAbstractCard('all');
         onShowToast('Sadabainama Abstract removed from cloud across all systems.');
       } else {
         const chunksColl = collection(db, 'sadabainama_report_chunks');
@@ -238,6 +256,11 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           existingSnap.docs.forEach((d) => deleteBatch.delete(d.ref));
           await deleteBatch.commit();
         }
+        await setDoc(doc(db, 'sadabainama_data', 'report_meta'), {
+          cleared: true,
+          totalRows: 0,
+          updatedAt: new Date().toISOString()
+        });
         await deleteDoc(doc(db, 'sadabainama_data', 'report_meta'));
         onUpdateReport(null);
         localStorage.removeItem('rdo_sadabainama_report');
@@ -255,6 +278,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     try {
       await setDoc(doc(db, 'sadabainama_data', 'abstract'), {
         rows: JSON.stringify(DEFAULT_SADABAINAMA_ABSTRACT),
+        cleared: false,
         updatedAt: new Date().toISOString(),
         updatedBy: 'Default'
       });
@@ -292,6 +316,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
       await setDoc(doc(db, 'sadabainama_data', 'report_meta'), {
         totalRows: rawRows.length,
         totalChunks,
+        cleared: false,
         updatedAt: new Date().toISOString(),
         updatedBy: 'Default'
       });
@@ -367,7 +392,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
       };
     }
 
-    let reportTitle = 'Sadabainama Abstract Report as on 05-09-2026 17.56.04';
+    let reportTitle = 'Sadabainama Abstract Report';
     let headerRowIdx = 0;
 
     const row0 = currentAbstract[0] || [];
@@ -411,6 +436,17 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
 
   const abstractStats = useMemo(() => {
     const { header, dataRows, totalRow } = parsedAbstract;
+    if (!currentAbstract || dataRows.length === 0) {
+      return {
+        totalApps: '0',
+        pendingTah: '0',
+        pendingRdo: '0',
+        approvedSyNos: '0',
+        totalSurveys: '0',
+        cols: null
+      };
+    }
+
     const headerNormalized = (header || []).map((h: any) =>
       String(h || '').trim().toLowerCase()
     );
@@ -461,11 +497,11 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
 
     if (totalRow) {
       return {
-        totalApps: String(totalRow[appsCol] || '13,774'),
-        pendingTah: String(totalRow[pendingTahCol] || '125'),
-        pendingRdo: String(totalRow[pendingRdoCol] || '159'),
-        approvedSyNos: String(totalRow[approvedSyNosCol] || '48'),
-        totalSurveys: String(totalRow[surveysCol] || '15,173'),
+        totalApps: String(totalRow[appsCol] || '0'),
+        pendingTah: String(totalRow[pendingTahCol] || '0'),
+        pendingRdo: String(totalRow[pendingRdoCol] || '0'),
+        approvedSyNos: String(totalRow[approvedSyNosCol] || '0'),
+        totalSurveys: String(totalRow[surveysCol] || '0'),
         cols: { appsCol, surveysCol, pendingTahCol, pendingRdoCol, approvedSyNosCol },
       };
     }
@@ -485,14 +521,14 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     });
 
     return {
-      totalApps: sumApps > 0 ? sumApps.toLocaleString('en-IN') : '13,774',
-      pendingTah: sumPendingTah > 0 ? sumPendingTah.toLocaleString('en-IN') : '125',
-      pendingRdo: sumPendingRdo > 0 ? sumPendingRdo.toLocaleString('en-IN') : '159',
-      approvedSyNos: sumApprovedSyNos > 0 ? sumApprovedSyNos.toLocaleString('en-IN') : '48',
-      totalSurveys: sumSurveys > 0 ? sumSurveys.toLocaleString('en-IN') : '15,173',
+      totalApps: sumApps.toLocaleString('en-IN'),
+      pendingTah: sumPendingTah.toLocaleString('en-IN'),
+      pendingRdo: sumPendingRdo.toLocaleString('en-IN'),
+      approvedSyNos: sumApprovedSyNos.toLocaleString('en-IN'),
+      totalSurveys: sumSurveys.toLocaleString('en-IN'),
       cols: { appsCol, surveysCol, pendingTahCol, pendingRdoCol, approvedSyNosCol },
     };
-  }, [parsedAbstract]);
+  }, [parsedAbstract, currentAbstract]);
 
   const filteredAbstractDataRows = useMemo(() => {
     let rows = parsedAbstract.dataRows;
@@ -524,7 +560,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
   }, [parsedAbstract.dataRows, abstractSearch, selectedAbstractCard, abstractStats]);
 
   const displayTotalRow = useMemo(() => {
-    if (!parsedAbstract.header.length) return null;
+    if (!parsedAbstract.header.length || !currentAbstract || filteredAbstractDataRows.length === 0) return null;
     
     if (!abstractSearch.trim() && selectedAbstractCard === 'all' && parsedAbstract.totalRow) {
       return parsedAbstract.totalRow;
@@ -559,18 +595,18 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
     }
 
     return sumRow;
-  }, [parsedAbstract.header, parsedAbstract.totalRow, filteredAbstractDataRows, abstractSearch, selectedAbstractCard]);
+  }, [parsedAbstract.header, parsedAbstract.totalRow, filteredAbstractDataRows, abstractSearch, selectedAbstractCard, currentAbstract]);
 
   const parsedDetailedReport = useMemo(() => {
     if (!currentReport || currentReport.length === 0) {
       return {
-        reportTitle: 'Sadabainama Detailed Report as on 05-09-2026 17.56.04',
+        reportTitle: 'Sadabainama Detailed Report',
         header: [] as any[],
         dataRows: [] as any[][],
       };
     }
 
-    let reportTitle = 'Sadabainama Detailed Report as on 05-09-2026 17.56.04';
+    let reportTitle = 'Sadabainama Detailed Report';
     let headerRowIdx = 0;
 
     const row0 = currentReport[0] || [];
@@ -631,6 +667,11 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
   };
 
   const handlePrintAbstract = () => {
+    if (!parsedAbstract.header.length || filteredAbstractDataRows.length === 0) {
+      onShowToast('No abstract data to print.');
+      return;
+    }
+
     const colgroup = `
       <colgroup>
         <col style="width: 3.5%;" />
@@ -715,7 +756,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
       </table>
     `;
 
-    const dynamicPeriod = extractPeriodFromTitle(parsedAbstract.reportTitle, '05-09-2026 17:56:04');
+    const dynamicPeriod = extractPeriodFromTitle(parsedAbstract.reportTitle, new Date().toLocaleDateString('en-IN'));
 
     printTableReport(tableHtml, {
       title: parsedAbstract.reportTitle,
@@ -728,7 +769,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
   };
 
   const handlePrintDetailed = () => {
-    if (!parsedDetailedReport.header.length) {
+    if (!parsedDetailedReport.header.length || filteredDetailedDataRows.length === 0) {
       onShowToast('No detailed report data loaded to print.');
       return;
     }
@@ -792,7 +833,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
       </table>
     `;
 
-    const dynamicPeriodDetailed = extractPeriodFromTitle(parsedDetailedReport.reportTitle, '05-09-2026 17:56:04');
+    const dynamicPeriodDetailed = extractPeriodFromTitle(parsedDetailedReport.reportTitle, new Date().toLocaleDateString('en-IN'));
 
     printTableReport(tableHtml, {
       title: parsedDetailedReport.reportTitle,
@@ -1012,7 +1053,6 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {/* Public and Staff Can Print Abstract Table */}
               <button
                 onClick={handlePrintAbstract}
                 className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer"
@@ -1040,13 +1080,15 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                     <span>Upload Abstract Excel</span>
                   </button>
 
-                  <button
-                    onClick={() => handleExportCSV(currentAbstract, 'Sadabainama_Abstract_Huzurnagar')}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Export CSV</span>
-                  </button>
+                  {currentAbstract && (
+                    <button
+                      onClick={() => handleExportCSV(currentAbstract, 'Sadabainama_Abstract_Huzurnagar')}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Export CSV</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={handleResetAbstract}
@@ -1114,38 +1156,49 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                 })}
               </tr>
             </thead>
-            <tbody>
-              {filteredAbstractDataRows.map((row, rIdx) => (
-                <tr key={rIdx} className="hover:bg-blue-50/40 transition-colors">
-                  {parsedAbstract.header.map((colName: any, cIdx: number) => {
-                    const colType = getColType(colName, cIdx);
-                    const isTahsildarPending = colType === 'tahsildarPending';
-                    const isRdoPending = colType === 'rdoPending';
-                    const isMandal = colType === 'mandal';
-                    const isSno = colType === 'sno';
-                    const val = String(row[cIdx] !== undefined && row[cIdx] !== null ? row[cIdx] : '');
-
-                    return (
-                      <td
-                        key={cIdx}
-                        className={`py-2.5 px-3 border-b border-r border-slate-300 text-xs ${
-                          isTahsildarPending
-                            ? 'bg-[#ffffc8] text-slate-950 font-black text-center text-sm'
-                            : isRdoPending
-                            ? 'bg-[#ffedd5] text-slate-950 font-black text-center text-sm'
-                            : isMandal
-                            ? 'bg-white text-slate-900 font-bold text-left pl-4 min-w-[240px]'
-                            : isSno
-                            ? 'bg-white text-slate-800 font-bold text-center w-[55px]'
-                            : 'bg-white text-slate-800 font-bold text-center'
-                        }`}
-                      >
-                        {val}
-                      </td>
-                    );
-                  })}
+            <tbody className="divide-y divide-slate-200">
+              {(!currentAbstract || filteredAbstractDataRows.length === 0) ? (
+                <tr>
+                  <td
+                    colSpan={parsedAbstract.header.length || 12}
+                    className="py-12 text-center text-slate-400 bg-slate-50 font-bold border-b border-r border-slate-300"
+                  >
+                    No Sadabainama Abstract data available. Click "Upload Abstract Excel" or "Reset Official".
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                filteredAbstractDataRows.map((row, rIdx) => (
+                  <tr key={rIdx} className="hover:bg-blue-50/40 transition-colors">
+                    {parsedAbstract.header.map((colName: any, cIdx: number) => {
+                      const colType = getColType(colName, cIdx);
+                      const isTahsildarPending = colType === 'tahsildarPending';
+                      const isRdoPending = colType === 'rdoPending';
+                      const isMandal = colType === 'mandal';
+                      const isSno = colType === 'sno';
+                      const val = String(row[cIdx] !== undefined && row[cIdx] !== null ? row[cIdx] : '');
+
+                      return (
+                        <td
+                          key={cIdx}
+                          className={`py-2.5 px-3 border-b border-r border-slate-300 text-xs ${
+                            isTahsildarPending
+                              ? 'bg-[#ffffc8] text-slate-950 font-black text-center text-sm'
+                              : isRdoPending
+                              ? 'bg-[#ffedd5] text-slate-950 font-black text-center text-sm'
+                              : isMandal
+                              ? 'bg-white text-slate-900 font-bold text-left pl-4 min-w-[240px]'
+                              : isSno
+                              ? 'bg-white text-slate-800 font-bold text-center w-[55px]'
+                              : 'bg-white text-slate-800 font-bold text-center'
+                          }`}
+                        >
+                          {val}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))
+              )}
             </tbody>
             {displayTotalRow && (
               <tfoot className="sticky bottom-0 z-30 shadow-md">
@@ -1197,8 +1250,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {/* Public and Staff Can Print Detailed Report */}
-            {parsedDetailedReport.header.length > 0 && (
+            {parsedDetailedReport.header.length > 0 && filteredDetailedDataRows.length > 0 && (
               <button
                 onClick={handlePrintDetailed}
                 className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
@@ -1233,13 +1285,15 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
                   <RotateCcw className="w-3.5 h-3.5 text-blue-600" />
                   <span>Reset Sample</span>
                 </button>
-                <button
-                  onClick={() => handleExportCSV(currentReport || [], 'Sadabainama_Detailed_Report')}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Export CSV</span>
-                </button>
+                {currentReport && currentReport.length > 0 && (
+                  <button
+                    onClick={() => handleExportCSV(currentReport, 'Sadabainama_Detailed_Report')}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export CSV</span>
+                  </button>
+                )}
                 {isAdmin && reportData && (
                   <button
                     onClick={() => handleClear('report')}
@@ -1257,7 +1311,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
         {/* Filter, Search & Rows per page */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="relative w-full sm:w-80">
-            <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
               placeholder="Search Mandal, Village, Applicant, App No, Survey..."
@@ -1291,7 +1345,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
           </div>
         </div>
 
-        {/* Table Body */}
+        {/* Detailed Table Body */}
         <div className="overflow-x-auto overflow-y-auto max-h-[520px] border border-slate-300 rounded-lg shadow-sm">
           <table className="w-full text-xs text-left border-separate border-spacing-0 border-t border-l border-slate-300 bg-white">
             <thead className="sticky top-0 z-30 shadow-md">
@@ -1317,24 +1371,35 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {paginatedDetailedRows.map((row, rIdx) => {
-                const rowBg = rIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
-                return (
-                  <tr key={rIdx} className={`${rowBg} hover:bg-blue-50/60 transition-colors`}>
-                    {parsedDetailedReport.header.map((colName: any, cIdx: number) => {
-                      const val = row[cIdx] !== undefined && row[cIdx] !== null ? String(row[cIdx]) : '';
-                      return (
-                        <td
-                          key={cIdx}
-                          className="py-2 px-3 border-r border-b border-slate-200 whitespace-nowrap text-center text-[11px] font-medium"
-                        >
-                          {val}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
+              {(!currentReport || paginatedDetailedRows.length === 0) ? (
+                <tr>
+                  <td
+                    colSpan={parsedDetailedReport.header.length || 1}
+                    className="py-12 text-center text-slate-400 bg-slate-50 font-bold border-b border-r border-slate-300"
+                  >
+                    No detailed report data loaded. Click "Upload Report Excel" or "Reset Sample".
+                  </td>
+                </tr>
+              ) : (
+                paginatedDetailedRows.map((row, rIdx) => {
+                  const rowBg = rIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+                  return (
+                    <tr key={rIdx} className={`${rowBg} hover:bg-blue-50/60 transition-colors`}>
+                      {parsedDetailedReport.header.map((colName: any, cIdx: number) => {
+                        const val = row[cIdx] !== undefined && row[cIdx] !== null ? String(row[cIdx]) : '';
+                        return (
+                          <td
+                            key={cIdx}
+                            className="py-2 px-3 border-r border-b border-slate-200 whitespace-nowrap text-center text-[11px] font-medium"
+                          >
+                            {val}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -1342,7 +1407,7 @@ export const SadabainamaView: React.FC<SadabainamaViewProps> = ({
         {/* Pagination Bar */}
         <div className="flex flex-wrap justify-between items-center gap-3 pt-3 border-t border-slate-200 text-xs">
           <div className="text-slate-600 font-semibold">
-            Showing <strong className="text-slate-900">{((currentPage - 1) * rowsPerPage + 1).toLocaleString('en-IN')}</strong> to <strong className="text-slate-900">{Math.min(currentPage * rowsPerPage, filteredDetailedDataRows.length).toLocaleString('en-IN')}</strong> of <strong className="text-slate-900">{filteredDetailedDataRows.length.toLocaleString('en-IN')}</strong> records
+            Showing <strong className="text-slate-900">{filteredDetailedDataRows.length === 0 ? 0 : ((currentPage - 1) * rowsPerPage + 1).toLocaleString('en-IN')}</strong> to <strong className="text-slate-900">{Math.min(currentPage * rowsPerPage, filteredDetailedDataRows.length).toLocaleString('en-IN')}</strong> of <strong className="text-slate-900">{filteredDetailedDataRows.length.toLocaleString('en-IN')}</strong> records
           </div>
           <div className="flex items-center gap-1.5">
             <button
