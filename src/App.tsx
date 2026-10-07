@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from './utils/firebase';
 import {
@@ -117,6 +117,19 @@ export default function App() {
   });
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+  };
+
+  useEffect(() => {
+    if (!toastMsg) return;
+    const timer = setTimeout(() => {
+      setToastMsg(null);
+    }, 3200);
+    return () => clearTimeout(timer);
+  }, [toastMsg]);
 
   const handleSetCurrentUser = (user: StaffUser | null) => {
     setCurrentUserState(user);
@@ -126,6 +139,41 @@ export default function App() {
       localStorage.removeItem('rdo_logged_user');
     }
   };
+
+  // 15-MINUTE IDLE INACTIVITY AUTO-LOGOUT LOGIC
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const resetIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+
+    // Only set auto-logout timer if a user is actively logged in
+    if (currentUser) {
+      idleTimerRef.current = setTimeout(() => {
+        handleSetCurrentUser(null);
+        setActiveTab('dashboardTab');
+        showToast('⚠️ Session expired due to 15 minutes of inactivity. Please login again.');
+      }, 15 * 60 * 1000); // 15 Minutes
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    const handleUserActivity = () => {
+      resetIdleTimer();
+    };
+
+    resetIdleTimer();
+    events.forEach((evt) => window.addEventListener(evt, handleUserActivity, { passive: true }));
+
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      events.forEach((evt) => window.removeEventListener(evt, handleUserActivity));
+    };
+  }, [currentUser, resetIdleTimer]);
 
   const [activeTab, setActiveTabState] = useState<ActiveTab>(() => {
     if (typeof window !== 'undefined') {
@@ -150,8 +198,6 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
-
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const [bhuInitialStatus, setBhuInitialStatus] = useState<string>('');
   const [inwardInitialStatus, setInwardInitialStatus] = useState<string>('');
@@ -371,18 +417,6 @@ export default function App() {
     }
   };
 
-  const showToast = (msg: string) => {
-    setToastMsg(msg);
-  };
-
-  useEffect(() => {
-    if (!toastMsg) return;
-    const timer = setTimeout(() => {
-      setToastMsg(null);
-    }, 3200);
-    return () => clearTimeout(timer);
-  }, [toastMsg]);
-
   const handleDashboardNavigate = (targetTab: ActiveTab, filters?: any) => {
     if (filters) {
       if (targetTab === 'bhuBharatiTab' && filters.status !== undefined) {
@@ -475,7 +509,7 @@ export default function App() {
         'Bhu Bharati',
         fileToSave.appNumber,
         'ENTRY',
-        `New Bhu Bharati file registered: ${fileToSave.appNumber} - ${fileToSave.applicantName}`
+        `New Bhu Bharati file registered by ${currentUser?.name || 'Staff'}. Applicant: ${fileToSave.applicantName}, Mandal: ${fileToSave.mandal}`
       );
       showToast(`File #${fileToSave.appNumber} saved & synced across all systems!`);
     } catch (err: any) {
@@ -500,7 +534,7 @@ export default function App() {
         'Bhu Bharati',
         updatedFile.appNumber,
         'STATUS_CHANGE',
-        `Status updated to "${updatedFile.status}". Remarks: ${updatedFile.remarks || 'Scrutiny updated'}.`
+        `File status changed to "${updatedFile.status}" by ${currentUser?.name || 'Staff'}.`
       );
       showToast(`Status updated & synced across all systems!`);
     } catch (err: any) {
@@ -564,7 +598,7 @@ export default function App() {
         'Bhu Bharati',
         file.appNumber,
         'DELETE',
-        `File record deleted for applicant ${file.applicantName} (${file.appNumber}).`
+        `File record PERMANENTLY DELETED by Admin ${currentUser?.name}. Applicant: ${file.applicantName}`
       );
       showToast(`Bhu Bharati file record (${file.appNumber}) deleted across all devices.`);
     });
@@ -588,7 +622,7 @@ export default function App() {
         'Tapal Inward',
         tapalToSave.inwardNo,
         'EDIT',
-        `Inward record updated. Sender: ${tapalToSave.sender}. Status: ${tapalToSave.status}.`
+        `Inward record updated by ${currentUser?.name || 'Staff'}. Sender: ${tapalToSave.sender}. Status: ${tapalToSave.status}`
       );
     } else {
       updated = [tapalToSave, ...inwards];
@@ -596,7 +630,7 @@ export default function App() {
         'Tapal Inward',
         tapalToSave.inwardNo,
         'ENTRY',
-        `New Inward Tapal received from ${tapalToSave.sender}. Subject: ${tapalToSave.subject}.`
+        `New Inward Tapal received from ${tapalToSave.sender} by ${currentUser?.name || 'Staff'}.`
       );
     }
     setInwards(updated);
@@ -632,7 +666,7 @@ export default function App() {
       'Tapal Inward',
       updatedTapal.inwardNo,
       'STATUS_CHANGE',
-      `Inward Tapal status updated to "${updatedTapal.status}".`
+      `Inward status updated to "${updatedTapal.status}" by ${currentUser?.name || 'Staff'}.`
     );
   };
 
@@ -673,7 +707,7 @@ export default function App() {
       const updated = inwards.filter((t) => t.id !== tapal.id);
       setInwards(updated);
       safeSaveLocalStorage('rdo_inward_tapal', updated);
-      await logActivity('Tapal Inward', tapal.inwardNo, 'DELETE', `Inward Tapal #${tapal.inwardNo} deleted.`);
+      await logActivity('Tapal Inward', tapal.inwardNo, 'DELETE', `Inward Tapal #${tapal.inwardNo} deleted by Admin ${currentUser?.name}.`);
       showToast(`Inward Tapal (${tapal.inwardNo}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
@@ -707,10 +741,10 @@ export default function App() {
     let updatedOutwards: OutwardDespatch[];
     if (isEdit) {
       updatedOutwards = outwards.map((o) => (o.id === outwardToSave.id ? outwardToSave : o));
-      await logActivity('Tapal Outward', outwardToSave.outwardNo, 'EDIT', `Updated Outward #${outwardToSave.outwardNo}`);
+      await logActivity('Tapal Outward', outwardToSave.outwardNo, 'EDIT', `Outward Despatch #${outwardToSave.outwardNo} edited by ${currentUser?.name || 'Staff'}`);
     } else {
       updatedOutwards = [outwardToSave, ...outwards];
-      await logActivity('Tapal Outward', outwardToSave.outwardNo, 'ENTRY', `Dispatched to ${outwardToSave.sentTo}.`);
+      await logActivity('Tapal Outward', outwardToSave.outwardNo, 'ENTRY', `Dispatched to ${outwardToSave.sentTo} by ${currentUser?.name || 'Staff'}.`);
     }
     setOutwards(updatedOutwards);
     safeSaveLocalStorage('rdo_outward', updatedOutwards);
@@ -772,7 +806,7 @@ export default function App() {
       const updated = outwards.filter((o) => o.id !== outward.id);
       setOutwards(updated);
       safeSaveLocalStorage('rdo_outward', updated);
-      await logActivity('Tapal Outward', outward.outwardNo, 'DELETE', `Outward #${outward.outwardNo} deleted.`);
+      await logActivity('Tapal Outward', outward.outwardNo, 'DELETE', `Outward #${outward.outwardNo} deleted by Admin ${currentUser?.name}.`);
       showToast(`Outward Despatch (${outward.outwardNo}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
@@ -794,7 +828,7 @@ export default function App() {
     } catch (err) {
       console.error('Firebase appeal case save error:', err);
     }
-    await logActivity('Appeal Cases', newCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'ENTRY', `Appeal Case filed: ${newCase.appellantName} vs ${newCase.respondentName}.`);
+    await logActivity('Appeal Cases', newCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'ENTRY', `Appeal filed by ${currentUser?.name || 'Staff'}. Appellant: ${newCase.appellantName}`);
     showToast(`Appeal Case ${newCase.caseNo} registered successfully.`);
   };
 
@@ -814,7 +848,7 @@ export default function App() {
     } catch (err) {
       console.error('Firebase appeal case update error:', err);
     }
-    await logActivity('Appeal Cases', updatedCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'EDIT', `Appeal Case updated. Status: ${updatedCase.status}.`);
+    await logActivity('Appeal Cases', updatedCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'EDIT', `Appeal updated by ${currentUser?.name || 'Staff'}. Status: ${updatedCase.status}`);
     showToast(`Appeal Case ${updatedCase.caseNo} updated successfully.`);
   };
 
@@ -836,7 +870,7 @@ export default function App() {
       const updated = appealCases.filter((c) => c.id !== appealCase.id);
       setAppealCases(updated);
       safeSaveLocalStorage('rdo_appeal_cases', updated);
-      await logActivity('Appeal Cases', appealCase.caseNo, 'DELETE', `Appeal Case #${appealCase.caseNo} deleted.`);
+      await logActivity('Appeal Cases', appealCase.caseNo, 'DELETE', `Appeal #${appealCase.caseNo} deleted by Admin ${currentUser?.name}.`);
       showToast(`Appeal Case (${appealCase.caseNo}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
@@ -1005,7 +1039,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-100 via-slate-50 to-slate-100 text-slate-900 font-sans antialiased selection:bg-amber-400 selection:text-slate-950">
       <ColorSplashCursor />
 
-      {/* TOP STICKY BAR: GOVT THEME WITH MOBILE HAMBURGER BUTTON */}
+      {/* TOP STICKY BAR: OFFICIAL GOVT THEME WITH MOBILE HAMBURGER BUTTON */}
       <div className="sticky top-0 z-40 w-full shadow-md bg-[#0b3323] border-b-2 border-emerald-500">
         <div className="flex items-center justify-between">
           {/* Mobile Hamburger Button */}
@@ -1037,7 +1071,7 @@ export default function App() {
 
       {/* MAIN BODY CONTAINER WITH LEFT SIDEBAR NAVIGATION */}
       <div className="flex-1 flex w-full">
-        {/* Left Sidebar Navigation (Desktop Fixed + Mobile Collapsible Drawer) */}
+        {/* Left Sidebar Navigation (Desktop Collapsible Mini Bar + Mobile Slide Drawer) */}
         <Navigation
           activeTab={activeTab}
           onTabChange={setActiveTab}

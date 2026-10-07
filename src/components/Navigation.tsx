@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Home, 
   FolderOpen, 
@@ -7,7 +7,8 @@ import {
   Scale, 
   Clock, 
   ShieldCheck,
-  X
+  X,
+  ChevronRight
 } from 'lucide-react';
 import { StaffUser } from '../types';
 
@@ -36,8 +37,9 @@ export const Navigation: React.FC<NavigationProps> = ({
   onCloseMobile,
 }) => {
   const isAdmin = currentUser?.role === 'ADMIN';
+  const [isHovered, setIsHovered] = useState(false);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Exactly matched color mapping for both Sidebar & Dashboard cards
   const navItems: Array<{
     id: ActiveTab;
     label: string;
@@ -117,6 +119,17 @@ export const Navigation: React.FC<NavigationProps> = ({
     });
   }
 
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 450);
+  };
+
   const handleSelect = (tab: ActiveTab) => {
     onTabChange(tab);
     if (onCloseMobile) {
@@ -124,72 +137,85 @@ export const Navigation: React.FC<NavigationProps> = ({
     }
   };
 
-  const navContent = (
-    <div className="flex flex-col h-full justify-between py-2">
-      <div>
-        <div className="px-4 py-3 mb-2 flex items-center justify-between border-b border-emerald-800/40">
-          <div className="text-[11px] font-black uppercase tracking-wider text-emerald-300">
-            Navigation Menu
-          </div>
-          {onCloseMobile && (
-            <button
-              onClick={onCloseMobile}
-              className="lg:hidden p-1.5 text-emerald-200 hover:text-white rounded-lg hover:bg-white/10 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-
-        <nav className="space-y-2 px-3">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleSelect(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all duration-200 cursor-pointer group text-left ${
-                  isActive
-                    ? `${item.activeBg} shadow-md translate-x-1.5 ring-1 ring-white/30`
-                    : `text-slate-200 hover:bg-white/10 ${item.hoverText}`
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110 shadow-xs ${item.iconBg}`}
-                  >
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <span className={`truncate text-xs ${isActive ? item.activeText : 'font-bold'}`}>
-                    {item.label}
-                  </span>
-                </div>
-
-                {item.badgeColor && (
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase ${item.badgeColor}`}>
-                    Admin
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      <div className="p-3 m-3 bg-[#051c13] rounded-xl border border-emerald-700/40 text-[10.5px] text-emerald-200 text-center shadow-inner">
-        <div className="font-bold text-white mb-0.5">RDO Huzurnagar Portal</div>
-        <div className="opacity-80 text-[10px]">Suryapet District, TS</div>
-      </div>
-    </div>
-  );
-
   return (
     <>
-      {/* DESKTOP SIDEBAR */}
-      <aside className="hidden lg:block w-64 shrink-0 bg-[#072418] border-r border-emerald-600/30 min-h-[calc(100vh-120px)] sticky top-[72px] shadow-sm select-none">
-        {navContent}
+      {/* DESKTOP COLLAPSIBLE MINI SIDEBAR (EXPANDS ON HOVER/CLICK) */}
+      <aside 
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className={`hidden lg:flex flex-col justify-between shrink-0 bg-[#072418] border-r border-emerald-600/30 min-h-[calc(100vh-120px)] sticky top-[72px] z-30 transition-all duration-300 ease-in-out shadow-lg select-none py-3 ${
+          isHovered ? 'w-64' : 'w-20'
+        }`}
+      >
+        <div>
+          {/* Top Header Strip inside Sidebar */}
+          <div className="px-3 py-2 mb-2 flex items-center justify-between border-b border-emerald-800/40 min-h-[42px]">
+            {isHovered ? (
+              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-300 truncate">
+                Navigation Menu
+              </span>
+            ) : (
+              <div className="w-full flex justify-center">
+                <ChevronRight className="w-4 h-4 text-emerald-400 animate-pulse" />
+              </div>
+            )}
+          </div>
+
+          {/* Navigation Items */}
+          <nav className="space-y-2 px-2.5">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleSelect(item.id)}
+                  title={!isHovered ? item.label : undefined}
+                  className={`w-full flex items-center rounded-xl font-bold text-xs transition-all duration-200 cursor-pointer group text-left ${
+                    isHovered ? 'px-3 py-2.5 justify-between' : 'p-2.5 justify-center'
+                  } ${
+                    isActive
+                      ? `${item.activeBg} shadow-md ring-1 ring-white/30 translate-x-0.5`
+                      : `text-slate-200 hover:bg-white/10 ${item.hoverText}`
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110 shadow-sm ${item.iconBg}`}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </div>
+
+                    {isHovered && (
+                      <span className={`truncate text-xs ${isActive ? item.activeText : 'font-bold'}`}>
+                        {item.label}
+                      </span>
+                    )}
+                  </div>
+
+                  {isHovered && item.badgeColor && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase ${item.badgeColor}`}>
+                      Admin
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Bottom Office Label */}
+        {isHovered ? (
+          <div className="p-3 mx-2.5 bg-[#051c13] rounded-xl border border-emerald-700/40 text-[10.5px] text-emerald-200 text-center shadow-inner animate-fade-in">
+            <div className="font-bold text-white mb-0.5">RDO Huzurnagar</div>
+            <div className="opacity-80 text-[10px]">Suryapet District, TS</div>
+          </div>
+        ) : (
+          <div className="flex justify-center pb-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
+          </div>
+        )}
       </aside>
 
       {/* MOBILE DRAWER OVERLAY */}
@@ -199,8 +225,58 @@ export const Navigation: React.FC<NavigationProps> = ({
             className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs animate-fade-in"
             onClick={onCloseMobile}
           />
-          <div className="relative w-72 max-w-[85vw] bg-[#072418] h-full shadow-2xl flex flex-col z-10 border-r border-emerald-500/40 animate-slide-right select-none">
-            {navContent}
+          <div className="relative w-72 max-w-[85vw] bg-[#072418] h-full shadow-2xl flex flex-col justify-between z-10 border-r border-emerald-500/40 animate-slide-right select-none py-4 px-3">
+            <div>
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-emerald-800/50">
+                <span className="text-xs font-black uppercase tracking-wider text-emerald-300">
+                  Navigation Menu
+                </span>
+                <button
+                  onClick={onCloseMobile}
+                  className="p-1.5 text-emerald-200 hover:text-white rounded-lg hover:bg-white/10 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <nav className="space-y-2">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleSelect(item.id)}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all duration-200 cursor-pointer ${
+                        isActive
+                          ? `${item.activeBg} shadow-md ring-1 ring-white/30`
+                          : `text-slate-200 hover:bg-white/10 ${item.hoverText}`
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${item.iconBg}`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <span className={`text-xs ${isActive ? item.activeText : 'font-bold'}`}>
+                          {item.label}
+                        </span>
+                      </div>
+                      {item.badgeColor && (
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase ${item.badgeColor}`}>
+                          Admin
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+
+            <div className="p-3 bg-[#051c13] rounded-xl border border-emerald-700/40 text-[10.5px] text-emerald-200 text-center">
+              <div className="font-bold text-white mb-0.5">RDO Huzurnagar Portal</div>
+              <div className="opacity-80 text-[10px]">Suryapet District, TS</div>
+            </div>
           </div>
         </div>
       )}
