@@ -152,12 +152,15 @@ export default function App() {
   useEffect(() => {
     const unsubFiles = onSnapshot(collection(db, 'bhu_files'), (snapshot) => {
       const list: BhuFile[] = [];
-      snapshot.forEach((d) => list.push(d.data() as BhuFile));
-      if (list.length > 0) {
-        list.sort((a, b) => Number(b.id) - Number(a.id));
-        setFiles(list);
-        safeSaveLocalStorage('rdo_files', list);
-      }
+      snapshot.forEach((d) => {
+        const item = d.data() as BhuFile;
+        if (item && item.appNumber) {
+          list.push(item);
+        }
+      });
+      list.sort((a, b) => Number(b.id) - Number(a.id));
+      setFiles(list);
+      safeSaveLocalStorage('rdo_files', list);
     }, (err) => {
       console.error('Bhu Files Sync Error:', err);
     });
@@ -363,30 +366,31 @@ export default function App() {
   // Direct Firestore Write + Instant Multi-Device Sync
   const handleSaveFile = async (newFile: BhuFile) => {
     try {
-      const fileToSave = { ...newFile };
-      if (fileToSave.fileAttachment) {
-        const key = fileToSave.attachmentKey || `bhu_${fileToSave.id}`;
-        await saveUniversalAttachment(key, fileToSave.fileAttachment);
-        fileToSave.attachmentKey = key;
-        fileToSave.hasAttachment = true;
-        delete fileToSave.fileAttachment;
-      }
+      const fileToSave: BhuFile = {
+        ...newFile,
+        fileAttachment: newFile.fileAttachment || '',
+        hasAttachment: Boolean(newFile.fileAttachment),
+        attachmentKey: newFile.attachmentKey || '',
+        surveyNo: newFile.surveyNo || '-',
+        extent: newFile.extent || '-',
+        assignedSeat: newFile.assignedSeat || 'D Section',
+        remarks: newFile.remarks || '',
+      };
 
       // 1. Direct Cloud Firestore Write First
       await setDoc(doc(db, 'bhu_files', String(fileToSave.id)), fileToSave);
 
-      // 2. Update Local State
-      const updated = [fileToSave, ...files.filter((f) => f.id !== fileToSave.id)];
-      setFiles(updated);
-      safeSaveLocalStorage('rdo_files', updated);
+      // 2. Direct Local State Update
+      setFiles((prev) => [fileToSave, ...prev.filter((f) => f.id !== fileToSave.id)]);
+      safeSaveLocalStorage('rdo_files', [fileToSave, ...files.filter((f) => f.id !== fileToSave.id)]);
 
       logActivity(
         'Bhu Bharati',
         fileToSave.appNumber,
         'ENTRY',
-        `New Bhu Bharati file registered for ${fileToSave.applicantName}, Village: ${fileToSave.village}, Mandal: ${fileToSave.mandal}, Module: ${fileToSave.module}.`
+        `New Bhu Bharati file registered: ${fileToSave.appNumber} - ${fileToSave.applicantName}`
       );
-      showToast(`File ${fileToSave.appNumber} saved & synced to all systems!`);
+      showToast(`File #${fileToSave.appNumber} saved & synced to all systems!`);
     } catch (err: any) {
       console.error('Firebase save error:', err);
       showToast(`Cloud Sync Error: ${err.message || 'Check Firestore network'}`);

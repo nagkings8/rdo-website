@@ -114,19 +114,17 @@ export const FileModal: React.FC<FileModalProps> = ({
     const attKey = `bhu_${newId}`;
     let finalDocUrl = '';
 
+    // File upload optional - unte mathrame stamp & cloudinary process
     if (base64File) {
       try {
         onShowToast('Applying official receipt stamp...');
         const initialStamp = `RECEIPT DATE: ${receivedDate} | APP: ${appNumber} | INITIAL MRO RECEIPT`;
         
-        // 1. ముద్ర (Stamp) వేయడం
         const stampedFile = await stampSingleDocument(base64File, initialStamp);
 
-        // 2. ముద్ర పడిన డాక్యుమెంట్‌ను క్లౌడ్‌కి అప్‌లోడ్ చేయడం
         onShowToast('Uploading stamped document to cloud...');
         finalDocUrl = await uploadPdfToCloudinary(stampedFile);
         
-        // స్థానిక బ్యాకప్
         await setAttachmentInDB(attKey, finalDocUrl);
       } catch (err) {
         console.warn('Error applying stamp or uploading to Cloudinary:', err);
@@ -135,21 +133,24 @@ export const FileModal: React.FC<FileModalProps> = ({
       }
     }
 
+    // Clean object without any undefined fields
     const newRecord: BhuFile = {
       id: newId,
       appNumber: appNumber.trim(),
       applicantName: applicantName.trim(),
       mandal,
       village,
-      surveyNo: surveyNo.trim(),
+      surveyNo: surveyNo.trim() || '-',
+      extent: '-',
       module,
       receivedDate,
       status,
-      remarks: remarks.trim(),
-      fileAttachment: finalDocUrl || undefined,
-      hasAttachment: !!finalDocUrl,
-      attachmentKey: finalDocUrl ? attKey : null,
-      hasInitialAttachment: !!finalDocUrl,
+      assignedSeat: 'D Section',
+      remarks: remarks.trim() || '',
+      fileAttachment: finalDocUrl || '',
+      hasAttachment: Boolean(finalDocUrl),
+      attachmentKey: finalDocUrl ? attKey : '',
+      hasInitialAttachment: Boolean(finalDocUrl),
       history: [
         {
           date: receivedDate,
@@ -167,7 +168,6 @@ export const FileModal: React.FC<FileModalProps> = ({
     onSave(newRecord);
     handleReset();
     onClose();
-    onShowToast('Bhu Bharati file & stamped document saved with Cloud Sync!');
   };
 
   const villageList = mandal ? MANDAL_VILLAGES[mandal] || [] : [];
@@ -340,7 +340,7 @@ export const FileModal: React.FC<FileModalProps> = ({
             <div className="sm:col-span-2 border-1.5 border-dashed border-blue-400 bg-blue-50/60 p-3 rounded-lg">
               <label className="font-bold text-blue-900 flex items-center gap-1.5 mb-1.5">
                 <Paperclip className="w-3.5 h-3.5 text-blue-600" />
-                <span>Attach Application Document (PDF / Image) - Cloud Sync</span>
+                <span>Attach Application Document (PDF / Image) - Optional</span>
               </label>
               <input
                 type="file"
