@@ -37,6 +37,7 @@ import { ColorSplashCursor } from './components/ColorSplashCursor';
 import { INITIAL_APPEAL_CASES } from './data/appealCasesData';
 import { INITIAL_AUDIT_LOGS } from './data/initialAuditLogs';
 import { generateOfficialOrderPdf } from './utils/orderPdfGenerator';
+import { Menu } from 'lucide-react';
 
 // Modals
 import { FileModal } from './components/modals/FileModal';
@@ -114,6 +115,8 @@ export default function App() {
   const [currentUser, setCurrentUserState] = useState<StaffUser | null>(() => {
     return safeGetLocalStorage<StaffUser | null>('rdo_logged_user', null);
   });
+
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleSetCurrentUser = (user: StaffUser | null) => {
     setCurrentUserState(user);
@@ -202,7 +205,7 @@ export default function App() {
     };
   }, []);
 
-  // Real-time Firestore Listeners (Live Data Sync)
+  // Real-time Firestore Listeners
   useEffect(() => {
     const unsubFiles = onSnapshot(collection(db, 'bhu_files'), (snapshot) => {
       const list: BhuFile[] = [];
@@ -256,7 +259,6 @@ export default function App() {
       safeSaveLocalStorage('rdo_appeal_cases', list);
     }, (err) => console.error('Appeals Sync Error:', err));
 
-    // Audit Logs Live Cloud Sync for Admin
     const unsubLogs = onSnapshot(collection(db, 'audit_logs'), (snapshot) => {
       const list: AuditLogEntry[] = [];
       snapshot.forEach((d) => {
@@ -265,7 +267,6 @@ export default function App() {
           list.push(item);
         }
       });
-      // Sort newest on top
       list.sort((a, b) => (b.id > a.id ? 1 : -1));
       if (list.length > 0) {
         setAuditLogs(list);
@@ -403,7 +404,6 @@ export default function App() {
     }
   };
 
-  // Live Cloud Audit Logger - Every action tracked permanently
   const logActivity = async (
     module: 'Bhu Bharati' | 'Tapal Inward' | 'Tapal Outward' | 'Appeal Cases' | 'Sadabainama' | 'Staff Admin',
     recordId: string,
@@ -440,14 +440,12 @@ export default function App() {
       details,
     };
 
-    // Save locally
     setAuditLogs((prev) => {
       const updated = [newLog, ...prev];
       safeSaveLocalStorage('rdo_audit_logs', updated);
       return updated;
     });
 
-    // Save in Firestore Cloud permanently so Admin gets instant history across all systems
     try {
       await setDoc(doc(db, 'audit_logs', logId), newLog);
     } catch (e) {
@@ -455,7 +453,6 @@ export default function App() {
     }
   };
 
-  // Direct Firestore Write + Local State Sync for Bhu Bharati
   const handleSaveFile = async (newFile: BhuFile) => {
     try {
       const fileToSave: BhuFile = {
@@ -478,7 +475,7 @@ export default function App() {
         'Bhu Bharati',
         fileToSave.appNumber,
         'ENTRY',
-        `New Bhu Bharati file registered by ${currentUser?.name || 'Staff'}. Applicant: ${fileToSave.applicantName}, Village: ${fileToSave.village}, Mandal: ${fileToSave.mandal}`
+        `New Bhu Bharati file registered: ${fileToSave.appNumber} - ${fileToSave.applicantName}`
       );
       showToast(`File #${fileToSave.appNumber} saved & synced across all systems!`);
     } catch (err: any) {
@@ -503,7 +500,7 @@ export default function App() {
         'Bhu Bharati',
         updatedFile.appNumber,
         'STATUS_CHANGE',
-        `File status changed/forwarded to "${updatedFile.status}" by ${currentUser?.name || 'Staff'}. Remarks: ${updatedFile.remarks || 'No notes'}`
+        `Status updated to "${updatedFile.status}". Remarks: ${updatedFile.remarks || 'Scrutiny updated'}.`
       );
       showToast(`Status updated & synced across all systems!`);
     } catch (err: any) {
@@ -542,7 +539,6 @@ export default function App() {
     setIsPdfModalOpen(true);
   };
 
-  // Admin Permanent Delete for Bhu Bharati File with Audit Tracking
   const handleDeleteBhuFilePrompt = (file: BhuFile) => {
     if (currentUser?.role !== 'ADMIN') {
       showToast('⚠️ Access restricted: Only Administrator can delete records.');
@@ -568,14 +564,13 @@ export default function App() {
         'Bhu Bharati',
         file.appNumber,
         'DELETE',
-        `File record PERMANENTLY DELETED by Administrator ${currentUser?.name}. Applicant: ${file.applicantName}, Mandal: ${file.mandal}`
+        `File record deleted for applicant ${file.applicantName} (${file.appNumber}).`
       );
       showToast(`Bhu Bharati file record (${file.appNumber}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
   };
 
-  // Inward Tapal Handling
   const handleSaveInward = async (savedTapal: InwardTapal) => {
     const tapalToSave = { ...savedTapal };
     if (tapalToSave.fileAttachment) {
@@ -593,7 +588,7 @@ export default function App() {
         'Tapal Inward',
         tapalToSave.inwardNo,
         'EDIT',
-        `Inward record updated by ${currentUser?.name || 'Staff'}. Sender: ${tapalToSave.sender}. Status: ${tapalToSave.status}`
+        `Inward record updated. Sender: ${tapalToSave.sender}. Status: ${tapalToSave.status}.`
       );
     } else {
       updated = [tapalToSave, ...inwards];
@@ -601,7 +596,7 @@ export default function App() {
         'Tapal Inward',
         tapalToSave.inwardNo,
         'ENTRY',
-        `New Inward Tapal entered by ${currentUser?.name || 'Staff'}. From: ${tapalToSave.sender}. Subject: ${tapalToSave.subject}`
+        `New Inward Tapal received from ${tapalToSave.sender}. Subject: ${tapalToSave.subject}.`
       );
     }
     setInwards(updated);
@@ -637,7 +632,7 @@ export default function App() {
       'Tapal Inward',
       updatedTapal.inwardNo,
       'STATUS_CHANGE',
-      `Inward Tapal status updated to "${updatedTapal.status}" by ${currentUser?.name || 'Staff'}.`
+      `Inward Tapal status updated to "${updatedTapal.status}".`
     );
   };
 
@@ -659,7 +654,6 @@ export default function App() {
     setIsPdfModalOpen(true);
   };
 
-  // Admin Permanent Delete for Inward Tapal with Audit
   const handleDeleteInwardPrompt = (tapal: InwardTapal) => {
     if (currentUser?.role !== 'ADMIN') {
       showToast('⚠️ Access restricted: Only Administrator can delete records.');
@@ -679,18 +673,12 @@ export default function App() {
       const updated = inwards.filter((t) => t.id !== tapal.id);
       setInwards(updated);
       safeSaveLocalStorage('rdo_inward_tapal', updated);
-      await logActivity(
-        'Tapal Inward',
-        tapal.inwardNo,
-        'DELETE',
-        `Inward Tapal #${tapal.inwardNo} PERMANENTLY DELETED by Admin ${currentUser?.name}. Sender: ${tapal.sender}`
-      );
+      await logActivity('Tapal Inward', tapal.inwardNo, 'DELETE', `Inward Tapal #${tapal.inwardNo} deleted.`);
       showToast(`Inward Tapal (${tapal.inwardNo}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
   };
 
-  // Outward Despatch Handling
   const handleOpenOutward = (linkedId?: number) => {
     setEditingOutward(null);
     setPreselectedInwardId(linkedId || null);
@@ -719,10 +707,10 @@ export default function App() {
     let updatedOutwards: OutwardDespatch[];
     if (isEdit) {
       updatedOutwards = outwards.map((o) => (o.id === outwardToSave.id ? outwardToSave : o));
-      await logActivity('Tapal Outward', outwardToSave.outwardNo, 'EDIT', `Outward Despatch #${outwardToSave.outwardNo} edited by ${currentUser?.name || 'Staff'}`);
+      await logActivity('Tapal Outward', outwardToSave.outwardNo, 'EDIT', `Updated Outward #${outwardToSave.outwardNo}`);
     } else {
       updatedOutwards = [outwardToSave, ...outwards];
-      await logActivity('Tapal Outward', outwardToSave.outwardNo, 'ENTRY', `New Outward Despatch recorded by ${currentUser?.name || 'Staff'}. Sent To: ${outwardToSave.sentTo}, Mode: ${outwardToSave.mode}`);
+      await logActivity('Tapal Outward', outwardToSave.outwardNo, 'ENTRY', `Dispatched to ${outwardToSave.sentTo}.`);
     }
     setOutwards(updatedOutwards);
     safeSaveLocalStorage('rdo_outward', updatedOutwards);
@@ -784,13 +772,12 @@ export default function App() {
       const updated = outwards.filter((o) => o.id !== outward.id);
       setOutwards(updated);
       safeSaveLocalStorage('rdo_outward', updated);
-      await logActivity('Tapal Outward', outward.outwardNo, 'DELETE', `Outward Despatch #${outward.outwardNo} DELETED by Admin ${currentUser?.name}. Sent to: ${outward.sentTo}`);
+      await logActivity('Tapal Outward', outward.outwardNo, 'DELETE', `Outward #${outward.outwardNo} deleted.`);
       showToast(`Outward Despatch (${outward.outwardNo}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
   };
 
-  // Appeal Cases Handling
   const handleSaveAppealCase = async (newCase: AppealCase, rawFileString?: string) => {
     let caseToSave = { ...newCase };
     if (rawFileString) {
@@ -807,7 +794,7 @@ export default function App() {
     } catch (err) {
       console.error('Firebase appeal case save error:', err);
     }
-    await logActivity('Appeal Cases', newCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'ENTRY', `Appeal Case filed by ${currentUser?.name || 'Staff'}. Appellant: ${newCase.appellantName} vs ${newCase.respondentName}`);
+    await logActivity('Appeal Cases', newCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'ENTRY', `Appeal Case filed: ${newCase.appellantName} vs ${newCase.respondentName}.`);
     showToast(`Appeal Case ${newCase.caseNo} registered successfully.`);
   };
 
@@ -827,7 +814,7 @@ export default function App() {
     } catch (err) {
       console.error('Firebase appeal case update error:', err);
     }
-    await logActivity('Appeal Cases', updatedCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'EDIT', `Appeal Case updated by ${currentUser?.name || 'Staff'}. Status: ${updatedCase.status}, Next Hearing: ${updatedCase.nextHearingDate || '-'}`);
+    await logActivity('Appeal Cases', updatedCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'EDIT', `Appeal Case updated. Status: ${updatedCase.status}.`);
     showToast(`Appeal Case ${updatedCase.caseNo} updated successfully.`);
   };
 
@@ -849,7 +836,7 @@ export default function App() {
       const updated = appealCases.filter((c) => c.id !== appealCase.id);
       setAppealCases(updated);
       safeSaveLocalStorage('rdo_appeal_cases', updated);
-      await logActivity('Appeal Cases', appealCase.caseNo, 'DELETE', `Appeal Case #${appealCase.caseNo} DELETED by Admin ${currentUser?.name}. Appellant: ${appealCase.appellantName}`);
+      await logActivity('Appeal Cases', appealCase.caseNo, 'DELETE', `Appeal Case #${appealCase.caseNo} deleted.`);
       showToast(`Appeal Case (${appealCase.caseNo}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
@@ -885,7 +872,6 @@ export default function App() {
     }
   };
 
-  // Staff & Admin Credentials Management
   const handleToggleUserStatus = async (id: number) => {
     const targetUser = staff.find((u) => u.id === id);
     const updated = staff.map((u) => (u.id === id ? { ...u, active: !u.active } : u));
@@ -900,7 +886,7 @@ export default function App() {
       console.warn('Could not sync user status toggle to Firestore:', e);
     }
     if (targetUser) {
-      await logActivity('Staff Admin', `USER-${id}`, 'STATUS_CHANGE', `Staff account ${targetUser.name} (${targetUser.cadre}) toggled to ${!targetUser.active ? 'ACTIVE' : 'DISABLED'} by Admin ${currentUser?.name}.`);
+      await logActivity('Staff Admin', `USER-${id}`, 'STATUS_CHANGE', `Staff account ${targetUser.name} toggled by Admin.`);
     }
   };
 
@@ -916,7 +902,7 @@ export default function App() {
     } catch (e) {
       console.warn('Could not sync new user to Firestore:', e);
     }
-    await logActivity('Staff Admin', `USER-${newUser.id}`, 'ENTRY', `New staff account created for ${newUser.name} (${newUser.cadre}) by Admin ${currentUser?.name}.`);
+    await logActivity('Staff Admin', `USER-${newUser.id}`, 'ENTRY', `New staff account created: ${newUser.name}`);
   };
 
   const handleUpdateStaff = async (updatedMember: StaffUser) => {
@@ -934,7 +920,7 @@ export default function App() {
     } catch (e) {
       console.warn('Could not sync staff update to Firestore:', e);
     }
-    await logActivity('Staff Admin', `USER-${updatedMember.id}`, 'EDIT', `Staff details updated for ${updatedMember.name} (${updatedMember.cadre}) by Admin ${currentUser?.name}.`);
+    await logActivity('Staff Admin', `USER-${updatedMember.id}`, 'EDIT', `Staff details updated: ${updatedMember.name}`);
   };
 
   const handleDeleteStaff = async (staffId: number) => {
@@ -955,7 +941,7 @@ export default function App() {
       console.warn('Could not sync staff delete to Firestore:', e);
     }
     if (targetUser) {
-      await logActivity('Staff Admin', `USER-${staffId}`, 'DELETE', `Staff account ${targetUser.name} (${targetUser.cadre}) DELETED by Admin ${currentUser?.name}.`);
+      await logActivity('Staff Admin', `USER-${staffId}`, 'DELETE', `Staff account deleted: ${targetUser.name}`);
     }
   };
 
@@ -981,7 +967,7 @@ export default function App() {
     } catch (e) {
       console.warn('Could not sync admin profile to Firestore:', e);
     }
-    await logActivity('Staff Admin', 'ADMIN-PROFILE', 'EDIT', `Admin profile & phone updated by Admin ${currentUser?.name}.`);
+    await logActivity('Staff Admin', 'ADMIN-PROFILE', 'EDIT', `Admin profile updated.`);
   };
 
   const handleUpdateStaffPassword = async (staffId: number, newPassword: string) => {
@@ -1019,130 +1005,146 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-100 via-slate-50 to-slate-100 text-slate-900 font-sans antialiased selection:bg-amber-400 selection:text-slate-950">
       <ColorSplashCursor />
 
-      {/* TOP STICKY BAR: OFFICIAL GOVT THEME */}
-      <div className="sticky top-0 z-50 w-full shadow-md bg-[#0b3323] border-b-2 border-emerald-500">
-        <Header
-          currentUser={currentUser}
-          onOpenLogin={() => setIsLoginModalOpen(true)}
-          onLogout={() => {
-            handleSetCurrentUser(null);
-            if (activeTab === 'adminTab') setActiveTab('dashboardTab');
-            showToast('Signed out.');
-          }}
-          onOpenChangePassword={() => setIsChangePasswordModalOpen(true)}
-          onGoHome={() => setActiveTab('dashboardTab')}
-        />
+      {/* TOP STICKY BAR: GOVT THEME WITH MOBILE HAMBURGER BUTTON */}
+      <div className="sticky top-0 z-40 w-full shadow-md bg-[#0b3323] border-b-2 border-emerald-500">
+        <div className="flex items-center justify-between">
+          {/* Mobile Hamburger Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="lg:hidden ml-3 p-2 text-emerald-200 hover:text-white rounded-xl hover:bg-white/10 cursor-pointer"
+            title="Open Menu"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
 
-        <NoticeTicker />
-
-        <div className="w-full bg-[#08261a]/95 border-t border-emerald-600/30 overflow-x-auto no-scrollbar py-1">
-          <div className="max-w-[1520px] mx-auto px-2 sm:px-4 flex items-center gap-1 sm:gap-2">
-            <Navigation
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
+          <div className="flex-1">
+            <Header
               currentUser={currentUser}
+              onOpenLogin={() => setIsLoginModalOpen(true)}
+              onLogout={() => {
+                handleSetCurrentUser(null);
+                if (activeTab === 'adminTab') setActiveTab('dashboardTab');
+                showToast('Signed out.');
+              }}
+              onOpenChangePassword={() => setIsChangePasswordModalOpen(true)}
+              onGoHome={() => setActiveTab('dashboardTab')}
             />
           </div>
         </div>
+
+        <NoticeTicker />
       </div>
 
-      <main className="max-w-[1520px] w-full mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6 flex-1">
-        {activeTab === 'dashboardTab' && (
-          <DashboardView
-            files={files}
-            inwards={inwards}
-            outwards={outwards}
-            staff={staff}
-            appealCases={appealCases}
-            sadabainamaAbstract={sadabainamaAbstract}
-            currentUser={currentUser}
-            onNavigate={handleDashboardNavigate}
-            onNewFile={() => setIsFileModalOpen(true)}
-            onNewInward={() => setIsInwardModalOpen(true)}
-            onNewOutward={() => handleOpenOutward()}
-            onOpenAdmin={handleOpenAdminFromDashboard}
-          />
-        )}
+      {/* MAIN BODY CONTAINER WITH LEFT SIDEBAR NAVIGATION */}
+      <div className="flex-1 flex w-full">
+        {/* Left Sidebar Navigation (Desktop Fixed + Mobile Collapsible Drawer) */}
+        <Navigation
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          currentUser={currentUser}
+          isOpenMobile={isMobileMenuOpen}
+          onCloseMobile={() => setIsMobileMenuOpen(false)}
+        />
 
-        {activeTab === 'bhuBharatiTab' && (
-          <BhuBharatiView
-            files={files}
-            initialStatusFilter={bhuInitialStatus}
-            currentUser={currentUser}
-            onNewFile={() => setIsFileModalOpen(true)}
-            onUpdateStatus={handleUpdateFileStatus}
-            onPrintSlip={handlePrintSlip}
-            onViewPdf={handleViewBhuPdf}
-            onDeleteFile={handleDeleteBhuFilePrompt}
-          />
-        )}
+        {/* Right Main Content Area */}
+        <main className="flex-1 min-w-0 px-3 sm:px-5 md:px-7 py-4 sm:py-6">
+          {activeTab === 'dashboardTab' && (
+            <DashboardView
+              files={files}
+              inwards={inwards}
+              outwards={outwards}
+              staff={staff}
+              appealCases={appealCases}
+              sadabainamaAbstract={sadabainamaAbstract}
+              currentUser={currentUser}
+              onNavigate={handleDashboardNavigate}
+              onNewFile={() => setIsFileModalOpen(true)}
+              onNewInward={() => setIsInwardModalOpen(true)}
+              onNewOutward={() => handleOpenOutward()}
+              onOpenAdmin={handleOpenAdminFromDashboard}
+            />
+          )}
 
-        {activeTab === 'tapalTab' && (
-          <TapalRegisterView
-            inwards={inwards}
-            outwards={outwards}
-            initialInwardStatus={inwardInitialStatus}
-            initialOutwardSentTo={outwardInitialSentTo}
-            currentUser={currentUser}
-            onNewInward={() => {
-              setSelectedInwardForEdit(null);
-              setIsInwardModalOpen(true);
-            }}
-            onEditInward={handleEditInward}
-            onNewOutward={(linkedId) => handleOpenOutward(linkedId)}
-            onEditOutward={handleEditOutward}
-            onUpdateInwardStatus={handleUpdateInwardStatus}
-            onViewInwardPdf={handleViewInwardPdf}
-            onViewOutwardPdf={handleViewOutwardPdf}
-            onDeleteInward={handleDeleteInwardPrompt}
-            onDeleteOutward={handleDeleteOutwardPrompt}
-          />
-        )}
+          {activeTab === 'bhuBharatiTab' && (
+            <BhuBharatiView
+              files={files}
+              initialStatusFilter={bhuInitialStatus}
+              currentUser={currentUser}
+              onNewFile={() => setIsFileModalOpen(true)}
+              onUpdateStatus={handleUpdateFileStatus}
+              onPrintSlip={handlePrintSlip}
+              onViewPdf={handleViewBhuPdf}
+              onDeleteFile={handleDeleteBhuFilePrompt}
+            />
+          )}
 
-        {activeTab === 'sadabainamaTab' && (
-          <SadabainamaView
-            abstractData={sadabainamaAbstract}
-            reportData={sadabainamaReport}
-            currentUser={currentUser}
-            onUpdateAbstract={setSadabainamaAbstract}
-            onUpdateReport={setSadabainamaReport}
-            onShowToast={showToast}
-          />
-        )}
+          {activeTab === 'tapalTab' && (
+            <TapalRegisterView
+              inwards={inwards}
+              outwards={outwards}
+              initialInwardStatus={inwardInitialStatus}
+              initialOutwardSentTo={outwardInitialSentTo}
+              currentUser={currentUser}
+              onNewInward={() => {
+                setSelectedInwardForEdit(null);
+                setIsInwardModalOpen(true);
+              }}
+              onEditInward={handleEditInward}
+              onNewOutward={(linkedId) => handleOpenOutward(linkedId)}
+              onEditOutward={handleEditOutward}
+              onUpdateInwardStatus={handleUpdateInwardStatus}
+              onViewInwardPdf={handleViewInwardPdf}
+              onViewOutwardPdf={handleViewOutwardPdf}
+              onDeleteInward={handleDeleteInwardPrompt}
+              onDeleteOutward={handleDeleteOutwardPrompt}
+            />
+          )}
 
-        {activeTab === 'appealCasesTab' && (
-          <AppealCasesView
-            appealCases={appealCases}
-            currentUser={currentUser}
-            onSaveCase={handleSaveAppealCase}
-            onUpdateCase={handleUpdateAppealCase}
-            onDeleteCase={handleDeleteAppealCasePrompt}
-            onViewFinalOrder={handleViewAppealFinalOrder}
-            onShowToast={showToast}
-          />
-        )}
+          {activeTab === 'sadabainamaTab' && (
+            <SadabainamaView
+              abstractData={sadabainamaAbstract}
+              reportData={sadabainamaReport}
+              currentUser={currentUser}
+              onUpdateAbstract={setSadabainamaAbstract}
+              onUpdateReport={setSadabainamaReport}
+              onShowToast={showToast}
+            />
+          )}
 
-        {activeTab === 'rdoPendencyTab' && (
-          <RdoPendencyView
-            currentUser={currentUser}
-            onShowToast={showToast}
-          />
-        )}
+          {activeTab === 'appealCasesTab' && (
+            <AppealCasesView
+              appealCases={appealCases}
+              currentUser={currentUser}
+              onSaveCase={handleSaveAppealCase}
+              onUpdateCase={handleUpdateAppealCase}
+              onDeleteCase={handleDeleteAppealCasePrompt}
+              onViewFinalOrder={handleViewAppealFinalOrder}
+              onShowToast={showToast}
+            />
+          )}
 
-        {activeTab === 'adminTab' && currentUser?.role === 'ADMIN' && (
-          <AdminView
-            staff={staff}
-            adminProfile={adminProfile}
-            auditLogs={auditLogs}
-            onOpenAddUser={() => setIsAddUserModalOpen(true)}
-            onToggleUserStatus={handleToggleUserStatus}
-            onUpdateStaff={handleUpdateStaff}
-            onDeleteStaff={handleDeleteStaff}
-            onUpdateAdminProfile={handleUpdateAdminProfile}
-            onShowToast={showToast}
-          />
-        )}
-      </main>
+          {activeTab === 'rdoPendencyTab' && (
+            <RdoPendencyView
+              currentUser={currentUser}
+              onShowToast={showToast}
+            />
+          )}
+
+          {activeTab === 'adminTab' && currentUser?.role === 'ADMIN' && (
+            <AdminView
+              staff={staff}
+              adminProfile={adminProfile}
+              auditLogs={auditLogs}
+              onOpenAddUser={() => setIsAddUserModalOpen(true)}
+              onToggleUserStatus={handleToggleUserStatus}
+              onUpdateStaff={handleUpdateStaff}
+              onDeleteStaff={handleDeleteStaff}
+              onUpdateAdminProfile={handleUpdateAdminProfile}
+              onShowToast={showToast}
+            />
+          )}
+        </main>
+      </div>
 
       <Footer />
 
