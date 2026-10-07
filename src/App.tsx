@@ -34,6 +34,7 @@ import { AppealCasesView } from './components/AppealCasesView';
 import { AdminView } from './components/AdminView';
 import { RdoPendencyView } from './components/RdoPendencyView';
 import { ColorSplashCursor } from './components/ColorSplashCursor';
+import { ScrollToTopBottom } from './components/ScrollToTopBottom';
 import { INITIAL_APPEAL_CASES } from './data/appealCasesData';
 import { INITIAL_AUDIT_LOGS } from './data/initialAuditLogs';
 import { generateOfficialOrderPdf } from './utils/orderPdfGenerator';
@@ -163,7 +164,7 @@ export default function App() {
     showToast('Signed out successfully.');
   }, [activeTab, handleSetCurrentUser, setActiveTab]);
 
-  // 15-MINUTE IDLE INACTIVITY AUTO-LOGOUT LOGIC
+  // 15-MINUTE IDLE INACTIVITY AUTO-LOGOUT
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const resetIdleTimer = useCallback(() => {
@@ -713,7 +714,12 @@ export default function App() {
       const updated = inwards.filter((t) => t.id !== tapal.id);
       setInwards(updated);
       safeSaveLocalStorage('rdo_inward_tapal', updated);
-      await logActivity('Tapal Inward', tapal.inwardNo, 'DELETE', `Inward Tapal #${tapal.inwardNo} deleted by Admin ${currentUser?.name}.`);
+      await logActivity(
+        'Tapal Inward',
+        tapal.inwardNo,
+        'DELETE',
+        `Inward Tapal #${tapal.inwardNo} deleted by Admin ${currentUser?.name}.`
+      );
       showToast(`Inward Tapal (${tapal.inwardNo}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
@@ -969,8 +975,7 @@ export default function App() {
     setStaff(updated);
     safeSaveLocalStorage('rdo_staff', updated);
     if (currentUser && currentUser.id === staffId) {
-      handleSetCurrentUser(null);
-      setActiveTab('dashboardTab');
+      handleLogout();
     }
     try {
       await setDoc(doc(db, 'system_auth', 'staff_users'), {
@@ -1044,6 +1049,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-100 via-slate-50 to-slate-100 text-slate-900 font-sans antialiased selection:bg-amber-400 selection:text-slate-950">
       <ColorSplashCursor />
+      <ScrollToTopBottom />
 
       {/* TOP STICKY BAR: OFFICIAL GOVT THEME WITH HEADER PROFILE AT RIGHT CORNER */}
       <div className="sticky top-0 z-40 w-full shadow-md bg-[#0b3323] border-b-2 border-emerald-500">
@@ -1072,7 +1078,7 @@ export default function App() {
 
       {/* MAIN BODY CONTAINER WITH LEFT SIDEBAR NAVIGATION */}
       <div className="flex-1 flex w-full">
-        {/* Left Sidebar with bottom logout action */}
+        {/* Left Sidebar Navigation with bottom logout button */}
         <Navigation
           activeTab={activeTab}
           onTabChange={setActiveTab}
