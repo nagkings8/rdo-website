@@ -8,7 +8,9 @@ import {
   Clock, 
   ShieldCheck,
   X,
-  ChevronRight
+  ChevronRight,
+  LogOut,
+  UserCheck
 } from 'lucide-react';
 import { StaffUser } from '../types';
 
@@ -25,6 +27,7 @@ interface NavigationProps {
   activeTab: ActiveTab;
   onTabChange: (tab: ActiveTab) => void;
   currentUser?: StaffUser | null;
+  onLogout?: () => void;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
 }
@@ -33,6 +36,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   activeTab,
   onTabChange,
   currentUser,
+  onLogout,
   isOpenMobile = false,
   onCloseMobile,
 }) => {
@@ -137,9 +141,18 @@ export const Navigation: React.FC<NavigationProps> = ({
     }
   };
 
+  const handleLogoutClick = () => {
+    if (onLogout) {
+      onLogout();
+    }
+    if (onCloseMobile) {
+      onCloseMobile();
+    }
+  };
+
   return (
     <>
-      {/* DESKTOP COLLAPSIBLE MINI SIDEBAR (EXPANDS ON HOVER/CLICK) */}
+      {/* DESKTOP COLLAPSIBLE MINI SIDEBAR */}
       <aside 
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
@@ -148,7 +161,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         }`}
       >
         <div>
-          {/* Top Header Strip inside Sidebar */}
+          {/* Header Bar */}
           <div className="px-3 py-2 mb-2 flex items-center justify-between border-b border-emerald-800/40 min-h-[42px]">
             {isHovered ? (
               <span className="text-[11px] font-black uppercase tracking-wider text-emerald-300 truncate">
@@ -205,17 +218,42 @@ export const Navigation: React.FC<NavigationProps> = ({
           </nav>
         </div>
 
-        {/* Bottom Office Label */}
-        {isHovered ? (
-          <div className="p-3 mx-2.5 bg-[#051c13] rounded-xl border border-emerald-700/40 text-[10.5px] text-emerald-200 text-center shadow-inner animate-fade-in">
-            <div className="font-bold text-white mb-0.5">RDO Huzurnagar</div>
-            <div className="opacity-80 text-[10px]">Suryapet District, TS</div>
-          </div>
-        ) : (
-          <div className="flex justify-center pb-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
-          </div>
-        )}
+        {/* BOTTOM SECTION: USER INFO & LOGOUT BUTTON */}
+        <div className="px-2.5 space-y-2 pt-2 border-t border-emerald-800/40">
+          {currentUser ? (
+            <>
+              {isHovered && (
+                <div className="p-2.5 bg-emerald-950/70 border border-emerald-700/40 rounded-xl flex items-center gap-2.5 animate-fade-in">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-800 flex items-center justify-center text-emerald-200 shrink-0">
+                    <UserCheck className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold text-white truncate">{currentUser.name}</div>
+                    <div className="text-[10px] text-emerald-300 truncate">{currentUser.cadre || currentUser.role}</div>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={handleLogoutClick}
+                title={!isHovered ? "Logout" : undefined}
+                className={`w-full flex items-center rounded-xl text-xs font-bold text-rose-300 hover:text-white bg-rose-950/40 hover:bg-rose-600 border border-rose-700/40 transition-all cursor-pointer shadow-xs ${
+                  isHovered ? 'px-3 py-2.5 justify-start gap-2.5' : 'p-2.5 justify-center'
+                }`}
+              >
+                <LogOut className="w-4 h-4 shrink-0" />
+                {isHovered && <span>Sign Out</span>}
+              </button>
+            </>
+          ) : (
+            isHovered && (
+              <div className="p-2.5 bg-[#051c13] rounded-xl border border-emerald-700/40 text-[10.5px] text-emerald-200 text-center animate-fade-in">
+                <div className="font-bold text-white mb-0.5">RDO Huzurnagar</div>
+                <div className="opacity-80 text-[10px]">Public View</div>
+              </div>
+            )
+          )}
+        </div>
       </aside>
 
       {/* MOBILE DRAWER OVERLAY */}
@@ -273,9 +311,34 @@ export const Navigation: React.FC<NavigationProps> = ({
               </nav>
             </div>
 
-            <div className="p-3 bg-[#051c13] rounded-xl border border-emerald-700/40 text-[10.5px] text-emerald-200 text-center">
-              <div className="font-bold text-white mb-0.5">RDO Huzurnagar Portal</div>
-              <div className="opacity-80 text-[10px]">Suryapet District, TS</div>
+            {/* Mobile Bottom User & Logout */}
+            <div className="space-y-2 pt-3 border-t border-emerald-800/50">
+              {currentUser ? (
+                <>
+                  <div className="p-2.5 bg-emerald-950/70 border border-emerald-700/40 rounded-xl flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-800 flex items-center justify-center text-emerald-200 shrink-0">
+                      <UserCheck className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-bold text-white truncate">{currentUser.name}</div>
+                      <div className="text-[10px] text-emerald-300 truncate">{currentUser.cadre || currentUser.role}</div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleLogoutClick}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </button>
+                </>
+              ) : (
+                <div className="p-3 bg-[#051c13] rounded-xl border border-emerald-700/40 text-[10.5px] text-emerald-200 text-center">
+                  <div className="font-bold text-white mb-0.5">RDO Huzurnagar Portal</div>
+                  <div className="opacity-80 text-[10px]">Suryapet District, TS</div>
+                </div>
+              )}
             </div>
           </div>
         </div>
