@@ -34,7 +34,6 @@ import { AppealCasesView } from './components/AppealCasesView';
 import { AdminView } from './components/AdminView';
 import { RdoPendencyView } from './components/RdoPendencyView';
 import { ColorSplashCursor } from './components/ColorSplashCursor';
-import { DEFAULT_SADABAINAMA_ABSTRACT, DEFAULT_SADABAINAMA_REPORT } from './data/sadabainamaData';
 import { INITIAL_APPEAL_CASES } from './data/appealCasesData';
 import { INITIAL_AUDIT_LOGS } from './data/initialAuditLogs';
 import { generateOfficialOrderPdf } from './utils/orderPdfGenerator';
@@ -80,10 +79,10 @@ export default function App() {
     };
   });
   const [sadabainamaAbstract, setSadabainamaAbstract] = useState<any[][] | null>(() =>
-    safeGetLocalStorage('rdo_sadabainama_abstract', DEFAULT_SADABAINAMA_ABSTRACT)
+    safeGetLocalStorage('rdo_sadabainama_abstract', null)
   );
   const [sadabainamaReport, setSadabainamaReport] = useState<any[][] | null>(() =>
-    safeGetLocalStorage('rdo_sadabainama_report', DEFAULT_SADABAINAMA_REPORT)
+    safeGetLocalStorage('rdo_sadabainama_report', null)
   );
   const [appealCases, setAppealCases] = useState<AppealCase[]>(() =>
     safeGetLocalStorage('rdo_appeal_cases', INITIAL_APPEAL_CASES)
@@ -148,7 +147,7 @@ export default function App() {
     };
   }, []);
 
-  // Real-time Listeners (Syncs instantly across all devices)
+  // Real-time Firestore Listeners with Instant Delete Propagation
   useEffect(() => {
     const unsubFiles = onSnapshot(collection(db, 'bhu_files'), (snapshot) => {
       const list: BhuFile[] = [];
@@ -167,33 +166,45 @@ export default function App() {
 
     const unsubInwards = onSnapshot(collection(db, 'inward_tapals'), (snapshot) => {
       const list: InwardTapal[] = [];
-      snapshot.forEach((d) => list.push(d.data() as InwardTapal));
-      if (list.length > 0) {
-        setInwards(list);
-        safeSaveLocalStorage('rdo_inward_tapal', list);
-      }
+      snapshot.forEach((d) => {
+        const item = d.data() as InwardTapal;
+        if (item && item.inwardNo) {
+          list.push(item);
+        }
+      });
+      list.sort((a, b) => Number(b.id) - Number(a.id));
+      setInwards(list);
+      safeSaveLocalStorage('rdo_inward_tapal', list);
     }, (err) => {
       console.error('Inwards Sync Error:', err);
     });
 
     const unsubOutwards = onSnapshot(collection(db, 'outward_despatches'), (snapshot) => {
       const list: OutwardDespatch[] = [];
-      snapshot.forEach((d) => list.push(d.data() as OutwardDespatch));
-      if (list.length > 0) {
-        setOutwards(list);
-        safeSaveLocalStorage('rdo_outward', list);
-      }
+      snapshot.forEach((d) => {
+        const item = d.data() as OutwardDespatch;
+        if (item && item.outwardNo) {
+          list.push(item);
+        }
+      });
+      list.sort((a, b) => Number(b.id) - Number(a.id));
+      setOutwards(list);
+      safeSaveLocalStorage('rdo_outward', list);
     }, (err) => {
       console.error('Outwards Sync Error:', err);
     });
 
     const unsubAppeals = onSnapshot(collection(db, 'appeal_cases'), (snapshot) => {
       const list: AppealCase[] = [];
-      snapshot.forEach((d) => list.push(d.data() as AppealCase));
-      if (list.length > 0) {
-        setAppealCases(list);
-        safeSaveLocalStorage('rdo_appeal_cases', list);
-      }
+      snapshot.forEach((d) => {
+        const item = d.data() as AppealCase;
+        if (item && item.caseNo) {
+          list.push(item);
+        }
+      });
+      list.sort((a, b) => Number(b.id) - Number(a.id));
+      setAppealCases(list);
+      safeSaveLocalStorage('rdo_appeal_cases', list);
     }, (err) => {
       console.error('Appeals Sync Error:', err);
     });
@@ -363,7 +374,7 @@ export default function App() {
     });
   };
 
-  // Direct Firestore Write + Instant Multi-Device Sync
+  // Direct Firestore Write + Local State Sync for Bhu Bharati
   const handleSaveFile = async (newFile: BhuFile) => {
     try {
       const fileToSave: BhuFile = {
@@ -377,12 +388,10 @@ export default function App() {
         remarks: newFile.remarks || '',
       };
 
-      // 1. Direct Cloud Firestore Write First
       await setDoc(doc(db, 'bhu_files', String(fileToSave.id)), fileToSave);
-
-      // 2. Direct Local State Update
-      setFiles((prev) => [fileToSave, ...prev.filter((f) => f.id !== fileToSave.id)]);
-      safeSaveLocalStorage('rdo_files', [fileToSave, ...files.filter((f) => f.id !== fileToSave.id)]);
+      const updated = [fileToSave, ...files.filter((f) => f.id !== fileToSave.id)];
+      setFiles(updated);
+      safeSaveLocalStorage('rdo_files', updated);
 
       logActivity(
         'Bhu Bharati',
@@ -390,10 +399,10 @@ export default function App() {
         'ENTRY',
         `New Bhu Bharati file registered: ${fileToSave.appNumber} - ${fileToSave.applicantName}`
       );
-      showToast(`File #${fileToSave.appNumber} saved & synced to all systems!`);
+      showToast(`File #${fileToSave.appNumber} saved & synced across all systems!`);
     } catch (err: any) {
       console.error('Firebase save error:', err);
-      showToast(`Cloud Sync Error: ${err.message || 'Check Firestore network'}`);
+      showToast(`Cloud Sync Error: ${err.message || 'Check connection'}`);
     }
   };
 
@@ -452,6 +461,7 @@ export default function App() {
     setIsPdfModalOpen(true);
   };
 
+  // Admin Permanent Delete for Bhu Bharati File
   const handleDeleteBhuFilePrompt = (file: BhuFile) => {
     if (currentUser?.role !== 'ADMIN') {
       showToast('⚠️ Access restricted: Only Administrator can delete records.');
@@ -479,11 +489,12 @@ export default function App() {
         'DELETE',
         `File record deleted for applicant ${file.applicantName} (${file.appNumber}).`
       );
-      showToast(`Bhu Bharati file record (${file.appNumber}) deleted successfully.`);
+      showToast(`Bhu Bharati file record (${file.appNumber}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
   };
 
+  // Inward Tapal Handling
   const handleSaveInward = async (savedTapal: InwardTapal) => {
     const tapalToSave = { ...savedTapal };
     if (tapalToSave.fileAttachment) {
@@ -567,6 +578,7 @@ export default function App() {
     setIsPdfModalOpen(true);
   };
 
+  // Admin Permanent Delete for Inward Tapal
   const handleDeleteInwardPrompt = (tapal: InwardTapal) => {
     if (currentUser?.role !== 'ADMIN') {
       showToast('⚠️ Access restricted: Only Administrator can delete records.');
@@ -587,11 +599,12 @@ export default function App() {
       setInwards(updated);
       safeSaveLocalStorage('rdo_inward_tapal', updated);
       logActivity('Tapal Inward', tapal.inwardNo, 'DELETE', `Inward Tapal #${tapal.inwardNo} deleted.`);
-      showToast(`Inward Tapal (${tapal.inwardNo}) deleted successfully.`);
+      showToast(`Inward Tapal (${tapal.inwardNo}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
   };
 
+  // Outward Despatch Handling
   const handleOpenOutward = (linkedId?: number) => {
     setEditingOutward(null);
     setPreselectedInwardId(linkedId || null);
@@ -666,6 +679,7 @@ export default function App() {
     setIsPdfModalOpen(true);
   };
 
+  // Admin Permanent Delete for Outward Despatch
   const handleDeleteOutwardPrompt = (outward: OutwardDespatch) => {
     if (currentUser?.role !== 'ADMIN') {
       showToast('⚠️ Access restricted: Only Administrator can delete records.');
@@ -686,11 +700,12 @@ export default function App() {
       setOutwards(updated);
       safeSaveLocalStorage('rdo_outward', updated);
       logActivity('Tapal Outward', outward.outwardNo, 'DELETE', `Outward #${outward.outwardNo} deleted.`);
-      showToast(`Outward Despatch (${outward.outwardNo}) deleted successfully.`);
+      showToast(`Outward Despatch (${outward.outwardNo}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
   };
 
+  // Appeal Cases Handling
   const handleSaveAppealCase = async (newCase: AppealCase, rawFileString?: string) => {
     let caseToSave = { ...newCase };
     if (rawFileString) {
@@ -731,6 +746,7 @@ export default function App() {
     showToast(`Appeal Case ${updatedCase.caseNo} updated successfully.`);
   };
 
+  // Admin Permanent Delete for Appeal Case
   const handleDeleteAppealCasePrompt = (appealCase: AppealCase) => {
     if (currentUser?.role !== 'ADMIN') {
       showToast('⚠️ Access restricted: Only Administrator can delete records.');
@@ -750,7 +766,7 @@ export default function App() {
       setAppealCases(updated);
       safeSaveLocalStorage('rdo_appeal_cases', updated);
       logActivity('Appeal Cases', appealCase.caseNo, 'DELETE', `Appeal Case #${appealCase.caseNo} deleted.`);
-      showToast(`Appeal Case (${appealCase.caseNo}) deleted successfully.`);
+      showToast(`Appeal Case (${appealCase.caseNo}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
   };
@@ -785,6 +801,7 @@ export default function App() {
     }
   };
 
+  // Staff & Admin Management
   const handleToggleUserStatus = async (id: number) => {
     const updated = staff.map((u) => (u.id === id ? { ...u, active: !u.active } : u));
     setStaff(updated);
@@ -906,7 +923,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-100 via-slate-50 to-slate-100 text-slate-900 font-sans antialiased selection:bg-amber-400 selection:text-slate-950">
       <ColorSplashCursor />
 
-      {/* TOP STICKY BAR: OFFICIAL GOVT THEME (DEEP TEAL/GREEN & EMERALD BORDER) */}
+      {/* TOP STICKY BAR: OFFICIAL GOVT THEME */}
       <div className="sticky top-0 z-50 w-full shadow-md bg-[#0b3323] border-b-2 border-emerald-500">
         <Header
           currentUser={currentUser}
