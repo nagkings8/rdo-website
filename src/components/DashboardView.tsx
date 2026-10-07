@@ -94,16 +94,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* 2. THE 5 SERVICE TILES (TOP NAV SEQUENCE ORDER) */}
+      {/* 2. THE 5 SERVICE TILES (DYNAMIC ATTRACTIVE COLORS MATCHING WORKFLOW) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         
-        {/* CARD 1: Bhu Bharati Files */}
+        {/* CARD 1: Bhu Bharati Files (Emerald Green) */}
         <div
           onClick={() => onNavigate('bhuBharatiTab')}
-          className="group bg-gradient-to-b from-emerald-50/70 via-white to-white rounded-2xl border border-emerald-100 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-emerald-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[290px]"
+          className="group bg-gradient-to-b from-emerald-50/70 via-white to-white rounded-2xl border border-emerald-200/80 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-emerald-500 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[290px]"
         >
           <div className="w-full flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-[#1c8b67] text-white flex items-center justify-center shadow-lg shadow-emerald-700/25 group-hover:scale-110 transition-transform duration-300 mb-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-700/25 group-hover:scale-110 transition-transform duration-300 mb-4">
               <FolderOpen className="w-8 h-8" />
             </div>
 
@@ -115,22 +115,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </div>
 
-          <div className="w-10 h-10 rounded-full bg-[#1c8b67] text-white flex items-center justify-center shadow-md group-hover:bg-[#136b4e] group-hover:scale-110 transition-all mt-4">
+          <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-md group-hover:bg-emerald-700 group-hover:scale-110 transition-all mt-4">
             <ArrowRight className="w-4 h-4" />
           </div>
         </div>
 
-        {/* CARD 2: Tapal Register */}
+        {/* CARD 2: Tapal Register (Amber / Orange) */}
         <div
           onClick={() => onNavigate('tapalTab')}
-          className="group bg-gradient-to-b from-teal-50/70 via-white to-white rounded-2xl border border-teal-100 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-teal-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[290px]"
+          className="group bg-gradient-to-b from-amber-50/70 via-white to-white rounded-2xl border border-amber-200/80 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-amber-500 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[290px]"
         >
           <div className="w-full flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-[#237c6c] text-white flex items-center justify-center shadow-lg shadow-teal-800/25 group-hover:scale-110 transition-transform duration-300 mb-4">
+            <div className="w-16 h-16 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-600/25 group-hover:scale-110 transition-transform duration-300 mb-4">
               <Mail className="w-8 h-8" />
             </div>
 
-            <h3 className="text-base font-black text-[#0c3559] group-hover:text-teal-800 transition-colors">
+            <h3 className="text-base font-black text-[#0c3559] group-hover:text-amber-700 transition-colors">
               Tapal Register
             </h3>
             <p className="text-xs text-slate-500 font-medium mt-2 leading-relaxed px-1">
@@ -138,22 +138,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </div>
 
-          <div className="w-10 h-10 rounded-full bg-[#237c6c] text-white flex items-center justify-center shadow-md group-hover:bg-[#185e51] group-hover:scale-110 transition-all mt-4">
+          <div className="w-10 h-10 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center shadow-md group-hover:bg-amber-600 group-hover:text-white group-hover:scale-110 transition-all mt-4">
             <ArrowRight className="w-4 h-4" />
           </div>
         </div>
 
-        {/* CARD 3: Sadabainama */}
+        {/* CARD 3: Sadabainama (Teal / Cyan) */}
         <div
           onClick={() => onNavigate('sadabainamaTab')}
-          className="group bg-gradient-to-b from-sky-50/70 via-white to-white rounded-2xl border border-sky-100 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-sky-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[290px]"
+          className="group bg-gradient-to-b from-teal-50/70 via-white to-white rounded-2xl border border-teal-200/80 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-teal-500 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[290px]"
         >
           <div className="w-full flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-[#1e78a6] text-white flex items-center justify-center shadow-lg shadow-sky-700/25 group-hover:scale-110 transition-transform duration-300 mb-4">
+            <div className="w-16 h-16 rounded-full bg-teal-600 text-white flex items-center justify-center shadow-lg shadow-teal-700/25 group-hover:scale-110 transition-transform duration-300 mb-4">
               <FileSpreadsheet className="w-8 h-8" />
             </div>
 
-            <h3 className="text-base font-black text-[#0c3559] group-hover:text-sky-700 transition-colors">
+            <h3 className="text-base font-black text-[#0c3559] group-hover:text-teal-700 transition-colors">
               Sadabainama
             </h3>
             <p className="text-xs text-slate-500 font-medium mt-2 leading-relaxed px-1">
@@ -161,18 +161,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </div>
 
-          <div className="w-10 h-10 rounded-full bg-[#1e78a6] text-white flex items-center justify-center shadow-md group-hover:bg-[#155d82] group-hover:scale-110 transition-all mt-4">
+          <div className="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center shadow-md group-hover:bg-teal-700 group-hover:scale-110 transition-all mt-4">
             <ArrowRight className="w-4 h-4" />
           </div>
         </div>
 
-        {/* CARD 4: Appeal Cases */}
+        {/* CARD 4: Appeal Cases (Royal Blue) */}
         <div
           onClick={() => onNavigate('appealCasesTab')}
-          className="group bg-gradient-to-b from-blue-50/70 via-white to-white rounded-2xl border border-blue-100 p-6 shadow-sm hover:shadow-xl hover:-translate-y-2 hover:border-blue-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[290px]"
+          className="group bg-gradient-to-b from-blue-50/70 via-white to-white rounded-2xl border border-blue-200/80 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-blue-500 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[290px]"
         >
           <div className="w-full flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-[#2069b2] text-white flex items-center justify-center shadow-lg shadow-blue-700/25 group-hover:scale-110 transition-transform duration-300 mb-4">
+            <div className="w-16 h-16 rounded-full bg-[#165bb5] text-white flex items-center justify-center shadow-lg shadow-blue-700/25 group-hover:scale-110 transition-transform duration-300 mb-4">
               <Scale className="w-8 h-8" />
             </div>
 
@@ -184,22 +184,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </div>
 
-          <div className="w-10 h-10 rounded-full bg-[#2069b2] text-white flex items-center justify-center shadow-md group-hover:bg-[#154e87] group-hover:scale-110 transition-all mt-4">
+          <div className="w-10 h-10 rounded-full bg-[#165bb5] text-white flex items-center justify-center shadow-md group-hover:bg-[#11478f] group-hover:scale-110 transition-all mt-4">
             <ArrowRight className="w-4 h-4" />
           </div>
         </div>
 
-        {/* CARD 5: RDO Pendency */}
+        {/* CARD 5: RDO Pendency (Purple / Indigo) */}
         <div
           onClick={() => onNavigate('rdoPendencyTab')}
-          className="group bg-gradient-to-b from-teal-50/70 via-white to-white rounded-2xl border border-teal-100 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-teal-400 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[290px]"
+          className="group bg-gradient-to-b from-purple-50/70 via-white to-white rounded-2xl border border-purple-200/80 p-6 shadow-xs hover:shadow-xl hover:-translate-y-2 hover:border-purple-500 transition-all duration-300 flex flex-col justify-between items-center text-center cursor-pointer min-h-[290px]"
         >
           <div className="w-full flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-[#1b7a70] text-white flex items-center justify-center shadow-lg shadow-teal-700/25 group-hover:scale-110 transition-transform duration-300 mb-4">
+            <div className="w-16 h-16 rounded-full bg-purple-700 text-white flex items-center justify-center shadow-lg shadow-purple-800/25 group-hover:scale-110 transition-transform duration-300 mb-4">
               <Clock className="w-8 h-8" />
             </div>
 
-            <h3 className="text-base font-black text-[#0c3559] group-hover:text-teal-700 transition-colors">
+            <h3 className="text-base font-black text-[#0c3559] group-hover:text-purple-800 transition-colors">
               RDO Login Pending
             </h3>
             <p className="text-xs text-slate-500 font-medium mt-2 leading-relaxed px-1">
@@ -207,7 +207,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </div>
 
-          <div className="w-10 h-10 rounded-full bg-[#1b7a70] text-white flex items-center justify-center shadow-md group-hover:bg-[#135f57] group-hover:scale-110 transition-all mt-4">
+          <div className="w-10 h-10 rounded-full bg-purple-700 text-white flex items-center justify-center shadow-md group-hover:bg-purple-800 group-hover:scale-110 transition-all mt-4">
             <ArrowRight className="w-4 h-4" />
           </div>
         </div>
