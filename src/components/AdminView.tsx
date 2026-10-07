@@ -4,34 +4,21 @@ import {
   UserPlus, 
   Printer, 
   ShieldCheck, 
-  Users, 
-  UserCheck, 
-  UserX, 
   KeyRound, 
   Lock, 
   RotateCcw,
   Search,
-  CheckCircle2,
   Phone,
   Eye,
   EyeOff,
   Check,
-  Copy,
-  Settings,
   X,
   Edit3,
   Trash2,
   AlertTriangle,
-  History,
-  FileText,
-  Calendar,
-  Filter,
-  ArrowUpDown,
-  PlusCircle,
   Download,
-  Clock,
-  FileCheck,
-  FolderOpen
+  History,
+  FileText
 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../utils/firebase';
@@ -50,7 +37,7 @@ interface AdminViewProps {
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
-  staff,
+  staff = [],
   adminProfile,
   auditLogs = [],
   onOpenAddUser,
@@ -83,29 +70,32 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
   // Admin Profile & Security Modal
   const [isAdminSecurityModalOpen, setIsAdminSecurityModalOpen] = useState(false);
-  const [adminName, setAdminName] = useState(adminProfile.name);
-  const [adminCadre, setAdminCadre] = useState(adminProfile.cadre);
-  const [adminPhone, setAdminPhone] = useState(adminProfile.phone);
-  const [adminPassword, setAdminPassword] = useState(adminProfile.password);
-  const [adminConfirmPassword, setAdminConfirmPassword] = useState(adminProfile.password);
+  const [adminName, setAdminName] = useState(adminProfile?.name || 'Administrator');
+  const [adminCadre, setAdminCadre] = useState(adminProfile?.cadre || 'Revenue Divisional Officer');
+  const [adminPhone, setAdminPhone] = useState(adminProfile?.phone || '');
+  const [adminPassword, setAdminPassword] = useState(adminProfile?.password || 'admin');
+  const [adminConfirmPassword, setAdminConfirmPassword] = useState(adminProfile?.password || 'admin');
   const [showAdminPassword, setShowAdminPassword] = useState(false);
 
+  const safeStaff = useMemo(() => Array.isArray(staff) ? staff.filter(Boolean) : [], [staff]);
+
   const filteredStaff = useMemo(() => {
-    return staff.filter((s) => {
-      const q = searchTerm.toLowerCase();
+    return safeStaff.filter((s) => {
+      const q = searchTerm.toLowerCase().trim();
       const matchSearch =
-        s.name.toLowerCase().includes(q) ||
-        s.cadre.toLowerCase().includes(q) ||
-        (s.phone && s.phone.includes(q)) ||
-        s.role.toLowerCase().includes(q);
-      const matchRole = roleFilter === '' || s.role.toLowerCase().includes(roleFilter.toLowerCase());
+        !q ||
+        String(s.name || '').toLowerCase().includes(q) ||
+        String(s.cadre || '').toLowerCase().includes(q) ||
+        (s.phone && String(s.phone).includes(q)) ||
+        String(s.role || '').toLowerCase().includes(q);
+      const matchRole = roleFilter === '' || String(s.role || '').toLowerCase().includes(roleFilter.toLowerCase());
       const matchStatus =
         statusFilter === '' ||
         (statusFilter === 'active' && s.active) ||
         (statusFilter === 'disabled' && !s.active);
       return matchSearch && matchRole && matchStatus;
     });
-  }, [staff, searchTerm, roleFilter, statusFilter]);
+  }, [safeStaff, searchTerm, roleFilter, statusFilter]);
 
   // Audit Log Register State (Admin Exclusive)
   const [logSearchTerm, setLogSearchTerm] = useState('');
@@ -113,42 +103,53 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [logActionFilter, setLogActionFilter] = useState('ALL');
   const [logOfficerFilter, setLogOfficerFilter] = useState('ALL');
 
+  const safeLogs = useMemo(() => Array.isArray(auditLogs) ? auditLogs.filter(Boolean) : [], [auditLogs]);
+
   const filteredLogs = useMemo(() => {
-    return auditLogs.filter((log) => {
-      const q = logSearchTerm.toLowerCase();
+    return safeLogs.filter((log) => {
+      const q = logSearchTerm.toLowerCase().trim();
       const matchSearch =
-        !logSearchTerm ||
-        log.recordId.toLowerCase().includes(q) ||
-        log.performedBy.toLowerCase().includes(q) ||
-        log.details.toLowerCase().includes(q) ||
-        log.module.toLowerCase().includes(q);
+        !q ||
+        String(log.recordId || '').toLowerCase().includes(q) ||
+        String(log.performedBy || '').toLowerCase().includes(q) ||
+        String(log.details || '').toLowerCase().includes(q) ||
+        String(log.module || '').toLowerCase().includes(q);
 
       const matchModule = logModuleFilter === 'ALL' || log.module === logModuleFilter;
       const matchAction = logActionFilter === 'ALL' || log.actionType === logActionFilter;
-      const matchOfficer = logOfficerFilter === 'ALL' || log.performedBy.toLowerCase().includes(logOfficerFilter.toLowerCase());
+      const matchOfficer = logOfficerFilter === 'ALL' || String(log.performedBy || '').toLowerCase().includes(logOfficerFilter.toLowerCase());
 
       return matchSearch && matchModule && matchAction && matchOfficer;
     });
-  }, [auditLogs, logSearchTerm, logModuleFilter, logActionFilter, logOfficerFilter]);
+  }, [safeLogs, logSearchTerm, logModuleFilter, logActionFilter, logOfficerFilter]);
 
   const officerOptions = useMemo(() => {
     const officers = new Set<string>();
-    auditLogs.forEach((l) => {
+    safeLogs.forEach((l) => {
       if (l.performedBy) {
         const name = l.performedBy.split('(')[0]?.trim() || l.performedBy;
         officers.add(name);
       }
     });
     return Array.from(officers);
-  }, [auditLogs]);
+  }, [safeLogs]);
 
-  const auditStats = useMemo(() => {
-    const total = auditLogs.length;
-    const entries = auditLogs.filter((l) => l.actionType === 'ENTRY').length;
-    const edits = auditLogs.filter((l) => l.actionType === 'EDIT' || l.actionType === 'STATUS_CHANGE').length;
-    const orders = auditLogs.filter((l) => l.actionType === 'ORDER_UPLOAD').length;
-    return { total, entries, edits, orders };
-  }, [auditLogs]);
+  const getActionBadge = (action: string) => {
+    switch (action) {
+      case 'ENTRY':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+      case 'STATUS_CHANGE':
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'DELETE':
+        return 'bg-rose-100 text-rose-800 border-rose-300';
+      case 'EDIT':
+        return 'bg-amber-100 text-amber-800 border-amber-300';
+      case 'ORDER_UPLOAD':
+        return 'bg-purple-100 text-purple-800 border-purple-300';
+      default:
+        return 'bg-slate-100 text-slate-800 border-slate-300';
+    }
+  };
 
   const handlePrintAuditLog = () => {
     const tableHeader = `
@@ -157,7 +158,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
         <th style="width: 140px; background: #061122; color: #fbbf24;">Date & Time</th>
         <th style="width: 110px; background: #061122; color: #fbbf24;">Module</th>
         <th style="width: 130px; background: #061122; color: #fbbf24;">Record / File Ref</th>
-        <th style="width: 100px; background: #061122; color: #fbbf24;">Action Type</th>
+        <th style="width: 110px; background: #061122; color: #fbbf24;">Action Type</th>
         <th style="width: 170px; background: #061122; color: #fbbf24;">Officer / Cadre</th>
         <th style="background: #061122; color: #fbbf24;">Activity Details & Remarks</th>
       </tr>
@@ -223,7 +224,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
     onShowToast('📥 Audit Log exported to CSV successfully.');
   };
 
-  // Open Edit Staff Details Modal
   const handleOpenEditStaff = (member: StaffUser) => {
     setEditingStaffDetails(member);
     setEditName(member.name);
@@ -233,7 +233,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
     setEditActive(member.active);
   };
 
-  // Save Edit Staff Details
   const handleSaveEditStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStaffDetails) return;
@@ -253,7 +252,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
     };
 
     try {
-      const updatedList = staff.map((s) => (s.id === updated.id ? updated : s));
+      const updatedList = safeStaff.map((s) => (s.id === updated.id ? updated : s));
       await setDoc(doc(db, 'system_auth', 'staff_users'), {
         users: JSON.stringify(updatedList),
         updatedAt: new Date().toISOString()
@@ -267,10 +266,9 @@ export const AdminView: React.FC<AdminViewProps> = ({
     onShowToast(`Staff details for ${updated.name} updated & synced across all systems!`);
   };
 
-  // Confirm Delete Staff
   const handleConfirmDelete = async () => {
     if (!deletingStaff) return;
-    if (staff.length <= 1) {
+    if (safeStaff.length <= 1) {
       onShowToast('Cannot delete the last remaining staff account.');
       setDeletingStaff(null);
       return;
@@ -278,7 +276,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
     const staffName = deletingStaff.name;
 
     try {
-      const updatedList = staff.filter((s) => s.id !== deletingStaff.id);
+      const updatedList = safeStaff.filter((s) => s.id !== deletingStaff.id);
       await setDoc(doc(db, 'system_auth', 'staff_users'), {
         users: JSON.stringify(updatedList),
         updatedAt: new Date().toISOString()
@@ -330,13 +328,12 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
     printTableReport(tableHtml, {
       title: 'Staff & Section Officers Directory',
-      subtitle: `Revenue Divisional Office, Huzurnagar • Administrator: ${adminProfile.name} (${adminProfile.phone})`,
+      subtitle: `Revenue Divisional Office, Huzurnagar • Administrator: ${adminProfile?.name} (${adminProfile?.phone})`,
       period: 'D Section Administration',
       landscape: false,
     });
   };
 
-  // Open Change Staff Password Modal
   const handleOpenStaffPasswordModal = (member: StaffUser) => {
     setEditingStaffPassword(member);
     setStaffNewPassword(member.password || 'staff');
@@ -344,7 +341,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
     setShowStaffPassword(false);
   };
 
-  // Save Staff Password (Syncs with Cloud)
   const handleSaveStaffPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStaffPassword) return;
@@ -361,7 +357,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
     };
 
     try {
-      const updatedList = staff.map((s) => (s.id === updated.id ? updated : s));
+      const updatedList = safeStaff.map((s) => (s.id === updated.id ? updated : s));
       await setDoc(doc(db, 'system_auth', 'staff_users'), {
         users: JSON.stringify(updatedList),
         updatedAt: new Date().toISOString()
@@ -375,18 +371,16 @@ export const AdminView: React.FC<AdminViewProps> = ({
     onShowToast(`Password & phone for ${updated.name} updated across all devices!`);
   };
 
-  // Open Admin Security Modal
   const handleOpenAdminSecurityModal = () => {
-    setAdminName(adminProfile.name);
-    setAdminCadre(adminProfile.cadre);
-    setAdminPhone(adminProfile.phone);
-    setAdminPassword(adminProfile.password);
-    setAdminConfirmPassword(adminProfile.password);
+    setAdminName(adminProfile?.name || 'Administrator');
+    setAdminCadre(adminProfile?.cadre || 'Revenue Divisional Officer');
+    setAdminPhone(adminProfile?.phone || '');
+    setAdminPassword(adminProfile?.password || 'admin');
+    setAdminConfirmPassword(adminProfile?.password || 'admin');
     setShowAdminPassword(false);
     setIsAdminSecurityModalOpen(true);
   };
 
-  // Save Admin Security & Phone (Syncs with Cloud)
   const handleSaveAdminSecurity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminPhone.trim()) {
@@ -430,10 +424,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
     <div className="space-y-6">
       {/* TOP DASHBOARD BANNER */}
       <div className="bg-gradient-to-r from-[#1c1335] via-[#2d1b4e] to-[#1c1335] text-white p-5 md:p-6 rounded-2xl shadow-xl border-t-2 border-amber-400 relative overflow-hidden">
-        <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-300/60 to-transparent pointer-events-none" />
-        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -left-10 -top-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br from-purple-400 to-indigo-700 p-0.5 shadow-lg shadow-purple-950/40 flex items-center justify-center shrink-0">
@@ -492,7 +482,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
         </div>
       </div>
 
-      {/* Main Table Container */}
+      {/* Staff Directory Table */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 md:p-6 shadow-xs space-y-4">
         <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-100 pb-4">
           <div>
@@ -654,7 +644,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
                         <button
                           onClick={async () => {
-                            const updatedList = staff.map((s) => s.id === u.id ? { ...s, active: !s.active } : s);
+                            const updatedList = safeStaff.map((s) => s.id === u.id ? { ...s, active: !s.active } : s);
                             try {
                               await setDoc(doc(db, 'system_auth', 'staff_users'), {
                                 users: JSON.stringify(updatedList),
@@ -692,7 +682,162 @@ export const AdminView: React.FC<AdminViewProps> = ({
         </div>
       </div>
 
-      {/* MODAL 1: CHANGE STAFF PASSWORD & PHONE MODAL */}
+      {/* CONFIDENTIAL AUDIT LOG REGISTER (ADMIN ONLY) */}
+      <div className="bg-white border-2 border-[#134674] rounded-xl p-5 md:p-6 shadow-md space-y-4">
+        <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-200 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700">
+              <History className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <span>All Actions Audit History (File Tracking Trail)</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-400 text-slate-950 uppercase">
+                  Admin Only
+                </span>
+              </h2>
+              <p className="text-xs font-semibold text-slate-500">
+                Live accountability register: tracks who entered, forwarded, modified, or deleted every revenue record
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrintAuditLog}
+              className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5 text-sky-300" />
+              <span>Print Audit Trail</span>
+            </button>
+            <button
+              onClick={handleExportAuditCsv}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Audit Filter */}
+        <div className="flex flex-wrap gap-2.5 items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
+          <div className="relative min-w-[220px] flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" />
+            <input
+              type="text"
+              placeholder="Search file number, officer name, or action notes..."
+              value={logSearchTerm}
+              onChange={(e) => setLogSearchTerm(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+          <select
+            value={logModuleFilter}
+            onChange={(e) => setLogModuleFilter(e.target.value)}
+            className="text-xs bg-white border border-slate-300 rounded-md px-2.5 py-1.5 focus:border-blue-500 focus:outline-none font-medium"
+          >
+            <option value="ALL">All Modules</option>
+            <option value="Bhu Bharati">Bhu Bharati Files</option>
+            <option value="Tapal Inward">Inward Tapal</option>
+            <option value="Tapal Outward">Outward Despatch</option>
+            <option value="Appeal Cases">Appeal Cases</option>
+            <option value="Sadabainama">Sadabainama</option>
+            <option value="Staff Admin">Staff Admin</option>
+          </select>
+          <select
+            value={logActionFilter}
+            onChange={(e) => setLogActionFilter(e.target.value)}
+            className="text-xs bg-white border border-slate-300 rounded-md px-2.5 py-1.5 focus:border-blue-500 focus:outline-none font-medium"
+          >
+            <option value="ALL">All Action Types</option>
+            <option value="ENTRY">ENTRY (Created)</option>
+            <option value="STATUS_CHANGE">STATUS_CHANGE (Forwarded / Disposed)</option>
+            <option value="EDIT">EDIT (Modified)</option>
+            <option value="ORDER_UPLOAD">ORDER_UPLOAD (Judgment Attached)</option>
+            <option value="DELETE">DELETE (Deleted)</option>
+          </select>
+          {officerOptions.length > 0 && (
+            <select
+              value={logOfficerFilter}
+              onChange={(e) => setLogOfficerFilter(e.target.value)}
+              className="text-xs bg-white border border-slate-300 rounded-md px-2.5 py-1.5 focus:border-blue-500 focus:outline-none font-medium"
+            >
+              <option value="ALL">All Officers</option>
+              {officerOptions.map((off) => (
+                <option key={off} value={off}>{off}</option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={() => {
+              setLogSearchTerm('');
+              setLogModuleFilter('ALL');
+              setLogActionFilter('ALL');
+              setLogOfficerFilter('ALL');
+            }}
+            className="text-xs text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 px-2 py-1.5 rounded hover:bg-rose-50 transition cursor-pointer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset</span>
+          </button>
+        </div>
+
+        {/* Audit Log Table */}
+        <div className="overflow-x-auto border border-slate-200 rounded-lg max-h-[460px] overflow-y-auto">
+          <table className="w-full text-xs text-left border-collapse bg-white">
+            <thead className="bg-[#134674] text-white uppercase font-bold text-[11px] sticky top-0 z-10">
+              <tr>
+                <th className="py-2.5 px-3 border-r border-slate-400 w-12 text-center">S.No</th>
+                <th className="py-2.5 px-3 border-r border-slate-400 whitespace-nowrap">Date &amp; Time</th>
+                <th className="py-2.5 px-3 border-r border-slate-400">Module</th>
+                <th className="py-2.5 px-3 border-r border-slate-400">File Ref / App No</th>
+                <th className="py-2.5 px-3 border-r border-slate-400 text-center">Action</th>
+                <th className="py-2.5 px-3 border-r border-slate-400">Performed By (Officer)</th>
+                <th className="py-2.5 px-3">Activity Description</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 font-medium">
+              {filteredLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-10 text-center text-slate-400 font-bold">
+                    No activity logs recorded yet. Any file entry, status movement, or deletion will appear here.
+                  </td>
+                </tr>
+              ) : (
+                filteredLogs.map((log, idx) => (
+                  <tr key={log.id || idx} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-2.5 px-3 text-center font-bold text-slate-500 border-r border-slate-200">
+                      {idx + 1}
+                    </td>
+                    <td className="py-2.5 px-3 border-r border-slate-200 font-mono text-[11px] whitespace-nowrap text-slate-700">
+                      {log.timestamp}
+                    </td>
+                    <td className="py-2.5 px-3 border-r border-slate-200 font-bold text-slate-900">
+                      {log.module}
+                    </td>
+                    <td className="py-2.5 px-3 border-r border-slate-200 font-mono font-bold text-blue-700">
+                      {log.recordId}
+                    </td>
+                    <td className="py-2.5 px-3 border-r border-slate-200 text-center">
+                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-black border ${getActionBadge(log.actionType)}`}>
+                        {log.actionType}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 border-r border-slate-200 font-bold text-slate-900">
+                      {log.performedBy}
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-700 text-[11px]">
+                      {log.details}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* MODAL 1: CHANGE STAFF PASSWORD & PHONE */}
       {editingStaffPassword && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-3">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-in fade-in duration-150">
@@ -760,9 +905,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     {showStaffPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Password syncs to all computers and phones automatically via Cloud.
-                </p>
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
@@ -806,10 +948,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
             </div>
 
             <form onSubmit={handleSaveAdminSecurity} className="p-5 md:p-6 space-y-4 text-xs">
-              <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 text-amber-900 text-[11px] leading-relaxed">
-                <strong>Cloud Sync Notice:</strong> Changes made here immediately update in Firebase Firestore across all workstations and smartphones.
-              </div>
-
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
                   Administrator Name <span className="text-rose-500">*</span>
@@ -910,7 +1048,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
         </div>
       )}
 
-      {/* MODAL 3: EDIT STAFF DETAILS MODAL */}
+      {/* MODAL 3: EDIT STAFF DETAILS */}
       {editingStaffDetails && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-3">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in duration-150">
@@ -1040,7 +1178,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
         </div>
       )}
 
-      {/* MODAL 4: DELETE STAFF CONFIRMATION MODAL */}
+      {/* MODAL 4: DELETE STAFF CONFIRMATION */}
       {deletingStaff && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-3">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-in fade-in duration-150">
@@ -1073,10 +1211,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   {deletingStaff.cadre} • Role: {deletingStaff.role}
                 </div>
               </div>
-
-              <p className="text-[11px] text-rose-700 font-semibold">
-                ⚠️ This action is irreversible. The officer will no longer be able to log in across all systems.
-              </p>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button

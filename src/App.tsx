@@ -53,7 +53,6 @@ import { AddUserModal } from './components/modals/AddUserModal';
 import { ChangePasswordModal } from './components/modals/ChangePasswordModal';
 import { PrintReportPayload } from './utils/printReport';
 
-// URL Routing Mapping
 const TAB_ROUTES: Record<ActiveTab, string> = {
   dashboardTab: '/',
   bhuBharatiTab: '/bhu-bharati',
@@ -112,7 +111,6 @@ export default function App() {
     safeGetLocalStorage('rdo_audit_logs', INITIAL_AUDIT_LOGS)
   );
 
-  // Persistent User Session Across Refreshes
   const [currentUser, setCurrentUserState] = useState<StaffUser | null>(() => {
     return safeGetLocalStorage<StaffUser | null>('rdo_logged_user', null);
   });
@@ -126,7 +124,6 @@ export default function App() {
     }
   };
 
-  // URL-Aware Active Tab
   const [activeTab, setActiveTabState] = useState<ActiveTab>(() => {
     if (typeof window !== 'undefined') {
       return getTabFromPath(window.location.pathname);
@@ -142,7 +139,6 @@ export default function App() {
     }
   }, []);
 
-  // Back/Forward Navigation
   useEffect(() => {
     const handlePopState = () => {
       const currentTab = getTabFromPath(window.location.pathname);
@@ -206,7 +202,7 @@ export default function App() {
     };
   }, []);
 
-  // Real-time Firestore Listeners with Instant Delete Propagation
+  // Real-time Firestore Listeners (Live Data Sync)
   useEffect(() => {
     const unsubFiles = onSnapshot(collection(db, 'bhu_files'), (snapshot) => {
       const list: BhuFile[] = [];
@@ -219,9 +215,7 @@ export default function App() {
       list.sort((a, b) => Number(b.id) - Number(a.id));
       setFiles(list);
       safeSaveLocalStorage('rdo_files', list);
-    }, (err) => {
-      console.error('Bhu Files Sync Error:', err);
-    });
+    }, (err) => console.error('Bhu Files Sync Error:', err));
 
     const unsubInwards = onSnapshot(collection(db, 'inward_tapals'), (snapshot) => {
       const list: InwardTapal[] = [];
@@ -234,9 +228,7 @@ export default function App() {
       list.sort((a, b) => Number(b.id) - Number(a.id));
       setInwards(list);
       safeSaveLocalStorage('rdo_inward_tapal', list);
-    }, (err) => {
-      console.error('Inwards Sync Error:', err);
-    });
+    }, (err) => console.error('Inwards Sync Error:', err));
 
     const unsubOutwards = onSnapshot(collection(db, 'outward_despatches'), (snapshot) => {
       const list: OutwardDespatch[] = [];
@@ -249,9 +241,7 @@ export default function App() {
       list.sort((a, b) => Number(b.id) - Number(a.id));
       setOutwards(list);
       safeSaveLocalStorage('rdo_outward', list);
-    }, (err) => {
-      console.error('Outwards Sync Error:', err);
-    });
+    }, (err) => console.error('Outwards Sync Error:', err));
 
     const unsubAppeals = onSnapshot(collection(db, 'appeal_cases'), (snapshot) => {
       const list: AppealCase[] = [];
@@ -264,9 +254,24 @@ export default function App() {
       list.sort((a, b) => Number(b.id) - Number(a.id));
       setAppealCases(list);
       safeSaveLocalStorage('rdo_appeal_cases', list);
-    }, (err) => {
-      console.error('Appeals Sync Error:', err);
-    });
+    }, (err) => console.error('Appeals Sync Error:', err));
+
+    // Audit Logs Live Cloud Sync for Admin
+    const unsubLogs = onSnapshot(collection(db, 'audit_logs'), (snapshot) => {
+      const list: AuditLogEntry[] = [];
+      snapshot.forEach((d) => {
+        const item = d.data() as AuditLogEntry;
+        if (item && item.recordId) {
+          list.push(item);
+        }
+      });
+      // Sort newest on top
+      list.sort((a, b) => (b.id > a.id ? 1 : -1));
+      if (list.length > 0) {
+        setAuditLogs(list);
+        safeSaveLocalStorage('rdo_audit_logs', list);
+      }
+    }, (err) => console.error('Audit Logs Sync Error:', err));
 
     const unsubStaff = onSnapshot(doc(db, 'system_auth', 'staff_users'), (snapshot) => {
       if (snapshot.exists() && snapshot.data()?.users) {
@@ -325,6 +330,7 @@ export default function App() {
       unsubInwards();
       unsubOutwards();
       unsubAppeals();
+      unsubLogs();
       unsubStaff();
       unsubAdmin();
     };
@@ -397,7 +403,8 @@ export default function App() {
     }
   };
 
-  const logActivity = (
+  // Live Cloud Audit Logger - Every action tracked permanently
+  const logActivity = async (
     module: 'Bhu Bharati' | 'Tapal Inward' | 'Tapal Outward' | 'Appeal Cases' | 'Sadabainama' | 'Staff Admin',
     recordId: string,
     actionType: 'ENTRY' | 'EDIT' | 'STATUS_CHANGE' | 'DELETE' | 'ORDER_UPLOAD',
@@ -421,8 +428,9 @@ export default function App() {
       : 'Desk Officer (Staff)';
     const userRole = currentUser?.role || 'STAFF';
 
+    const logId = `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const newLog: AuditLogEntry = {
-      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: logId,
       timestamp,
       module,
       recordId,
@@ -432,13 +440,22 @@ export default function App() {
       details,
     };
 
+    // Save locally
     setAuditLogs((prev) => {
       const updated = [newLog, ...prev];
       safeSaveLocalStorage('rdo_audit_logs', updated);
       return updated;
     });
+
+    // Save in Firestore Cloud permanently so Admin gets instant history across all systems
+    try {
+      await setDoc(doc(db, 'audit_logs', logId), newLog);
+    } catch (e) {
+      console.warn('Could not sync log to cloud:', e);
+    }
   };
 
+  // Direct Firestore Write + Local State Sync for Bhu Bharati
   const handleSaveFile = async (newFile: BhuFile) => {
     try {
       const fileToSave: BhuFile = {
@@ -457,11 +474,11 @@ export default function App() {
       setFiles(updated);
       safeSaveLocalStorage('rdo_files', updated);
 
-      logActivity(
+      await logActivity(
         'Bhu Bharati',
         fileToSave.appNumber,
         'ENTRY',
-        `New Bhu Bharati file registered: ${fileToSave.appNumber} - ${fileToSave.applicantName}`
+        `New Bhu Bharati file registered by ${currentUser?.name || 'Staff'}. Applicant: ${fileToSave.applicantName}, Village: ${fileToSave.village}, Mandal: ${fileToSave.mandal}`
       );
       showToast(`File #${fileToSave.appNumber} saved & synced across all systems!`);
     } catch (err: any) {
@@ -482,11 +499,11 @@ export default function App() {
       setFiles(updated);
       safeSaveLocalStorage('rdo_files', updated);
 
-      logActivity(
+      await logActivity(
         'Bhu Bharati',
         updatedFile.appNumber,
         'STATUS_CHANGE',
-        `Status updated to "${updatedFile.status}". Remarks: ${updatedFile.remarks || 'Scrutiny updated'}.`
+        `File status changed/forwarded to "${updatedFile.status}" by ${currentUser?.name || 'Staff'}. Remarks: ${updatedFile.remarks || 'No notes'}`
       );
       showToast(`Status updated & synced across all systems!`);
     } catch (err: any) {
@@ -525,6 +542,7 @@ export default function App() {
     setIsPdfModalOpen(true);
   };
 
+  // Admin Permanent Delete for Bhu Bharati File with Audit Tracking
   const handleDeleteBhuFilePrompt = (file: BhuFile) => {
     if (currentUser?.role !== 'ADMIN') {
       showToast('⚠️ Access restricted: Only Administrator can delete records.');
@@ -546,17 +564,18 @@ export default function App() {
       const updated = files.filter((f) => f.id !== file.id);
       setFiles(updated);
       safeSaveLocalStorage('rdo_files', updated);
-      logActivity(
+      await logActivity(
         'Bhu Bharati',
         file.appNumber,
         'DELETE',
-        `File record deleted for applicant ${file.applicantName} (${file.appNumber}).`
+        `File record PERMANENTLY DELETED by Administrator ${currentUser?.name}. Applicant: ${file.applicantName}, Mandal: ${file.mandal}`
       );
       showToast(`Bhu Bharati file record (${file.appNumber}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
   };
 
+  // Inward Tapal Handling
   const handleSaveInward = async (savedTapal: InwardTapal) => {
     const tapalToSave = { ...savedTapal };
     if (tapalToSave.fileAttachment) {
@@ -570,19 +589,19 @@ export default function App() {
     let updated: InwardTapal[];
     if (exists) {
       updated = inwards.map((t) => (t.id === tapalToSave.id ? tapalToSave : t));
-      logActivity(
+      await logActivity(
         'Tapal Inward',
         tapalToSave.inwardNo,
         'EDIT',
-        `Inward record updated. Sender: ${tapalToSave.sender}. Status: ${tapalToSave.status}.`
+        `Inward record updated by ${currentUser?.name || 'Staff'}. Sender: ${tapalToSave.sender}. Status: ${tapalToSave.status}`
       );
     } else {
       updated = [tapalToSave, ...inwards];
-      logActivity(
+      await logActivity(
         'Tapal Inward',
         tapalToSave.inwardNo,
         'ENTRY',
-        `New Inward Tapal received from ${tapalToSave.sender}. Subject: ${tapalToSave.subject}.`
+        `New Inward Tapal entered by ${currentUser?.name || 'Staff'}. From: ${tapalToSave.sender}. Subject: ${tapalToSave.subject}`
       );
     }
     setInwards(updated);
@@ -614,11 +633,11 @@ export default function App() {
     } catch (err) {
       console.error('Firebase inward status update error:', err);
     }
-    logActivity(
+    await logActivity(
       'Tapal Inward',
       updatedTapal.inwardNo,
       'STATUS_CHANGE',
-      `Inward Tapal status updated to "${updatedTapal.status}".`
+      `Inward Tapal status updated to "${updatedTapal.status}" by ${currentUser?.name || 'Staff'}.`
     );
   };
 
@@ -640,6 +659,7 @@ export default function App() {
     setIsPdfModalOpen(true);
   };
 
+  // Admin Permanent Delete for Inward Tapal with Audit
   const handleDeleteInwardPrompt = (tapal: InwardTapal) => {
     if (currentUser?.role !== 'ADMIN') {
       showToast('⚠️ Access restricted: Only Administrator can delete records.');
@@ -659,12 +679,18 @@ export default function App() {
       const updated = inwards.filter((t) => t.id !== tapal.id);
       setInwards(updated);
       safeSaveLocalStorage('rdo_inward_tapal', updated);
-      logActivity('Tapal Inward', tapal.inwardNo, 'DELETE', `Inward Tapal #${tapal.inwardNo} deleted.`);
+      await logActivity(
+        'Tapal Inward',
+        tapal.inwardNo,
+        'DELETE',
+        `Inward Tapal #${tapal.inwardNo} PERMANENTLY DELETED by Admin ${currentUser?.name}. Sender: ${tapal.sender}`
+      );
       showToast(`Inward Tapal (${tapal.inwardNo}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
   };
 
+  // Outward Despatch Handling
   const handleOpenOutward = (linkedId?: number) => {
     setEditingOutward(null);
     setPreselectedInwardId(linkedId || null);
@@ -693,10 +719,10 @@ export default function App() {
     let updatedOutwards: OutwardDespatch[];
     if (isEdit) {
       updatedOutwards = outwards.map((o) => (o.id === outwardToSave.id ? outwardToSave : o));
-      logActivity('Tapal Outward', outwardToSave.outwardNo, 'EDIT', `Updated Outward #${outwardToSave.outwardNo}`);
+      await logActivity('Tapal Outward', outwardToSave.outwardNo, 'EDIT', `Outward Despatch #${outwardToSave.outwardNo} edited by ${currentUser?.name || 'Staff'}`);
     } else {
       updatedOutwards = [outwardToSave, ...outwards];
-      logActivity('Tapal Outward', outwardToSave.outwardNo, 'ENTRY', `Dispatched to ${outwardToSave.sentTo}.`);
+      await logActivity('Tapal Outward', outwardToSave.outwardNo, 'ENTRY', `New Outward Despatch recorded by ${currentUser?.name || 'Staff'}. Sent To: ${outwardToSave.sentTo}, Mode: ${outwardToSave.mode}`);
     }
     setOutwards(updatedOutwards);
     safeSaveLocalStorage('rdo_outward', updatedOutwards);
@@ -758,12 +784,13 @@ export default function App() {
       const updated = outwards.filter((o) => o.id !== outward.id);
       setOutwards(updated);
       safeSaveLocalStorage('rdo_outward', updated);
-      logActivity('Tapal Outward', outward.outwardNo, 'DELETE', `Outward #${outward.outwardNo} deleted.`);
+      await logActivity('Tapal Outward', outward.outwardNo, 'DELETE', `Outward Despatch #${outward.outwardNo} DELETED by Admin ${currentUser?.name}. Sent to: ${outward.sentTo}`);
       showToast(`Outward Despatch (${outward.outwardNo}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
   };
 
+  // Appeal Cases Handling
   const handleSaveAppealCase = async (newCase: AppealCase, rawFileString?: string) => {
     let caseToSave = { ...newCase };
     if (rawFileString) {
@@ -780,7 +807,7 @@ export default function App() {
     } catch (err) {
       console.error('Firebase appeal case save error:', err);
     }
-    logActivity('Appeal Cases', newCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'ENTRY', `Appeal Case filed: ${newCase.appellantName} vs ${newCase.respondentName}.`);
+    await logActivity('Appeal Cases', newCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'ENTRY', `Appeal Case filed by ${currentUser?.name || 'Staff'}. Appellant: ${newCase.appellantName} vs ${newCase.respondentName}`);
     showToast(`Appeal Case ${newCase.caseNo} registered successfully.`);
   };
 
@@ -800,7 +827,7 @@ export default function App() {
     } catch (err) {
       console.error('Firebase appeal case update error:', err);
     }
-    logActivity('Appeal Cases', updatedCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'EDIT', `Appeal Case updated. Status: ${updatedCase.status}.`);
+    await logActivity('Appeal Cases', updatedCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'EDIT', `Appeal Case updated by ${currentUser?.name || 'Staff'}. Status: ${updatedCase.status}, Next Hearing: ${updatedCase.nextHearingDate || '-'}`);
     showToast(`Appeal Case ${updatedCase.caseNo} updated successfully.`);
   };
 
@@ -822,7 +849,7 @@ export default function App() {
       const updated = appealCases.filter((c) => c.id !== appealCase.id);
       setAppealCases(updated);
       safeSaveLocalStorage('rdo_appeal_cases', updated);
-      logActivity('Appeal Cases', appealCase.caseNo, 'DELETE', `Appeal Case #${appealCase.caseNo} deleted.`);
+      await logActivity('Appeal Cases', appealCase.caseNo, 'DELETE', `Appeal Case #${appealCase.caseNo} DELETED by Admin ${currentUser?.name}. Appellant: ${appealCase.appellantName}`);
       showToast(`Appeal Case (${appealCase.caseNo}) deleted across all devices.`);
     });
     setIsDeleteModalOpen(true);
@@ -858,7 +885,9 @@ export default function App() {
     }
   };
 
+  // Staff & Admin Credentials Management
   const handleToggleUserStatus = async (id: number) => {
+    const targetUser = staff.find((u) => u.id === id);
     const updated = staff.map((u) => (u.id === id ? { ...u, active: !u.active } : u));
     setStaff(updated);
     safeSaveLocalStorage('rdo_staff', updated);
@@ -869,6 +898,9 @@ export default function App() {
       }, { merge: true });
     } catch (e) {
       console.warn('Could not sync user status toggle to Firestore:', e);
+    }
+    if (targetUser) {
+      await logActivity('Staff Admin', `USER-${id}`, 'STATUS_CHANGE', `Staff account ${targetUser.name} (${targetUser.cadre}) toggled to ${!targetUser.active ? 'ACTIVE' : 'DISABLED'} by Admin ${currentUser?.name}.`);
     }
   };
 
@@ -884,6 +916,7 @@ export default function App() {
     } catch (e) {
       console.warn('Could not sync new user to Firestore:', e);
     }
+    await logActivity('Staff Admin', `USER-${newUser.id}`, 'ENTRY', `New staff account created for ${newUser.name} (${newUser.cadre}) by Admin ${currentUser?.name}.`);
   };
 
   const handleUpdateStaff = async (updatedMember: StaffUser) => {
@@ -901,9 +934,11 @@ export default function App() {
     } catch (e) {
       console.warn('Could not sync staff update to Firestore:', e);
     }
+    await logActivity('Staff Admin', `USER-${updatedMember.id}`, 'EDIT', `Staff details updated for ${updatedMember.name} (${updatedMember.cadre}) by Admin ${currentUser?.name}.`);
   };
 
   const handleDeleteStaff = async (staffId: number) => {
+    const targetUser = staff.find((u) => u.id === staffId);
     const updated = staff.filter((u) => u.id !== staffId);
     setStaff(updated);
     safeSaveLocalStorage('rdo_staff', updated);
@@ -918,6 +953,9 @@ export default function App() {
       }, { merge: true });
     } catch (e) {
       console.warn('Could not sync staff delete to Firestore:', e);
+    }
+    if (targetUser) {
+      await logActivity('Staff Admin', `USER-${staffId}`, 'DELETE', `Staff account ${targetUser.name} (${targetUser.cadre}) DELETED by Admin ${currentUser?.name}.`);
     }
   };
 
@@ -943,6 +981,7 @@ export default function App() {
     } catch (e) {
       console.warn('Could not sync admin profile to Firestore:', e);
     }
+    await logActivity('Staff Admin', 'ADMIN-PROFILE', 'EDIT', `Admin profile & phone updated by Admin ${currentUser?.name}.`);
   };
 
   const handleUpdateStaffPassword = async (staffId: number, newPassword: string) => {
@@ -994,10 +1033,8 @@ export default function App() {
           onGoHome={() => setActiveTab('dashboardTab')}
         />
 
-        {/* Official Announcement Ticker */}
         <NoticeTicker />
 
-        {/* Navigation Bar Strip: Deep Govt Green */}
         <div className="w-full bg-[#08261a]/95 border-t border-emerald-600/30 overflow-x-auto no-scrollbar py-1">
           <div className="max-w-[1520px] mx-auto px-2 sm:px-4 flex items-center gap-1 sm:gap-2">
             <Navigation
