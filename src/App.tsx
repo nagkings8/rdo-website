@@ -1051,8 +1051,8 @@ export default function App() {
       <ColorSplashCursor />
       <ScrollToTopBottom />
 
-      {/* TOP STICKY BAR: OFFICIAL GOVT THEME WITH HEADER PROFILE AT RIGHT CORNER */}
-      <div className="sticky top-0 z-40 w-full shadow-md bg-[#0b3323] border-b-2 border-emerald-500">
+      {/* TOP STICKY BAR: GOVT THEME WITH HEADER PROFILE AT TOP RIGHT CORNER */}
+      <div className="sticky top-0 z-50 w-full shadow-md bg-[#0b3323] border-b-2 border-emerald-500">
         <div className="flex items-center justify-between">
           <button
             onClick={() => setIsMobileMenuOpen(true)}
@@ -1076,9 +1076,9 @@ export default function App() {
         <NoticeTicker />
       </div>
 
-      {/* MAIN BODY CONTAINER WITH LEFT SIDEBAR NAVIGATION */}
-      <div className="flex-1 flex w-full">
-        {/* Left Sidebar Navigation with bottom logout button */}
+      {/* MAIN CONTAINER: LEFT FIXED SIDEBAR + RIGHT CONTENT WITH COMPENSATED PADDING */}
+      <div className="flex-1 w-full relative">
+        {/* Left Fixed Sidebar */}
         <Navigation
           activeTab={activeTab}
           onTabChange={setActiveTab}
@@ -1088,8 +1088,8 @@ export default function App() {
           onCloseMobile={() => setIsMobileMenuOpen(false)}
         />
 
-        {/* Right Main Content Area */}
-        <main className="flex-1 min-w-0 px-3 sm:px-5 md:px-7 py-4 sm:py-6">
+        {/* Right Main Content Area (lg:pl-20 ensures no overlap with fixed sidebar) */}
+        <main className="min-w-0 px-3 sm:px-5 md:px-7 py-4 sm:py-6 lg:pl-24 transition-all duration-300">
           {activeTab === 'dashboardTab' && (
             <DashboardView
               files={files}

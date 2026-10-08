@@ -9,8 +9,7 @@ import {
   ShieldCheck,
   X,
   ChevronRight,
-  LogOut,
-  UserCheck
+  LogOut
 } from 'lucide-react';
 import { StaffUser } from '../types';
 
@@ -131,7 +130,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   const handleMouseLeave = () => {
     hoverTimeoutRef.current = setTimeout(() => {
       setIsHovered(false);
-    }, 450);
+    }, 350);
   };
 
   const handleSelect = (tab: ActiveTab) => {
@@ -152,17 +151,17 @@ export const Navigation: React.FC<NavigationProps> = ({
 
   return (
     <>
-      {/* DESKTOP COLLAPSIBLE MINI SIDEBAR */}
+      {/* DESKTOP FIXED SIDEBAR */}
       <aside 
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className={`hidden lg:flex flex-col justify-between shrink-0 bg-[#072418] border-r border-emerald-600/30 min-h-[calc(100vh-120px)] sticky top-[72px] z-30 transition-all duration-300 ease-in-out shadow-lg select-none py-3 ${
+        className={`hidden lg:flex flex-col justify-between fixed top-[112px] left-0 bottom-0 z-40 bg-[#072418] border-r border-emerald-600/30 transition-all duration-300 ease-in-out shadow-xl select-none py-3 overflow-y-auto no-scrollbar ${
           isHovered ? 'w-64' : 'w-20'
         }`}
       >
         <div>
-          {/* Header Bar */}
-          <div className="px-3 py-2 mb-2 flex items-center justify-between border-b border-emerald-800/40 min-h-[42px]">
+          {/* Header Indicator */}
+          <div className="px-3 py-2 mb-2 flex items-center justify-between border-b border-emerald-800/40 min-h-[40px]">
             {isHovered ? (
               <span className="text-[11px] font-black uppercase tracking-wider text-emerald-300 truncate">
                 Navigation Menu
@@ -174,7 +173,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             )}
           </div>
 
-          {/* Navigation Items */}
+          {/* Nav Items List */}
           <nav className="space-y-2 px-2.5">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -215,55 +214,62 @@ export const Navigation: React.FC<NavigationProps> = ({
                 </button>
               );
             })}
+
+            {/* LOGOUT BUTTON DIRECTLY ATTACHED UNDER THE LAST TAB */}
+            {currentUser && (
+              <div className="pt-2 border-t border-emerald-800/30">
+                <button
+                  onClick={handleLogoutClick}
+                  title={!isHovered ? "Logout Session" : undefined}
+                  className={`w-full flex items-center rounded-xl font-bold text-xs transition-all duration-200 cursor-pointer text-left ${
+                    isHovered ? 'px-3 py-2.5 justify-between' : 'p-2.5 justify-center'
+                  } bg-rose-950/40 hover:bg-rose-700/80 text-rose-200 hover:text-white border border-rose-600/40 shadow-xs hover:shadow-rose-900/40 hover:translate-x-0.5`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-sm transition-transform duration-200 group-hover:scale-110">
+                      <LogOut className="w-4 h-4" />
+                    </div>
+
+                    {isHovered && (
+                      <div className="flex flex-col text-left">
+                        <span className="text-xs font-black text-white leading-tight">Sign Out</span>
+                        <span className="text-[10px] text-rose-300 font-semibold truncate leading-tight">End Session</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {isHovered && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-600 text-white font-black uppercase tracking-wider">
+                      Exit
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
           </nav>
         </div>
 
-        {/* BOTTOM SECTION: USER INFO & LOGOUT BUTTON */}
-        <div className="px-2.5 space-y-2 pt-2 border-t border-emerald-800/40">
-          {currentUser ? (
-            <>
-              {isHovered && (
-                <div className="p-2.5 bg-emerald-950/70 border border-emerald-700/40 rounded-xl flex items-center gap-2.5 animate-fade-in">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-800 flex items-center justify-center text-emerald-200 shrink-0">
-                    <UserCheck className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs font-bold text-white truncate">{currentUser.name}</div>
-                    <div className="text-[10px] text-emerald-300 truncate">{currentUser.cadre || currentUser.role}</div>
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={handleLogoutClick}
-                title={!isHovered ? "Logout" : undefined}
-                className={`w-full flex items-center rounded-xl text-xs font-bold text-rose-300 hover:text-white bg-rose-950/40 hover:bg-rose-600 border border-rose-700/40 transition-all cursor-pointer shadow-xs ${
-                  isHovered ? 'px-3 py-2.5 justify-start gap-2.5' : 'p-2.5 justify-center'
-                }`}
-              >
-                <LogOut className="w-4 h-4 shrink-0" />
-                {isHovered && <span>Sign Out</span>}
-              </button>
-            </>
-          ) : (
-            isHovered && (
-              <div className="p-2.5 bg-[#051c13] rounded-xl border border-emerald-700/40 text-[10.5px] text-emerald-200 text-center animate-fade-in">
-                <div className="font-bold text-white mb-0.5">RDO Huzurnagar</div>
-                <div className="opacity-80 text-[10px]">Public View</div>
-              </div>
-            )
-          )}
-        </div>
+        {/* Small Bottom Office Indicator */}
+        {isHovered ? (
+          <div className="p-3 mx-2.5 bg-[#051c13] rounded-xl border border-emerald-700/40 text-[10.5px] text-emerald-200 text-center shadow-inner">
+            <div className="font-bold text-white mb-0.5">RDO Huzurnagar</div>
+            <div className="opacity-80 text-[10px]">Suryapet District, TS</div>
+          </div>
+        ) : (
+          <div className="flex justify-center pb-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
+          </div>
+        )}
       </aside>
 
-      {/* MOBILE DRAWER OVERLAY */}
+      {/* MOBILE SLIDE OVER DRAWER */}
       {isOpenMobile && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           <div 
             className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs animate-fade-in"
             onClick={onCloseMobile}
           />
-          <div className="relative w-72 max-w-[85vw] bg-[#072418] h-full shadow-2xl flex flex-col justify-between z-10 border-r border-emerald-500/40 animate-slide-right select-none py-4 px-3">
+          <div className="relative w-72 max-w-[85vw] bg-[#072418] h-full shadow-2xl flex flex-col justify-between z-10 border-r border-emerald-500/40 animate-slide-right select-none py-4 px-3 overflow-y-auto">
             <div>
               <div className="flex items-center justify-between pb-3 mb-3 border-b border-emerald-800/50">
                 <span className="text-xs font-black uppercase tracking-wider text-emerald-300">
@@ -308,37 +314,35 @@ export const Navigation: React.FC<NavigationProps> = ({
                     </button>
                   );
                 })}
+
+                {/* Mobile Logout Button Under Last Tab */}
+                {currentUser && (
+                  <div className="pt-2 border-t border-emerald-800/40">
+                    <button
+                      onClick={handleLogoutClick}
+                      className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white transition-all cursor-pointer shadow-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-rose-700 text-white flex items-center justify-center shrink-0">
+                          <LogOut className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col text-left">
+                          <span className="text-xs font-black">Sign Out</span>
+                          <span className="text-[10px] text-rose-200">End Session</span>
+                        </div>
+                      </div>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-white text-rose-900 font-black uppercase">
+                        Exit
+                      </span>
+                    </button>
+                  </div>
+                )}
               </nav>
             </div>
 
-            {/* Mobile Bottom User & Logout */}
-            <div className="space-y-2 pt-3 border-t border-emerald-800/50">
-              {currentUser ? (
-                <>
-                  <div className="p-2.5 bg-emerald-950/70 border border-emerald-700/40 rounded-xl flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-800 flex items-center justify-center text-emerald-200 shrink-0">
-                      <UserCheck className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-white truncate">{currentUser.name}</div>
-                      <div className="text-[10px] text-emerald-300 truncate">{currentUser.cadre || currentUser.role}</div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleLogoutClick}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition cursor-pointer"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Sign Out</span>
-                  </button>
-                </>
-              ) : (
-                <div className="p-3 bg-[#051c13] rounded-xl border border-emerald-700/40 text-[10.5px] text-emerald-200 text-center">
-                  <div className="font-bold text-white mb-0.5">RDO Huzurnagar Portal</div>
-                  <div className="opacity-80 text-[10px]">Suryapet District, TS</div>
-                </div>
-              )}
+            <div className="p-3 bg-[#051c13] rounded-xl border border-emerald-700/40 text-[10.5px] text-emerald-200 text-center mt-4">
+              <div className="font-bold text-white mb-0.5">RDO Huzurnagar Portal</div>
+              <div className="opacity-80 text-[10px]">Suryapet District, TS</div>
             </div>
           </div>
         </div>
