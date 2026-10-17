@@ -34,18 +34,20 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
   const [surveyNo, setSurveyNo] = useState('');
   const [extent, setExtent] = useState('');
 
-  // Multiple parties (Multiline support)
   const [appellantName, setAppellantName] = useState('');
+  const [appellantAdvocate, setAppellantAdvocate] = useState('');
   const [respondentName, setRespondentName] = useState('');
+  const [respondentAdvocate, setRespondentAdvocate] = useState('');
 
   const [filingDate, setFilingDate] = useState('');
+  const [firstHearingDate, setFirstHearingDate] = useState('');
   const [nextHearingDate, setNextHearingDate] = useState('');
   const [stagePurpose, setStagePurpose] = useState('');
-  const [status, setStatus] = useState<any>('Under Hearing');
+  const [status, setStatus] = useState<any>('');
   const [remarks, setRemarks] = useState('');
 
-  // Continuous Hearings & Notices using CaseHistoryEntry from types.ts
   const [hearings, setHearings] = useState<CaseHistoryEntry[]>([]);
+  const [newBusinessDate, setNewBusinessDate] = useState('');
   const [newHearingDate, setNewHearingDate] = useState('');
   const [newHearingStage, setNewHearingStage] = useState('');
   const [newNoticeFile, setNewNoticeFile] = useState<string | null>(null);
@@ -58,38 +60,46 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
 
     if (caseToEdit) {
       setCaseNo(caseToEdit.caseNo || '');
-      setAppealType(caseToEdit.appealType || APPEAL_TYPES[0]);
-      setBhuBharatiActSection(caseToEdit.bhuBharatiActSection || BHU_BHARATI_SECTIONS[0]);
+      setAppealType(caseToEdit.appealType || '');
+      setBhuBharatiActSection(caseToEdit.bhuBharatiActSection || '');
       setMandal(caseToEdit.mandal || '');
       setVillage(caseToEdit.village || '');
       setSurveyNo(caseToEdit.surveyNo || '');
       setExtent(caseToEdit.extent || '');
       setAppellantName(caseToEdit.appellantName || '');
+      setAppellantAdvocate(caseToEdit.appellantAdvocate || '');
       setRespondentName(caseToEdit.respondentName || '');
+      setRespondentAdvocate(caseToEdit.respondentAdvocate || '');
       setFilingDate(caseToEdit.filingDate || '');
+      setFirstHearingDate(caseToEdit.firstHearingDate || '');
       setNextHearingDate(caseToEdit.nextHearingDate || '');
-      setStagePurpose(caseToEdit.stagePurpose || 'For Hearing');
+      setStagePurpose(caseToEdit.stagePurpose || '');
       setStatus(caseToEdit.status || 'Under Hearing');
       setRemarks(caseToEdit.remarks || '');
       setHearings(caseToEdit.caseHistory || []);
     } else {
+      // 100% CLEAN - NO PRE-FILLED DUMMY DEFAULTS
       setCaseNo('');
-      setAppealType(APPEAL_TYPES[0]);
-      setBhuBharatiActSection(BHU_BHARATI_SECTIONS[0]);
+      setAppealType('');
+      setBhuBharatiActSection('');
       setMandal('');
       setVillage('');
       setSurveyNo('');
       setExtent('');
       setAppellantName('');
+      setAppellantAdvocate('');
       setRespondentName('');
+      setRespondentAdvocate('');
       setFilingDate(new Date().toISOString().split('T')[0]);
+      setFirstHearingDate('');
       setNextHearingDate('');
-      setStagePurpose('Notice / Summons Issued');
-      setStatus('Under Hearing');
+      setStagePurpose('');
+      setStatus('');
       setRemarks('');
       setHearings([]);
     }
 
+    setNewBusinessDate(new Date().toISOString().split('T')[0]);
     setNewHearingDate('');
     setNewHearingStage('');
     setNewNoticeFile(null);
@@ -109,33 +119,37 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
     const reader = new FileReader();
     reader.onload = (evt) => {
       setNewNoticeFile(evt.target?.result as string);
-      onShowToast('Notice Copy attached.');
+      onShowToast('Notice / Summons file attached.');
     };
     reader.readAsDataURL(file);
   };
 
   const handleAddHearing = () => {
     if (!newHearingDate) {
-      onShowToast('Please select hearing / notice date.');
+      onShowToast('Please select next hearing date.');
       return;
     }
     const entry: CaseHistoryEntry = {
       id: `h_${Date.now()}`,
-      businessDate: new Date().toISOString().split('T')[0],
+      businessDate: newBusinessDate || new Date().toISOString().split('T')[0],
       hearingDate: newHearingDate,
-      purpose: newHearingStage || 'Summons / Notice Issued',
+      purpose: newHearingStage || 'SUMMONS / NOTICE ISSUED',
       judgeOfficer: 'Revenue Divisional Officer & SDM, Huzurnagar',
-      proceedings: newHearingStage || 'Notice issued to respondents and parties.',
+      proceedings: newHearingStage || 'Notice issued and posted.',
       documentFile: newNoticeFile || undefined,
       documentName: newNoticeName || undefined,
       uploadedAt: new Date().toISOString(),
     };
+
     setHearings([entry, ...hearings]);
+    setNextHearingDate(newHearingDate);
+    if (newHearingStage) setStagePurpose(newHearingStage);
+
     setNewHearingDate('');
     setNewHearingStage('');
     setNewNoticeFile(null);
     setNewNoticeName('');
-    onShowToast('Notice / Hearing record added.');
+    onShowToast('Hearing entry added to court register.');
   };
 
   const handleRemoveHearing = (id: string) => {
@@ -147,6 +161,14 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
 
     if (!caseNo.trim()) {
       onShowToast('Please enter Case Number.');
+      return;
+    }
+    if (!appealType) {
+      onShowToast('Please select Appeal Type.');
+      return;
+    }
+    if (!bhuBharatiActSection) {
+      onShowToast('Please select Act & Section.');
       return;
     }
     if (!mandal) {
@@ -162,18 +184,21 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
       ...(caseToEdit || {}),
       id: caseToEdit ? caseToEdit.id : Date.now(),
       caseNo: caseNo.trim(),
-      appealType: appealType || 'Bhu Bharati Appeal - RoR Rectification (Sec 15(1) r/w Sec 4 & Rule 14)',
-      bhuBharatiActSection: bhuBharatiActSection || 'Section 15(1) read with Rule 14 (Statutory RoR Appeal)',
+      appealType,
+      bhuBharatiActSection,
       mandal,
       village: village || '-',
       surveyNo: surveyNo.trim() || '-',
       extent: extent.trim() || '-',
       appellantName: appellantName.trim(),
+      appellantAdvocate: appellantAdvocate.trim() || 'Party in Person',
       respondentName: respondentName.trim() || 'Tahsildar & Others',
+      respondentAdvocate: respondentAdvocate.trim() || 'GP for Revenue',
       filingDate: filingDate || new Date().toISOString().split('T')[0],
-      nextHearingDate,
-      stagePurpose,
-      status,
+      firstHearingDate: firstHearingDate || filingDate,
+      nextHearingDate: nextHearingDate || (hearings[0]?.hearingDate || ''),
+      stagePurpose: stagePurpose || (hearings[0]?.purpose || 'For Hearing'),
+      status: status || 'Under Hearing',
       remarks: remarks.trim(),
       caseHistory: hearings,
     };
@@ -194,7 +219,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
               <h2 className="text-base font-black text-slate-900">
                 {caseToEdit ? 'Edit Revenue Appeal Case' : 'Register New Revenue Appeal Case'}
               </h2>
-              <p className="text-xs text-slate-500">Court of RDO &amp; SDM, Huzurnagar</p>
+              <p className="text-xs text-slate-500">Court of the Revenue Divisional Officer &amp; SDM, Huzurnagar</p>
             </div>
           </div>
           <button
@@ -210,7 +235,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                Case No <span className="text-rose-500">*</span>
+                Case / Appeal No <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -223,12 +248,16 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Appeal Type</label>
+              <label className="block font-bold text-slate-700 mb-1">
+                Appeal Type <span className="text-rose-500">*</span>
+              </label>
               <select
                 value={appealType}
                 onChange={(e) => setAppealType(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none font-medium"
+                required
               >
+                <option value="">-- Select Appeal Type --</option>
                 {APPEAL_TYPES.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
@@ -236,12 +265,16 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Act &amp; Section</label>
+              <label className="block font-bold text-slate-700 mb-1">
+                Act &amp; Section <span className="text-rose-500">*</span>
+              </label>
               <select
                 value={bhuBharatiActSection}
                 onChange={(e) => setBhuBharatiActSection(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none font-medium"
+                required
               >
+                <option value="">-- Select Act &amp; Section --</option>
                 {BHU_BHARATI_SECTIONS.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
@@ -307,42 +340,54 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
             </div>
           </div>
 
-          {/* MULTIPLE APPELLANTS & RESPONDENTS (TEXTAREA) */}
+          {/* Multiple Appellants & Respondents (e-Courts format) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200">
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="font-bold text-slate-700">
-                  Appellant Name(s) <span className="text-rose-500">*</span>
-                </label>
-                <span className="text-[10px] text-slate-400">Okari kante ekkuva unte line by line type cheyyandi</span>
-              </div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Appellant Name(s) <span className="text-rose-500">*</span>
+                <span className="text-[10px] text-slate-400 font-normal ml-2">(Okari kante ekkuva unte line by line)</span>
+              </label>
               <textarea
                 rows={3}
-                placeholder="1. Ramesh S/o Narayana&#10;2. Suresh S/o Narayana&#10;3. & Others"
+                placeholder="1) SHRIRAM FINANCE LTD&#10;2) SURESH KUMAR&#10;3) & OTHERS"
                 value={appellantName}
                 onChange={(e) => setAppellantName(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none font-medium"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none font-medium text-xs"
                 required
+              />
+              <input
+                type="text"
+                placeholder="Advocate: e.g. Kotti Suresh"
+                value={appellantAdvocate}
+                onChange={(e) => setAppellantAdvocate(e.target.value)}
+                className="w-full mt-1 px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
               />
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="font-bold text-slate-700">Respondent Name(s)</label>
-                <span className="text-[10px] text-slate-400">Line by line type cheyyandi</span>
-              </div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Respondent Name(s)
+                <span className="text-[10px] text-slate-400 font-normal ml-2">(Line by line)</span>
+              </label>
               <textarea
                 rows={3}
-                placeholder="1. Tahsildar Huzurnagar&#10;2. Venkat Reddy S/o Malla Reddy&#10;3. & Others"
+                placeholder="1) GUGULOTHU PARVATHI&#10;2) GUGULOTHU SAIDA&#10;3) MALOTHU BABLA&#10;4) Tahsildar Huzurnagar"
                 value={respondentName}
                 onChange={(e) => setRespondentName(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none font-medium"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none font-medium text-xs"
+              />
+              <input
+                type="text"
+                placeholder="Respondent Advocate / GP: e.g. GP for Revenue"
+                value={respondentAdvocate}
+                onChange={(e) => setRespondentAdvocate(e.target.value)}
+                className="w-full mt-1 px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
               />
             </div>
           </div>
 
-          {/* Current Status & Hearing Stage */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200">
+          {/* Dates & Status */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-200">
             <div>
               <label className="block font-bold text-slate-700 mb-1">Filing Date</label>
               <input
@@ -353,12 +398,21 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
               />
             </div>
             <div>
+              <label className="block font-bold text-slate-700 mb-1">First Hearing Date</label>
+              <input
+                type="date"
+                value={firstHearingDate}
+                onChange={(e) => setFirstHearingDate(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none"
+              />
+            </div>
+            <div>
               <label className="block font-bold text-slate-700 mb-1">Next Hearing Date</label>
               <input
                 type="date"
                 value={nextHearingDate}
                 onChange={(e) => setNextHearingDate(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none font-bold text-blue-900"
               />
             </div>
             <div>
@@ -368,6 +422,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                 onChange={(e) => setStatus(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-blue-900 focus:outline-none"
               >
+                <option value="">-- Select Status --</option>
                 {APPEAL_STATUSES.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
@@ -375,7 +430,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
             </div>
           </div>
 
-          {/* CONTINUOUS NOTICES & HEARINGS SECTION */}
+          {/* Hearing History & Notices Register (e-Courts Style Process) */}
           <div className="p-4 bg-slate-50 border border-slate-300 rounded-xl space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-black text-slate-800 flex items-center gap-1.5 text-xs">
@@ -383,35 +438,44 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                 <span>Hearings &amp; Issued Notices Register (Continuous Tracking)</span>
               </span>
               <span className="text-[10.5px] text-slate-500 font-semibold">
-                Total Notices Issued: {hearings.length}
+                Total Listed: {hearings.length}
               </span>
             </div>
 
-            {/* Add new hearing row */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-white p-3 rounded-xl border border-slate-200 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 bg-white p-3 rounded-xl border border-slate-200 items-end">
               <div>
-                <label className="block font-bold text-slate-600 mb-1 text-[11px]">Date of Notice / Hearing</label>
+                <label className="block font-bold text-slate-600 mb-1 text-[11px]">Business On Date</label>
+                <input
+                  type="date"
+                  value={newBusinessDate}
+                  onChange={(e) => setNewBusinessDate(e.target.value)}
+                  className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-600 mb-1 text-[11px]">Next Hearing Date <span className="text-rose-500">*</span></label>
                 <input
                   type="date"
                   value={newHearingDate}
                   onChange={(e) => setNewHearingDate(e.target.value)}
-                  className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs"
+                  className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-blue-900"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-600 mb-1 text-[11px]">Notice Stage / Purpose</label>
+                <label className="block font-bold text-slate-600 mb-1 text-[11px]">Purpose / Stage of Hearing</label>
                 <input
                   type="text"
-                  placeholder="e.g. 1st Notice to Tahsildar / Counter"
+                  placeholder="e.g. SUMMONS, AWAIT REPORTS, EVIDENCE"
                   value={newHearingStage}
                   onChange={(e) => setNewHearingStage(e.target.value)}
-                  className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs"
+                  className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-600 mb-1 text-[11px]">Upload Notice Copy</label>
+                <label className="block font-bold text-slate-600 mb-1 text-[11px]">Upload Notice / Order</label>
                 <label className="w-full px-2 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg text-xs cursor-pointer flex items-center justify-between truncate">
                   <span className="truncate">{newNoticeName || 'Attach Notice (PDF/Img)'}</span>
                   <Upload className="w-3.5 h-3.5 text-slate-600 shrink-0 ml-1" />
@@ -426,12 +490,11 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                   className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Add Notice</span>
+                  <span>Add Hearing</span>
                 </button>
               </div>
             </div>
 
-            {/* List of existing notices */}
             {hearings.length > 0 ? (
               <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                 {hearings.map((h, idx) => (
@@ -445,11 +508,13 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                       </span>
                       <div>
                         <div className="font-bold text-slate-800">
-                          {h.hearingDate} — <span className="text-blue-700">{h.purpose}</span>
+                          Business on: <span className="text-slate-600">{h.businessDate || '-'}</span> → Next Hearing Date:{' '}
+                          <span className="text-blue-900 font-black">{h.hearingDate}</span> —{' '}
+                          <span className="text-amber-800 uppercase font-bold">{h.purpose}</span>
                         </div>
                         {h.documentFile && (
                           <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
-                            <CheckCircle2 className="w-3 h-3" /> Notice Document Attached ({h.documentName || 'File'})
+                            <CheckCircle2 className="w-3 h-3" /> Attached: {h.documentName || 'Notice Copy'}
                           </span>
                         )}
                       </div>
@@ -468,24 +533,22 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
               </div>
             ) : (
               <div className="text-center py-3 text-slate-400 text-xs italic">
-                Inka notices add cheyyaledu. Date &amp; purpose enter chesi 'Add Notice' click cheyyandi.
+                Inka hearing entries add cheyyaledu. Date &amp; purpose enter chesi 'Add Hearing' click cheyyandi.
               </div>
             )}
           </div>
 
-          {/* Remarks */}
           <div>
             <label className="block font-bold text-slate-700 mb-1">Remarks</label>
             <textarea
               rows={2}
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
-              placeholder="Case remarks..."
+              placeholder="Official remarks..."
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none"
             />
           </div>
 
-          {/* Footer Submit Buttons */}
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 sticky bottom-0 bg-white">
             <button
               type="button"

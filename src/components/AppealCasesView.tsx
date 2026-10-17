@@ -1,10 +1,8 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Scale,
   Search,
   Plus,
-  Upload,
-  Download,
   Printer,
   FileText,
   Filter,
@@ -53,16 +51,13 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('ALL');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('ALL');
 
-  // Modals state
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [caseToEdit, setCaseToEdit] = useState<AppealCase | null>(null);
   const [caseForOrderUpload, setCaseForOrderUpload] = useState<AppealCase | null>(null);
 
-  // Notice & Hearing History List Viewer
-  const [activeHistoryCase, setActiveHistoryCase] = useState<AppealCase | null>(null);
+  // Exact e-Courts Full Case Status Modal
+  const [eCourtModalCase, setECourtModalCase] = useState<AppealCase | null>(null);
   const [singleNoticeDoc, setSingleNoticeDoc] = useState<{ title: string; content: string } | null>(null);
-
-  const excelInputRef = useRef<HTMLInputElement>(null);
 
   const safeMandals = useMemo(() => {
     return Array.isArray(MANDAL_LIST) && MANDAL_LIST.length > 0 ? MANDAL_LIST : [
@@ -172,7 +167,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       <th style="padding: 6px; border: 1px solid #334155; text-align: left;">Appellants</th>
       <th style="padding: 6px; border: 1px solid #334155; text-align: left;">Respondents</th>
       <th style="padding: 6px; border: 1px solid #334155; text-align: center;">Status</th>
-      <th style="padding: 6px; border: 1px solid #334155; text-align: center;">Notices Issued</th>
+      <th style="padding: 6px; border: 1px solid #334155; text-align: center;">Next Hearing</th>
       <th style="padding: 6px; border: 1px solid #334155; text-align: center;">Final Order</th>
     `;
 
@@ -187,7 +182,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
           <td style="padding: 5px; border: 1px solid #cbd5e1; white-space: pre-line;"><b>${c.appellantName || '-'}</b></td>
           <td style="padding: 5px; border: 1px solid #cbd5e1; white-space: pre-line;">${c.respondentName || '-'}</td>
           <td style="padding: 5px; border: 1px solid #cbd5e1; text-align: center;"><b>${c.status || '-'}</b></td>
-          <td style="padding: 5px; border: 1px solid #cbd5e1; text-align: center;">${c.caseHistory ? c.caseHistory.length : 0}</td>
+          <td style="padding: 5px; border: 1px solid #cbd5e1; text-align: center;">${c.nextHearingDate || '-'}</td>
           <td style="padding: 5px; border: 1px solid #cbd5e1; text-align: center;">${c.finalOrderNo || '-'}</td>
         </tr>
       `
@@ -230,7 +225,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
           <td style="padding: 5px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold;">${c.caseNo || '-'}</td>
           <td style="padding: 5px; border: 1px solid #cbd5e1;">${c.village || '-'}, ${c.mandal || '-'}</td>
           <td style="padding: 5px; border: 1px solid #cbd5e1; white-space: pre-line;">${c.appellantName || '-'} <br><small>vs</small><br> ${c.respondentName || '-'}</td>
-          <td style="padding: 5px; border: 1px solid #cbd5e1; text-align: center;">${c.nextHearingDate || 'For Hearing'}</td>
+          <td style="padding: 5px; border: 1px solid #cbd5e1; text-align: center;"><b>${c.nextHearingDate || 'For Hearing'}</b></td>
           <td style="padding: 5px; border: 1px solid #cbd5e1; text-align: center;"><b>${c.status || '-'}</b></td>
         </tr>
       `
@@ -254,37 +249,32 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
     });
   };
 
-  const renderStatusBadge = (statusStr: string) => {
-    const s = String(statusStr || '').toLowerCase();
+  const renderStatusBadge = (c: AppealCase) => {
+    const s = String(c.status || '').toLowerCase();
+    let badgeClass = 'bg-blue-100 text-blue-800 border-blue-300';
+    let icon = <Clock className="w-3 h-3 text-blue-600" />;
+
     if (s.includes('allowed')) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
-          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-          <span>Allowed</span>
-        </span>
-      );
+      badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+      icon = <CheckCircle2 className="w-3 h-3 text-emerald-600" />;
+    } else if (s.includes('dismissed')) {
+      badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
+      icon = <AlertCircle className="w-3 h-3 text-rose-600" />;
+    } else if (s.includes('remanded')) {
+      badgeClass = 'bg-purple-100 text-purple-800 border-purple-300';
+      icon = <RotateCcw className="w-3 h-3 text-purple-600" />;
     }
-    if (s.includes('dismissed')) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
-          <AlertCircle className="w-3 h-3 text-rose-600" />
-          <span>Dismissed</span>
-        </span>
-      );
-    }
-    if (s.includes('remanded')) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-300">
-          <RotateCcw className="w-3 h-3 text-purple-600" />
-          <span>Remanded</span>
-        </span>
-      );
-    }
+
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 border border-blue-300">
-        <Clock className="w-3 h-3 text-blue-600" />
-        <span>{statusStr || 'Under Hearing'}</span>
-      </span>
+      <button
+        onClick={() => setECourtModalCase(c)}
+        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-black border shadow-xs hover:scale-105 transition cursor-pointer ${badgeClass}`}
+        title="Click to view full e-Courts Case Status"
+      >
+        {icon}
+        <span>{c.status || 'Under Hearing'}</span>
+        <Eye className="w-2.5 h-2.5 opacity-60 ml-0.5" />
+      </button>
     );
   };
 
@@ -310,7 +300,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                 COURT OF THE REVENUE DIVISIONAL OFFICER &amp; SDM
               </h1>
               <p className="text-xs text-blue-100 font-medium">
-                Appellate Court Register &amp; Final Judgment Tracker
+                Appellate Court Register &amp; e-Courts Case Status Portal
               </p>
             </div>
           </div>
@@ -489,8 +479,8 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                 <th className="py-2.5 px-3 border-r border-slate-400 text-center">Case No &amp; Section</th>
                 <th className="py-2.5 px-3 border-r border-slate-400 text-left">Location (Village / Mandal)</th>
                 <th className="py-2.5 px-3 border-r border-slate-400 text-left">Parties</th>
-                <th className="py-2.5 px-3 border-r border-slate-400 text-center">Status</th>
-                <th className="py-2.5 px-3 border-r border-slate-400 text-center">Notices &amp; Hearings</th>
+                <th className="py-2.5 px-3 border-r border-slate-400 text-center">Case Status</th>
+                <th className="py-2.5 px-3 border-r border-slate-400 text-center">Next Hearing Date</th>
                 <th className="py-2.5 px-3 border-r border-slate-400 text-left">Final Order</th>
                 <th className="py-2.5 px-3 border-r border-slate-400 text-center">Order Copy</th>
                 <th className="py-2.5 px-3 text-center w-32">Actions</th>
@@ -506,7 +496,6 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                 </tr>
               ) : (
                 filteredCases.map((c, idx) => {
-                  const historyCount = c.caseHistory ? c.caseHistory.length : 0;
                   return (
                     <tr key={c.id || idx} className="hover:bg-blue-50/60 transition">
                       <td className="py-3 px-3 border-r border-slate-200 text-center font-bold text-slate-600">
@@ -521,7 +510,6 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                         <div className="text-[10.5px] text-slate-600">{c.mandal || '-'} Mandal • Sy: {c.surveyNo || '-'} ({c.extent || '-'})</div>
                       </td>
 
-                      {/* MULTIPLE APPELLANTS & RESPONDENTS CELL (MULTILINE) */}
                       <td className="py-3 px-3 border-r border-slate-200 max-w-[200px]">
                         <div className="font-bold text-slate-900 whitespace-pre-line text-xs">
                           <span className="text-[10px] text-blue-700 uppercase font-black block">Appellants:</span>
@@ -533,30 +521,26 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                         </div>
                       </td>
 
+                      {/* Case Status Button - Click to Open e-Courts Modal */}
                       <td className="py-3 px-3 border-r border-slate-200 text-center">
-                        {renderStatusBadge(c.status)}
+                        {renderStatusBadge(c)}
                       </td>
 
-                      {/* CONTINUOUS NOTICES & HEARINGS CELL */}
+                      {/* Next Hearing Date with History Indicator */}
                       <td className="py-3 px-3 border-r border-slate-200 text-center">
-                        {historyCount > 0 ? (
-                          <div className="space-y-1">
-                            <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-900 rounded font-black text-[10.5px]">
-                              {historyCount} {historyCount === 1 ? 'Notice Issued' : 'Notices Issued'}
-                            </span>
-                            <div className="text-[10px] text-slate-600 font-semibold">
-                              Latest: {c.caseHistory![0].hearingDate}
-                            </div>
-                            <button
-                              onClick={() => setActiveHistoryCase(c)}
-                              className="inline-flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-800 font-bold hover:underline cursor-pointer"
-                            >
-                              <Eye className="w-3 h-3" />
-                              <span>View All ({historyCount})</span>
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 italic">No notices yet</span>
+                        <div className="font-black text-blue-950 text-xs">
+                          {c.nextHearingDate ? c.nextHearingDate : 'Not Scheduled'}
+                        </div>
+                        <div className="text-[10px] text-amber-800 font-bold uppercase truncate max-w-[130px] mx-auto">
+                          {c.stagePurpose || 'For Hearing'}
+                        </div>
+                        {c.caseHistory && c.caseHistory.length > 0 && (
+                          <button
+                            onClick={() => setECourtModalCase(c)}
+                            className="text-[10px] text-blue-600 hover:underline font-bold mt-0.5 cursor-pointer"
+                          >
+                            {c.caseHistory.length} Hearings Held
+                          </button>
                         )}
                       </td>
 
@@ -597,7 +581,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                                   setIsNewModalOpen(true);
                                 }}
                                 className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded cursor-pointer"
-                                title="Edit / Add Notice"
+                                title="Edit Case / Add Hearing"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
@@ -623,82 +607,291 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
         </div>
       </div>
 
-      {/* CONTINUOUS NOTICES & HEARINGS HISTORY MODAL */}
-      {activeHistoryCase && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-5 relative border border-slate-300 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+      {/* EXACT e-COURTS BENCH CASE STATUS VIEW MODAL (MATCHES SURYAPET DISTRICT JUDICIARY FORMAT) */}
+      {eCourtModalCase && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-3 sm:p-5 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-[#fcfbf9] rounded-xl shadow-2xl max-w-5xl w-full border border-stone-300 my-6 max-h-[92vh] overflow-y-auto font-sans">
+            {/* Header matching e-Courts */}
+            <div className="bg-[#781818] text-white p-4 flex items-center justify-between sticky top-0 z-20 shadow-sm">
               <div>
-                <h3 className="font-black text-sm text-blue-950">
-                  Hearings &amp; Issued Notices: {activeHistoryCase.caseNo}
+                <h3 className="font-serif font-black text-base sm:text-lg tracking-wide uppercase">
+                  Court of the Revenue Divisional Officer &amp; SDM, Huzurnagar
                 </h3>
-                <p className="text-[11px] text-slate-500">
-                  {activeHistoryCase.village}, {activeHistoryCase.mandal} Mandal
+                <p className="text-[11px] text-amber-200 font-sans">
+                  Case Status: Search by Case Number • Suryapet Revenue Division
                 </p>
               </div>
               <button
-                onClick={() => setActiveHistoryCase(null)}
-                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
+                onClick={() => setECourtModalCase(null)}
+                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="py-4 space-y-3">
-              {activeHistoryCase.caseHistory && activeHistoryCase.caseHistory.length > 0 ? (
-                activeHistoryCase.caseHistory.map((h, i) => (
-                  <div key={h.id || i} className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-xs">
-                    <div className="flex items-center justify-between font-bold">
-                      <span className="text-blue-900">
-                        Notice #{activeHistoryCase.caseHistory!.length - i}: {h.purpose}
-                      </span>
-                      <span className="text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
-                        Date: {h.hearingDate}
-                      </span>
-                    </div>
+            <div className="p-4 sm:p-6 space-y-6 text-xs text-slate-800">
+              {/* SECTION 1: CASE DETAILS TABLE */}
+              <div>
+                <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
+                  Case Details
+                </div>
+                <div className="border border-[#781818]/30 border-t-0 overflow-x-auto bg-white">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#fcedeb] border-b border-slate-200 text-slate-700">
+                        <th className="p-2.5 border-r border-slate-200 font-bold">Case Type</th>
+                        <th className="p-2.5 border-r border-slate-200 font-bold">Filing Number</th>
+                        <th className="p-2.5 border-r border-slate-200 font-bold">Filing Date</th>
+                        <th className="p-2.5 border-r border-slate-200 font-bold">Registration Number</th>
+                        <th className="p-2.5 border-r border-slate-200 font-bold">Registration Date</th>
+                        <th className="p-2.5 font-bold">CNR / Reference No</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-slate-200">
+                        <td className="p-2.5 border-r border-slate-200 font-semibold">{eCourtModalCase.appealType || 'ROR APPEAL'}</td>
+                        <td className="p-2.5 border-r border-slate-200">{eCourtModalCase.caseNo}</td>
+                        <td className="p-2.5 border-r border-slate-200">{eCourtModalCase.filingDate || '-'}</td>
+                        <td className="p-2.5 border-r border-slate-200 font-bold">{eCourtModalCase.caseNo}</td>
+                        <td className="p-2.5 border-r border-slate-200">{eCourtModalCase.filingDate || '-'}</td>
+                        <td className="p-2.5 font-mono font-bold text-slate-700">TSHZNR04{eCourtModalCase.id}2026</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-                    <p className="text-[11px] text-slate-600 italic">
-                      {h.proceedings || 'Notice issued and recorded.'}
-                    </p>
+              {/* SECTION 2: CASE STATUS TABLE */}
+              <div>
+                <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
+                  Case Status
+                </div>
+                <div className="border border-[#781818]/30 border-t-0 overflow-x-auto bg-white">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#fcedeb] border-b border-slate-200 text-slate-700">
+                        <th className="p-2.5 border-r border-slate-200 font-bold">First Hearing Date</th>
+                        <th className="p-2.5 border-r border-slate-200 font-bold text-blue-900">Next Hearing Date</th>
+                        <th className="p-2.5 border-r border-slate-200 font-bold">Case Status</th>
+                        <th className="p-2.5 border-r border-slate-200 font-bold">Stage of Case</th>
+                        <th className="p-2.5 font-bold">Court and Presiding Officer</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-slate-200">
+                        <td className="p-2.5 border-r border-slate-200">{eCourtModalCase.firstHearingDate || eCourtModalCase.filingDate || '-'}</td>
+                        <td className="p-2.5 border-r border-slate-200 font-black text-rose-700 text-sm">
+                          {eCourtModalCase.nextHearingDate || (eCourtModalCase.caseHistory?.[0]?.hearingDate) || 'Not Scheduled'}
+                        </td>
+                        <td className="p-2.5 border-r border-slate-200 font-bold">{eCourtModalCase.status || 'Under Hearing'}</td>
+                        <td className="p-2.5 border-r border-slate-200 font-bold uppercase text-blue-950">
+                          {eCourtModalCase.stagePurpose || (eCourtModalCase.caseHistory?.[0]?.purpose) || 'SUMMONS / NOTICE ISSUED'}
+                        </td>
+                        <td className="p-2.5 font-semibold text-slate-800">
+                          Revenue Divisional Officer &amp; SDM, Huzurnagar
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-                    {h.documentFile ? (
-                      <div className="pt-2">
-                        <button
-                          onClick={() => {
-                            setSingleNoticeDoc({
-                              title: `Notice Copy - ${activeHistoryCase.caseNo} (${h.hearingDate})`,
-                              content: h.documentFile!,
-                            });
-                          }}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-[10.5px] cursor-pointer shadow-xs"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>View Notice Copy ({h.documentName || 'Document'})</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-[10px] text-slate-400 block pt-1">No scanned copy attached</span>
-                    )}
+              {/* SECTION 3: PETITIONER & RESPONDENT DETAILS */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
+                    Petitioner / Appellant and Advocate
                   </div>
-                ))
-              ) : (
-                <p className="text-center text-slate-400 py-6 text-xs">No notice entries found for this case.</p>
-              )}
+                  <div className="p-3 border border-[#781818]/30 border-t-0 bg-white space-y-2 min-h-[90px]">
+                    <div className="font-semibold whitespace-pre-line text-slate-900 leading-relaxed">
+                      {eCourtModalCase.appellantName || '-'}
+                    </div>
+                    <div className="text-[11px] text-blue-800 font-bold border-t border-slate-100 pt-1">
+                      Advocate: {eCourtModalCase.appellantAdvocate || 'Party in Person'}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
+                    Respondent and Advocate
+                  </div>
+                  <div className="p-3 border border-[#781818]/30 border-t-0 bg-white space-y-2 min-h-[90px]">
+                    <div className="font-semibold whitespace-pre-line text-slate-900 leading-relaxed">
+                      {eCourtModalCase.respondentName || '-'}
+                    </div>
+                    <div className="text-[11px] text-amber-800 font-bold border-t border-slate-100 pt-1">
+                      Advocate: {eCourtModalCase.respondentAdvocate || 'Government Pleader for Revenue'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 4: ACTS & SECTIONS */}
+              <div>
+                <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
+                  Acts &amp; Sections
+                </div>
+                <div className="border border-[#781818]/30 border-t-0 bg-white">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#fcedeb] border-b border-slate-200 text-slate-700">
+                        <th className="p-2.5 border-r border-slate-200 font-bold">Under Act(s)</th>
+                        <th className="p-2.5 font-bold">Under Section(s)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-slate-200">
+                        <td className="p-2.5 border-r border-slate-200 font-semibold">
+                          TELANGANA BHU BHARATI (RECORD OF RIGHTS IN LAND) ACT / ROR RULES
+                        </td>
+                        <td className="p-2.5 font-bold text-blue-900">
+                          {eCourtModalCase.bhuBharatiActSection || eCourtModalCase.appealType || 'Section 15(1)'}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* SECTION 5: CASE HISTORY TABLE (MATCHING SURYAPET E-COURTS TABLE) */}
+              <div>
+                <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
+                  Case History
+                </div>
+                <div className="border border-[#781818]/30 border-t-0 overflow-x-auto bg-white">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#fcedeb] border-b border-slate-200 text-slate-700">
+                        <th className="p-2.5 border-r border-slate-200 font-bold text-center w-28">Registration Number</th>
+                        <th className="p-2.5 border-r border-slate-200 font-bold">Judge / Presiding Officer</th>
+                        <th className="p-2.5 border-r border-slate-200 font-bold text-center">Business On Date</th>
+                        <th className="p-2.5 border-r border-slate-200 font-bold text-center text-blue-900">Hearing Date</th>
+                        <th className="p-2.5 border-r border-slate-200 font-bold">Purpose of hearing</th>
+                        <th className="p-2.5 font-bold text-center">Notice / Order Document</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {eCourtModalCase.caseHistory && eCourtModalCase.caseHistory.length > 0 ? (
+                        eCourtModalCase.caseHistory.map((h, hIdx) => (
+                          <tr key={h.id || hIdx} className="border-b border-slate-200 hover:bg-amber-50/40">
+                            <td className="p-2.5 border-r border-slate-200 text-center font-bold text-slate-700">
+                              {eCourtModalCase.caseNo}
+                            </td>
+                            <td className="p-2.5 border-r border-slate-200 font-medium text-slate-800">
+                              {h.judgeOfficer || 'Revenue Divisional Officer & SDM'}
+                            </td>
+                            <td className="p-2.5 border-r border-slate-200 text-center font-mono text-slate-600">
+                              {h.businessDate || '-'}
+                            </td>
+                            <td className="p-2.5 border-r border-slate-200 text-center font-mono font-bold text-blue-900">
+                              {h.hearingDate}
+                            </td>
+                            <td className="p-2.5 border-r border-slate-200 font-bold uppercase text-slate-800">
+                              {h.purpose}
+                            </td>
+                            <td className="p-2.5 text-center">
+                              {h.documentFile ? (
+                                <button
+                                  onClick={() => setSingleNoticeDoc({
+                                    title: `Notice Copy - ${eCourtModalCase.caseNo} (${h.hearingDate})`,
+                                    content: h.documentFile!,
+                                  })}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded text-[10.5px] cursor-pointer shadow-xs"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  <span>View Notice</span>
+                                </button>
+                              ) : (
+                                <span className="text-[10px] text-slate-400">No copy</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="p-6 text-center text-slate-400 italic">
+                            No hearing history records entered yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* SECTION 6: PROCESS DETAILS (SUMMONS / NOTICES ISSUED LIST) */}
+              <div>
+                <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
+                  Process Details (Notices &amp; Summons Issued)
+                </div>
+                <div className="border border-[#781818]/30 border-t-0 overflow-x-auto bg-white">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-[#fcedeb] border-b border-slate-200 text-slate-700">
+                        <th className="p-2.5 border-r border-slate-200 font-bold">Process ID</th>
+                        <th className="p-2.5 border-r border-slate-200 font-bold">Process Date</th>
+                        <th className="p-2.5 border-r border-slate-200 font-bold">Process Title</th>
+                        <th className="p-2.5 font-bold text-center">Issued Process / File</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {eCourtModalCase.caseHistory && eCourtModalCase.caseHistory.length > 0 ? (
+                        eCourtModalCase.caseHistory.map((h, pIdx) => (
+                          <tr key={pIdx} className="border-b border-slate-200">
+                            <td className="p-2.5 border-r border-slate-200 font-mono text-slate-600">
+                              PTSSR03{eCourtModalCase.id}_{pIdx + 1}
+                            </td>
+                            <td className="p-2.5 border-r border-slate-200">{h.businessDate || h.hearingDate}</td>
+                            <td className="p-2.5 border-r border-slate-200 font-semibold">{h.purpose || 'Summons to appear in person'}</td>
+                            <td className="p-2.5 text-center">
+                              {h.documentFile ? (
+                                <button
+                                  onClick={() => setSingleNoticeDoc({
+                                    title: `Summons Copy - ${eCourtModalCase.caseNo}`,
+                                    content: h.documentFile!,
+                                  })}
+                                  className="text-blue-700 hover:underline font-bold text-[11px] cursor-pointer inline-flex items-center gap-1"
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  <span>{h.documentName || 'Notice Copy.pdf'}</span>
+                                </button>
+                              ) : (
+                                <span className="text-[10px] text-slate-400">Notice Issued (Physical)</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="p-4 text-center text-slate-400 italic">
+                            No process records.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
 
-            <div className="text-right pt-2 border-t border-slate-200">
+            {/* Footer Buttons */}
+            <div className="bg-slate-100 p-4 border-t border-slate-300 flex items-center justify-between sticky bottom-0">
+              <span className="text-[11px] text-slate-500 font-semibold">
+                Court of Revenue Divisional Officer, Huzurnagar • Telangana State
+              </span>
               <button
-                onClick={() => setActiveHistoryCase(null)}
-                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl cursor-pointer"
+                onClick={() => setECourtModalCase(null)}
+                className="px-6 py-2 bg-[#781818] hover:bg-[#601313] text-white font-bold rounded-lg text-xs cursor-pointer shadow-md"
               >
-                Close
+                Close Case Status
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* SINGLE NOTICE ATTACHMENT VIEWER MODAL */}
+      {/* SINGLE NOTICE ATTACHMENT VIEWER */}
       {singleNoticeDoc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-5 relative border border-slate-300">
