@@ -836,6 +836,7 @@ export default function App() {
       await saveUniversalAttachment(key, rawFileString);
       caseToSave.attachmentKey = key;
       caseToSave.hasFinalOrderAttachment = true;
+      caseToSave.finalOrderFile = rawFileString;
     }
 
     const updated = [caseToSave, ...appealCases.filter((c) => c.id !== newCase.id)];
@@ -869,6 +870,7 @@ export default function App() {
       await saveUniversalAttachment(key, rawFileString);
       caseToSave.attachmentKey = key;
       caseToSave.hasFinalOrderAttachment = true;
+      caseToSave.finalOrderFile = rawFileString;
     }
 
     const updated = appealCases.map((c) => (c.id === updatedCase.id ? caseToSave : c));
