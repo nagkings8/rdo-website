@@ -44,7 +44,6 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
 }) => {
   const isAdmin = currentUser?.role === 'ADMIN';
   const isViewer = !currentUser || currentUser?.role === 'VIEWER';
-  const isOfficial = !isViewer;
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMandal, setSelectedMandal] = useState<string>('ALL');
@@ -55,7 +54,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
   const [caseToEdit, setCaseToEdit] = useState<AppealCase | null>(null);
   const [caseForOrderUpload, setCaseForOrderUpload] = useState<AppealCase | null>(null);
 
-  // Exact e-Courts Full Case Status Modal
+  // Exact Official Case Status Modal State
   const [eCourtModalCase, setECourtModalCase] = useState<AppealCase | null>(null);
   const [singleNoticeDoc, setSingleNoticeDoc] = useState<{ title: string; content: string } | null>(null);
 
@@ -202,7 +201,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       period: `Total Cases: ${listToPrint.length}`,
       landscape: true,
       fileName: 'Appeal_Cases_Register',
-      isOfficial,
+      isOfficial: true,
     });
   };
 
@@ -245,31 +244,31 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       period: `Total Listed: ${listToPrint.length}`,
       landscape: true,
       fileName: 'Daily_Cause_List',
-      isOfficial,
+      isOfficial: true,
     });
   };
 
   const renderStatusBadge = (c: AppealCase) => {
     const s = String(c.status || '').toLowerCase();
-    let badgeClass = 'bg-blue-100 text-blue-800 border-blue-300';
-    let icon = <Clock className="w-3 h-3 text-blue-600" />;
+    let badgeClass = 'bg-blue-100 text-blue-900 border-blue-300';
+    let icon = <Clock className="w-3 h-3 text-blue-700" />;
 
     if (s.includes('allowed')) {
-      badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-      icon = <CheckCircle2 className="w-3 h-3 text-emerald-600" />;
+      badgeClass = 'bg-emerald-100 text-emerald-900 border-emerald-300';
+      icon = <CheckCircle2 className="w-3 h-3 text-emerald-700" />;
     } else if (s.includes('dismissed')) {
-      badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
-      icon = <AlertCircle className="w-3 h-3 text-rose-600" />;
+      badgeClass = 'bg-rose-100 text-rose-900 border-rose-300';
+      icon = <AlertCircle className="w-3 h-3 text-rose-700" />;
     } else if (s.includes('remanded')) {
-      badgeClass = 'bg-purple-100 text-purple-800 border-purple-300';
-      icon = <RotateCcw className="w-3 h-3 text-purple-600" />;
+      badgeClass = 'bg-purple-100 text-purple-900 border-purple-300';
+      icon = <RotateCcw className="w-3 h-3 text-purple-700" />;
     }
 
     return (
       <button
         onClick={() => setECourtModalCase(c)}
         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-black border shadow-xs hover:scale-105 transition cursor-pointer ${badgeClass}`}
-        title="Click to view full e-Courts Case Status"
+        title="Click to view full Case Status"
       >
         {icon}
         <span>{c.status || 'Under Hearing'}</span>
@@ -280,7 +279,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* HEADER BANNER */}
+      {/* HEADER BANNER - OFFICIAL DEEP BLUE */}
       <div className="bg-gradient-to-r from-[#0c2a47] via-[#134674] to-[#1e5a92] text-white rounded-2xl p-6 shadow-md border-b-4 border-amber-400">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
@@ -521,12 +520,10 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                         </div>
                       </td>
 
-                      {/* Case Status Button - Click to Open e-Courts Modal */}
                       <td className="py-3 px-3 border-r border-slate-200 text-center">
                         {renderStatusBadge(c)}
                       </td>
 
-                      {/* Next Hearing Date */}
                       <td className="py-3 px-3 border-r border-slate-200 text-center">
                         <div className="font-black text-blue-950 text-xs">
                           {c.nextHearingDate ? c.nextHearingDate : 'Not Scheduled'}
@@ -607,38 +604,44 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
         </div>
       </div>
 
-      {/* EXACT e-COURTS BENCH CASE STATUS VIEW MODAL */}
+      {/* OFFICIAL REVENUE DIVISION BLUE THEME CASE STATUS MODAL */}
       {eCourtModalCase && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-3 sm:p-5 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-[#fcfbf9] rounded-xl shadow-2xl max-w-5xl w-full border border-stone-300 my-6 max-h-[92vh] overflow-y-auto font-sans">
-            {/* Header: Exact Division updated */}
-            <div className="bg-[#781818] text-white p-4 flex items-center justify-between sticky top-0 z-20 shadow-sm">
-              <div>
-                <h3 className="font-serif font-black text-base sm:text-lg tracking-wide uppercase">
-                  Court of the Revenue Divisional Officer &amp; SDM, Huzurnagar
-                </h3>
-                <p className="text-[11px] text-amber-200 font-sans">
-                  Case Status: Search by Case Number • Huzurnagar Division (Suryapet District)
-                </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-3 sm:p-5 backdrop-blur-xs overflow-y-auto animate-fade-in">
+          <div className="bg-slate-50 rounded-2xl shadow-2xl max-w-5xl w-full border border-slate-300 my-6 max-h-[92vh] overflow-y-auto font-sans">
+            {/* Header: Portal Matching Deep Navy Blue with Gold accent */}
+            <div className="bg-gradient-to-r from-[#0c2a47] via-[#134674] to-[#1e5a92] text-white p-4.5 flex items-center justify-between sticky top-0 z-20 shadow-md border-b-2 border-amber-400">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center border border-white/20">
+                  <Scale className="w-5 h-5 text-amber-300" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base tracking-wide uppercase text-white">
+                    COURT OF THE REVENUE DIVISIONAL OFFICER &amp; SDM, HUZURNAGAR
+                  </h3>
+                  <p className="text-[11px] text-amber-300 font-semibold">
+                    Case Status: Search by Case Number • Huzurnagar Division (Suryapet District)
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setECourtModalCase(null)}
-                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-4 sm:p-6 space-y-6 text-xs text-slate-800">
+            <div className="p-4 sm:p-6 space-y-5 text-xs text-slate-800">
               {/* SECTION 1: CASE DETAILS TABLE */}
-              <div>
-                <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
-                  Case Details
+              <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+                <div className="bg-[#134674] text-white font-bold px-3.5 py-2 text-xs uppercase tracking-wider flex items-center justify-between">
+                  <span>Case Details</span>
+                  <span className="text-[10.5px] font-mono text-amber-300">CNR: TSHZNR04{eCourtModalCase.id}2026</span>
                 </div>
-                <div className="border border-[#781818]/30 border-t-0 overflow-x-auto bg-white">
+                <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="bg-[#fcedeb] border-b border-slate-200 text-slate-700">
+                      <tr className="bg-slate-100 border-b border-slate-200 text-slate-700">
                         <th className="p-2.5 border-r border-slate-200 font-bold">Case Type</th>
                         <th className="p-2.5 border-r border-slate-200 font-bold">Filing Number</th>
                         <th className="p-2.5 border-r border-slate-200 font-bold">Filing Date</th>
@@ -649,10 +652,10 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                     </thead>
                     <tbody>
                       <tr className="border-b border-slate-200">
-                        <td className="p-2.5 border-r border-slate-200 font-semibold">{eCourtModalCase.appealType || 'ROR APPEAL'}</td>
-                        <td className="p-2.5 border-r border-slate-200">{eCourtModalCase.caseNo}</td>
-                        <td className="p-2.5 border-r border-slate-200">{eCourtModalCase.filingDate || '-'}</td>
+                        <td className="p-2.5 border-r border-slate-200 font-bold text-blue-950">{eCourtModalCase.appealType || 'ROR APPEAL'}</td>
                         <td className="p-2.5 border-r border-slate-200 font-bold">{eCourtModalCase.caseNo}</td>
+                        <td className="p-2.5 border-r border-slate-200">{eCourtModalCase.filingDate || '-'}</td>
+                        <td className="p-2.5 border-r border-slate-200 font-bold text-emerald-800">{eCourtModalCase.caseNo}</td>
                         <td className="p-2.5 border-r border-slate-200">{eCourtModalCase.filingDate || '-'}</td>
                         <td className="p-2.5 font-mono font-bold text-slate-700">TSHZNR04{eCourtModalCase.id}2026</td>
                       </tr>
@@ -662,14 +665,14 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
               </div>
 
               {/* SECTION 2: CASE STATUS TABLE */}
-              <div>
-                <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
+              <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+                <div className="bg-[#134674] text-white font-bold px-3.5 py-2 text-xs uppercase tracking-wider">
                   Case Status
                 </div>
-                <div className="border border-[#781818]/30 border-t-0 overflow-x-auto bg-white">
+                <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="bg-[#fcedeb] border-b border-slate-200 text-slate-700">
+                      <tr className="bg-slate-100 border-b border-slate-200 text-slate-700">
                         <th className="p-2.5 border-r border-slate-200 font-bold">First Hearing Date</th>
                         <th className="p-2.5 border-r border-slate-200 font-bold text-blue-900">Next Hearing Date</th>
                         <th className="p-2.5 border-r border-slate-200 font-bold">Case Status</th>
@@ -680,11 +683,11 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                     <tbody>
                       <tr className="border-b border-slate-200">
                         <td className="p-2.5 border-r border-slate-200">{eCourtModalCase.firstHearingDate || eCourtModalCase.filingDate || '-'}</td>
-                        <td className="p-2.5 border-r border-slate-200 font-black text-rose-700 text-sm">
+                        <td className="p-2.5 border-r border-slate-200 font-black text-blue-700 text-sm bg-blue-50/50">
                           {eCourtModalCase.nextHearingDate || (eCourtModalCase.caseHistory?.[0]?.hearingDate) || 'Not Scheduled'}
                         </td>
-                        <td className="p-2.5 border-r border-slate-200 font-bold">{eCourtModalCase.status || 'Under Hearing'}</td>
-                        <td className="p-2.5 border-r border-slate-200 font-bold uppercase text-blue-950">
+                        <td className="p-2.5 border-r border-slate-200 font-bold text-emerald-800">{eCourtModalCase.status || 'Under Hearing'}</td>
+                        <td className="p-2.5 border-r border-slate-200 font-bold uppercase text-amber-800">
                           {eCourtModalCase.stagePurpose || (eCourtModalCase.caseHistory?.[0]?.purpose) || 'SUMMONS / NOTICE ISSUED'}
                         </td>
                         <td className="p-2.5 font-semibold text-slate-800">
@@ -698,29 +701,29 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
 
               {/* SECTION 3: PETITIONER & RESPONDENT DETAILS */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
+                <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+                  <div className="bg-[#134674] text-white font-bold px-3.5 py-2 text-xs uppercase tracking-wider">
                     Petitioner / Appellant and Advocate
                   </div>
-                  <div className="p-3 border border-[#781818]/30 border-t-0 bg-white space-y-2 min-h-[90px]">
-                    <div className="font-semibold whitespace-pre-line text-slate-900 leading-relaxed">
+                  <div className="p-3.5 space-y-2 min-h-[90px]">
+                    <div className="font-semibold whitespace-pre-line text-slate-900 leading-relaxed text-xs">
                       {eCourtModalCase.appellantName || '-'}
                     </div>
-                    <div className="text-[11px] text-blue-800 font-bold border-t border-slate-100 pt-1">
+                    <div className="text-[11px] text-blue-800 font-bold border-t border-slate-100 pt-1.5">
                       Advocate: {eCourtModalCase.appellantAdvocate || 'Party in Person'}
                     </div>
                   </div>
                 </div>
 
-                <div>
-                  <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
+                <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+                  <div className="bg-[#134674] text-white font-bold px-3.5 py-2 text-xs uppercase tracking-wider">
                     Respondent and Advocate
                   </div>
-                  <div className="p-3 border border-[#781818]/30 border-t-0 bg-white space-y-2 min-h-[90px]">
-                    <div className="font-semibold whitespace-pre-line text-slate-900 leading-relaxed">
+                  <div className="p-3.5 space-y-2 min-h-[90px]">
+                    <div className="font-semibold whitespace-pre-line text-slate-900 leading-relaxed text-xs">
                       {eCourtModalCase.respondentName || '-'}
                     </div>
-                    <div className="text-[11px] text-amber-800 font-bold border-t border-slate-100 pt-1">
+                    <div className="text-[11px] text-amber-800 font-bold border-t border-slate-100 pt-1.5">
                       Advocate: {eCourtModalCase.respondentAdvocate || 'Government Pleader for Revenue'}
                     </div>
                   </div>
@@ -728,41 +731,42 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
               </div>
 
               {/* SECTION 4: ACTS & SECTIONS */}
-              <div>
-                <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
+              <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+                <div className="bg-[#134674] text-white font-bold px-3.5 py-2 text-xs uppercase tracking-wider">
                   Acts &amp; Sections
                 </div>
-                <div className="border border-[#781818]/30 border-t-0 bg-white">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-[#fcedeb] border-b border-slate-200 text-slate-700">
-                        <th className="p-2.5 border-r border-slate-200 font-bold">Under Act(s)</th>
-                        <th className="p-2.5 font-bold">Under Section(s)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b border-slate-200">
-                        <td className="p-2.5 border-r border-slate-200 font-semibold">
-                          TELANGANA BHU BHARATI (RECORD OF RIGHTS IN LAND) ACT / ROR RULES
-                        </td>
-                        <td className="p-2.5 font-bold text-blue-900">
-                          {eCourtModalCase.bhuBharatiActSection || eCourtModalCase.appealType || 'Section 15(1)'}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 border-b border-slate-200 text-slate-700">
+                      <th className="p-2.5 border-r border-slate-200 font-bold">Under Act(s)</th>
+                      <th className="p-2.5 font-bold">Under Section(s)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-slate-200">
+                      <td className="p-2.5 border-r border-slate-200 font-semibold text-slate-800">
+                        TELANGANA BHU BHARATI (RECORD OF RIGHTS IN LAND) ACT / ROR RULES
+                      </td>
+                      <td className="p-2.5 font-bold text-blue-900">
+                        {eCourtModalCase.bhuBharatiActSection || eCourtModalCase.appealType || 'Section 15(1)'}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
 
               {/* SECTION 5: CASE HISTORY TABLE */}
-              <div>
-                <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
-                  Case History
+              <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+                <div className="bg-[#134674] text-white font-bold px-3.5 py-2 text-xs uppercase tracking-wider flex items-center justify-between">
+                  <span>Case History (Bench Proceedings)</span>
+                  <span className="text-[10.5px] font-semibold text-sky-200">
+                    Total Hearings: {eCourtModalCase.caseHistory?.length || 0}
+                  </span>
                 </div>
-                <div className="border border-[#781818]/30 border-t-0 overflow-x-auto bg-white">
+                <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="bg-[#fcedeb] border-b border-slate-200 text-slate-700">
+                      <tr className="bg-slate-100 border-b border-slate-200 text-slate-700">
                         <th className="p-2.5 border-r border-slate-200 font-bold text-center w-28">Registration Number</th>
                         <th className="p-2.5 border-r border-slate-200 font-bold">Judge / Presiding Officer</th>
                         <th className="p-2.5 border-r border-slate-200 font-bold text-center">Business On Date</th>
@@ -774,7 +778,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                     <tbody>
                       {eCourtModalCase.caseHistory && eCourtModalCase.caseHistory.length > 0 ? (
                         eCourtModalCase.caseHistory.map((h, hIdx) => (
-                          <tr key={h.id || hIdx} className="border-b border-slate-200 hover:bg-amber-50/40">
+                          <tr key={h.id || hIdx} className="border-b border-slate-200 hover:bg-blue-50/40">
                             <td className="p-2.5 border-r border-slate-200 text-center font-bold text-slate-700">
                               {eCourtModalCase.caseNo}
                             </td>
@@ -797,7 +801,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                                     title: `Notice Copy - ${eCourtModalCase.caseNo} (${h.hearingDate})`,
                                     content: h.documentFile!,
                                   })}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded text-[10.5px] cursor-pointer shadow-xs"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded text-[10.5px] cursor-pointer shadow-xs"
                                 >
                                   <Eye className="w-3 h-3" />
                                   <span>View Notice</span>
@@ -821,14 +825,14 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
               </div>
 
               {/* SECTION 6: PROCESS DETAILS */}
-              <div>
-                <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
+              <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+                <div className="bg-[#134674] text-white font-bold px-3.5 py-2 text-xs uppercase tracking-wider">
                   Process Details (Notices &amp; Summons Issued)
                 </div>
-                <div className="border border-[#781818]/30 border-t-0 overflow-x-auto bg-white">
+                <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="bg-[#fcedeb] border-b border-slate-200 text-slate-700">
+                      <tr className="bg-slate-100 border-b border-slate-200 text-slate-700">
                         <th className="p-2.5 border-r border-slate-200 font-bold">Process ID</th>
                         <th className="p-2.5 border-r border-slate-200 font-bold">Process Date</th>
                         <th className="p-2.5 border-r border-slate-200 font-bold">Process Title</th>
@@ -875,14 +879,14 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
               </div>
             </div>
 
-            {/* Footer Buttons */}
-            <div className="bg-slate-100 p-4 border-t border-slate-300 flex items-center justify-between sticky bottom-0">
-              <span className="text-[11px] text-slate-500 font-semibold">
-                Court of Revenue Divisional Officer, Huzurnagar • Suryapet District, Telangana State
+            {/* Footer Matching Portal Official Look */}
+            <div className="bg-white p-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 sticky bottom-0">
+              <span className="text-[11px] text-slate-600 font-semibold text-center sm:text-left">
+                Court of Revenue Divisional Officer, Huzurnagar • Suryapet District, Government of Telangana
               </span>
               <button
                 onClick={() => setECourtModalCase(null)}
-                className="px-6 py-2 bg-[#781818] hover:bg-[#601313] text-white font-bold rounded-lg text-xs cursor-pointer shadow-md"
+                className="px-6 py-2 bg-[#0c2a47] hover:bg-[#134674] text-white font-bold rounded-xl text-xs cursor-pointer shadow-md transition"
               >
                 Close Case Status
               </button>
