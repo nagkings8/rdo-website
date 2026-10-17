@@ -526,7 +526,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                         {renderStatusBadge(c)}
                       </td>
 
-                      {/* Next Hearing Date with History Indicator */}
+                      {/* Next Hearing Date */}
                       <td className="py-3 px-3 border-r border-slate-200 text-center">
                         <div className="font-black text-blue-950 text-xs">
                           {c.nextHearingDate ? c.nextHearingDate : 'Not Scheduled'}
@@ -607,18 +607,18 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
         </div>
       </div>
 
-      {/* EXACT e-COURTS BENCH CASE STATUS VIEW MODAL (MATCHES SURYAPET DISTRICT JUDICIARY FORMAT) */}
+      {/* EXACT e-COURTS BENCH CASE STATUS VIEW MODAL */}
       {eCourtModalCase && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-3 sm:p-5 backdrop-blur-xs overflow-y-auto">
           <div className="bg-[#fcfbf9] rounded-xl shadow-2xl max-w-5xl w-full border border-stone-300 my-6 max-h-[92vh] overflow-y-auto font-sans">
-            {/* Header matching e-Courts */}
+            {/* Header: Exact Division updated */}
             <div className="bg-[#781818] text-white p-4 flex items-center justify-between sticky top-0 z-20 shadow-sm">
               <div>
                 <h3 className="font-serif font-black text-base sm:text-lg tracking-wide uppercase">
                   Court of the Revenue Divisional Officer &amp; SDM, Huzurnagar
                 </h3>
                 <p className="text-[11px] text-amber-200 font-sans">
-                  Case Status: Search by Case Number • Suryapet Revenue Division
+                  Case Status: Search by Case Number • Huzurnagar Division (Suryapet District)
                 </p>
               </div>
               <button
@@ -754,7 +754,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                 </div>
               </div>
 
-              {/* SECTION 5: CASE HISTORY TABLE (MATCHING SURYAPET E-COURTS TABLE) */}
+              {/* SECTION 5: CASE HISTORY TABLE */}
               <div>
                 <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
                   Case History
@@ -820,7 +820,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                 </div>
               </div>
 
-              {/* SECTION 6: PROCESS DETAILS (SUMMONS / NOTICES ISSUED LIST) */}
+              {/* SECTION 6: PROCESS DETAILS */}
               <div>
                 <div className="bg-[#781818] text-white font-bold px-3 py-1.5 text-xs uppercase tracking-wider rounded-t-md">
                   Process Details (Notices &amp; Summons Issued)
@@ -878,7 +878,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
             {/* Footer Buttons */}
             <div className="bg-slate-100 p-4 border-t border-slate-300 flex items-center justify-between sticky bottom-0">
               <span className="text-[11px] text-slate-500 font-semibold">
-                Court of Revenue Divisional Officer, Huzurnagar • Telangana State
+                Court of Revenue Divisional Officer, Huzurnagar • Suryapet District, Telangana State
               </span>
               <button
                 onClick={() => setECourtModalCase(null)}
