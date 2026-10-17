@@ -824,44 +824,70 @@ export default function App() {
     setIsDeleteModalOpen(true);
   };
 
+  // FULLY PRESERVED CaseHistory WITH NOTICES TRACKER
   const handleSaveAppealCase = async (newCase: AppealCase, rawFileString?: string) => {
-    let caseToSave = { ...newCase };
+    let caseToSave: AppealCase = {
+      ...newCase,
+      caseHistory: Array.isArray(newCase.caseHistory) ? [...newCase.caseHistory] : [],
+    };
+
     if (rawFileString) {
       const key = `appeal_order_${newCase.id}`;
       await saveUniversalAttachment(key, rawFileString);
       caseToSave.attachmentKey = key;
       caseToSave.hasFinalOrderAttachment = true;
     }
+
     const updated = [caseToSave, ...appealCases.filter((c) => c.id !== newCase.id)];
     setAppealCases(updated);
     safeSaveLocalStorage('rdo_appeal_cases', updated);
+
     try {
       await setDoc(doc(db, 'appeal_cases', String(caseToSave.id)), caseToSave);
     } catch (err) {
       console.error('Firebase appeal case save error:', err);
     }
-    await logActivity('Appeal Cases', newCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'ENTRY', `Appeal filed by ${currentUser?.name || 'Staff'}. Appellant: ${newCase.appellantName}`);
-    showToast(`Appeal Case ${newCase.caseNo} registered successfully.`);
+
+    await logActivity(
+      'Appeal Cases',
+      newCase.caseNo,
+      rawFileString ? 'ORDER_UPLOAD' : 'ENTRY',
+      `Appeal filed by ${currentUser?.name || 'Staff'}. Appellant: ${newCase.appellantName}`
+    );
+    showToast(`Appeal Case #${newCase.caseNo} registered successfully.`);
   };
 
+  // FULLY PRESERVED CaseHistory MULTIPLE HEARINGS AND NOTICES FIX
   const handleUpdateAppealCase = async (updatedCase: AppealCase, rawFileString?: string) => {
-    let caseToSave = { ...updatedCase };
+    let caseToSave: AppealCase = {
+      ...updatedCase,
+      caseHistory: Array.isArray(updatedCase.caseHistory) ? [...updatedCase.caseHistory] : [],
+    };
+
     if (rawFileString) {
       const key = updatedCase.attachmentKey || `appeal_order_${updatedCase.id}`;
       await saveUniversalAttachment(key, rawFileString);
       caseToSave.attachmentKey = key;
       caseToSave.hasFinalOrderAttachment = true;
     }
+
     const updated = appealCases.map((c) => (c.id === updatedCase.id ? caseToSave : c));
     setAppealCases(updated);
     safeSaveLocalStorage('rdo_appeal_cases', updated);
+
     try {
       await setDoc(doc(db, 'appeal_cases', String(caseToSave.id)), caseToSave);
     } catch (err) {
       console.error('Firebase appeal case update error:', err);
     }
-    await logActivity('Appeal Cases', updatedCase.caseNo, rawFileString ? 'ORDER_UPLOAD' : 'EDIT', `Appeal updated by ${currentUser?.name || 'Staff'}. Status: ${updatedCase.status}`);
-    showToast(`Appeal Case ${updatedCase.caseNo} updated successfully.`);
+
+    await logActivity(
+      'Appeal Cases',
+      updatedCase.caseNo,
+      rawFileString ? 'ORDER_UPLOAD' : 'EDIT',
+      `Appeal updated by ${currentUser?.name || 'Staff'}. Total hearings recorded: ${caseToSave.caseHistory?.length || 0}. Status: ${updatedCase.status}`
+    );
+    showToast(`Appeal Case #${updatedCase.caseNo} updated successfully.`);
   };
 
   const handleDeleteAppealCasePrompt = (appealCase: AppealCase) => {
@@ -1088,7 +1114,7 @@ export default function App() {
           onCloseMobile={() => setIsMobileMenuOpen(false)}
         />
 
-        {/* Right Main Content Area (lg:pl-20 ensures no overlap with fixed sidebar) */}
+        {/* Right Main Content Area */}
         <main className="min-w-0 px-3 sm:px-5 md:px-7 py-4 sm:py-6 lg:pl-24 transition-all duration-300">
           {activeTab === 'dashboardTab' && (
             <DashboardView
