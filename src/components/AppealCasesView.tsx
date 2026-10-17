@@ -11,20 +11,16 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
-  ExternalLink,
   Edit2,
   Trash2,
   RotateCcw,
   X,
   FileSpreadsheet,
   Gavel,
-  Calendar,
-  Building,
-  MapPin,
-  Eye,
-  History
+  FileUp,
+  Eye
 } from 'lucide-react';
-import { AppealCase, CaseHistoryEntry, MANDAL_LIST, APPEAL_TYPES, APPEAL_STATUSES, StaffUser } from '../types';
+import { AppealCase, MANDAL_LIST, APPEAL_TYPES, StaffUser } from '../types';
 import { printTableReport } from '../utils/printReport';
 import { AppealCaseModal } from './modals/AppealCaseModal';
 import { UploadFinalOrderModal } from './modals/UploadFinalOrderModal';
@@ -61,47 +57,62 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [caseToEdit, setCaseToEdit] = useState<AppealCase | null>(null);
   const [caseForOrderUpload, setCaseForOrderUpload] = useState<AppealCase | null>(null);
-  const [selectedCaseForDetail, setSelectedCaseForDetail] = useState<AppealCase | null>(null);
+
+  // Notice Viewer Modal state
+  const [noticeViewDoc, setNoticeViewDoc] = useState<{ title: string; content: string } | null>(null);
 
   const excelInputRef = useRef<HTMLInputElement>(null);
 
-  // Safe cases array to prevent crash
+  const safeMandals = useMemo(() => {
+    return Array.isArray(MANDAL_LIST) && MANDAL_LIST.length > 0 ? MANDAL_LIST : [
+      'HUZURNAGAR', 'CHINTHALAPALEM', 'GARIDE PALLE', 'MATTAMPALLE', 'MELLACHERUVU', 'NEREDUCHERLA', 'PALAKEEDU'
+    ];
+  }, []);
+
+  const safeTypes = useMemo(() => {
+    return Array.isArray(APPEAL_TYPES) && APPEAL_TYPES.length > 0 ? APPEAL_TYPES : [
+      'Bhu Bharati Appeal (Sec 15(1) r/w Rule 14)',
+      'Mutation on Transfer (Sec 5)',
+      'Succession / Will (Sec 7)',
+      'Sadabainama Regularisation (Sec 6)',
+      'Other Revenue Appeal'
+    ];
+  }, []);
+
   const safeCases = useMemo(() => {
     return Array.isArray(appealCases) ? appealCases.filter(Boolean) : [];
   }, [appealCases]);
 
-  // Statistics with null-safe checks
   const stats = useMemo(() => {
     const total = safeCases.length;
     const finalOrders = safeCases.filter((c) => {
-      const st = (c?.status || '').toLowerCase();
+      const st = String(c?.status || '').toLowerCase();
       return st.includes('final order') || Boolean(c?.finalOrderNo);
     }).length;
 
     const allowed = safeCases.filter((c) => {
-      const st = (c?.status || '').toLowerCase();
+      const st = String(c?.status || '').toLowerCase();
       return st.includes('allowed');
     }).length;
 
     const dismissed = safeCases.filter((c) => {
-      const st = (c?.status || '').toLowerCase();
+      const st = String(c?.status || '').toLowerCase();
       return st.includes('dismissed');
     }).length;
 
     const remanded = safeCases.filter((c) => {
-      const st = (c?.status || '').toLowerCase();
+      const st = String(c?.status || '').toLowerCase();
       return st.includes('remanded');
     }).length;
 
     const pending = safeCases.filter((c) => {
-      const st = (c?.status || '').toLowerCase();
+      const st = String(c?.status || '').toLowerCase();
       return st.includes('hearing') || st.includes('stay') || st.includes('reserved');
     }).length;
 
     return { total, finalOrders, allowed, dismissed, remanded, pending };
   }, [safeCases]);
 
-  // Filtered list with null-safe checks
   const filteredCases = useMemo(() => {
     return safeCases.filter((c) => {
       if (!c) return false;
@@ -134,7 +145,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       const matchType = selectedTypeFilter === 'ALL' || c.appealType === selectedTypeFilter;
 
       let matchStatus = true;
-      const st = (c.status || '').toLowerCase();
+      const st = String(c.status || '').toLowerCase();
       if (selectedStatusFilter === 'FINAL_ORDERS') {
         matchStatus = st.includes('final order') || Boolean(c.finalOrderNo);
       } else if (selectedStatusFilter === 'ALLOWED') {
@@ -148,127 +159,6 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       return matchSearch && matchMandal && matchType && matchStatus;
     });
   }, [safeCases, searchTerm, selectedMandal, selectedTypeFilter, selectedStatusFilter]);
-
-  // Bulk Excel Upload handler
-  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const data = evt.target?.result;
-        if (!window.XLSX) {
-          onShowToast('Excel parser library loading...');
-          return;
-        }
-        const workbook = window.XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const parsedRows: any[][] = window.XLSX.utils.sheet_to_json(sheet, {
-          header: 1,
-          defval: '',
-        });
-
-        if (!parsedRows || parsedRows.length < 2) {
-          onShowToast('No rows found in uploaded Excel file.');
-          return;
-        }
-
-        let headerRowIdx = 0;
-        for (let i = 0; i < Math.min(parsedRows.length, 5); i++) {
-          const rowStr = parsedRows[i].map((c) => String(c || '').toLowerCase()).join(' ');
-          if (rowStr.includes('case') || rowStr.includes('appellant') || rowStr.includes('appeal')) {
-            headerRowIdx = i;
-            break;
-          }
-        }
-
-        const headers = parsedRows[headerRowIdx].map((h) => String(h || '').toLowerCase().trim());
-        const dataRows = parsedRows.slice(headerRowIdx + 1);
-
-        const newCases: AppealCase[] = [];
-        dataRows.forEach((row, idx) => {
-          if (!row.some((cell) => String(cell || '').trim() !== '')) return;
-
-          const getVal = (keywords: string[]) => {
-            const cIdx = headers.findIndex((h) => keywords.some((k) => h.includes(k)));
-            return cIdx !== -1 && row[cIdx] !== undefined ? String(row[cIdx]).trim() : '';
-          };
-
-          const caseNo = getVal(['case', 'appeal no', 'number']) || `ROR/A/${100 + idx}/2026`;
-          const appellant = getVal(['appellant', 'petitioner']) || 'Appellant';
-          const respondent = getVal(['respondent']) || 'Tahsildar & Others';
-          const mandal = getVal(['mandal']) || 'HUZURNAGAR';
-          const village = getVal(['village']) || 'Huzur Nagar';
-          const status = getVal(['status', 'result']) || 'Under Hearing';
-          const curDateStr = new Date().toISOString().split('T')[0];
-
-          newCases.push({
-            id: Date.now() + idx + Math.floor(Math.random() * 1000),
-            caseNo,
-            registrationNo: caseNo.replace(/[^0-9/]/g, '') || `${100 + idx}/2026`,
-            registrationDate: curDateStr,
-            cnrNumber: `TSHZNR04000${1000 + idx}2026`,
-            bhuBharatiActSection: 'Section 15(1) read with Rule 14 (Statutory RoR Appeal)',
-            appealType: 'Bhu Bharati Appeal (Sec 15(1) r/w Rule 14)',
-            mandal,
-            village,
-            surveyNo: getVal(['survey', 'sy']) || '-',
-            extent: getVal(['extent', 'ac']) || '-',
-            appellantName: appellant,
-            appellantAdvocate: getVal(['appellant advocate', 'app adv']) || 'Party in Person',
-            respondentName: respondent,
-            respondentAdvocate: getVal(['respondent advocate', 'resp adv']) || 'GP for Revenue',
-            impugnedOrderNo: getVal(['impugned', 'lower order']) || '-',
-            impugnedOrderDate: curDateStr,
-            stagePurpose: 'SUMMONS & NOTICE ISSUED',
-            nextHearingDate: curDateStr,
-            filingDate: curDateStr,
-            noticeIssuedDate: '',
-            noticeServedDate: '',
-            firstHearingDate: curDateStr,
-            hearingDate: curDateStr,
-            status,
-            finalOrderNo: getVal(['order no', 'final order']),
-            finalOrderDate: '',
-            finalOrderSummary: getVal(['summary', 'gist']),
-            remarks: '',
-            caseHistory: [],
-          });
-        });
-
-        if (newCases.length > 0) {
-          newCases.forEach((nc) => onSaveCase(nc));
-          onShowToast(`Successfully imported ${newCases.length} Appeal Cases!`);
-        }
-      } catch (err) {
-        console.error('Excel parse error:', err);
-        onShowToast('Failed to parse Excel file.');
-      }
-    };
-    reader.readAsBinaryString(file);
-    if (e.target) e.target.value = '';
-  };
-
-  const handleExportCSV = () => {
-    if (safeCases.length === 0) return;
-    let csv = 'Sl No,Case No,Appeal Type,Mandal,Village,Survey No,Appellant,Respondent,Status\n';
-    filteredCases.forEach((c, idx) => {
-      const clean = (str?: string) => `"${(str || '').replace(/"/g, '""')}"`;
-      csv += `${idx + 1},${clean(c.caseNo)},${clean(c.appealType)},${clean(c.mandal)},${clean(c.village)},${clean(c.surveyNo)},${clean(c.appellantName)},${clean(c.respondentName)},${clean(c.status)}\n`;
-    });
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Appeal_Cases_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    onShowToast('Appeal Cases CSV exported.');
-  };
 
   const handlePrintAllCasesRegister = (useAllDatabaseCases = true) => {
     const listToPrint = useAllDatabaseCases ? safeCases : filteredCases;
@@ -285,6 +175,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       <th style="padding: 6px; border: 1px solid #334155; text-align: left;">Appellant</th>
       <th style="padding: 6px; border: 1px solid #334155; text-align: left;">Respondent</th>
       <th style="padding: 6px; border: 1px solid #334155; text-align: center;">Status</th>
+      <th style="padding: 6px; border: 1px solid #334155; text-align: center;">Notice Date</th>
       <th style="padding: 6px; border: 1px solid #334155; text-align: center;">Final Order</th>
     `;
 
@@ -299,6 +190,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
           <td style="padding: 5px; border: 1px solid #cbd5e1;"><b>${c.appellantName || '-'}</b></td>
           <td style="padding: 5px; border: 1px solid #cbd5e1;">${c.respondentName || '-'}</td>
           <td style="padding: 5px; border: 1px solid #cbd5e1; text-align: center;"><b>${c.status || '-'}</b></td>
+          <td style="padding: 5px; border: 1px solid #cbd5e1; text-align: center;">${c.noticeIssuedDate || '-'}</td>
           <td style="padding: 5px; border: 1px solid #cbd5e1; text-align: center;">${c.finalOrderNo || '-'}</td>
         </tr>
       `
@@ -508,7 +400,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Search by Case No, Appellant, Village..."
+              placeholder="Search by Case No, Appellant, Village, Survey No..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-8 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:border-blue-500 focus:outline-none"
@@ -533,43 +425,60 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
             </button>
 
             {!isViewer && (
-              <>
-                <button
-                  onClick={() => {
-                    setCaseToEdit(null);
-                    setIsNewModalOpen(true);
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-md cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Register New Appeal</span>
-                </button>
-
-                <input
-                  type="file"
-                  ref={excelInputRef}
-                  accept=".xls,.xlsx,.csv"
-                  className="hidden"
-                  onChange={handleExcelUpload}
-                />
-                <button
-                  onClick={() => excelInputRef.current?.click()}
-                  className="bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-xs cursor-pointer"
-                >
-                  <Upload className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Upload (Excel)</span>
-                </button>
-
-                <button
-                  onClick={handleExportCSV}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-md cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Export CSV</span>
-                </button>
-              </>
+              <button
+                onClick={() => {
+                  setCaseToEdit(null);
+                  setIsNewModalOpen(true);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Register New Appeal</span>
+              </button>
             )}
           </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
+          <span className="font-bold text-slate-500 flex items-center gap-1">
+            <Filter className="w-3.5 h-3.5" /> Filter:
+          </span>
+
+          <select
+            value={selectedMandal}
+            onChange={(e) => setSelectedMandal(e.target.value)}
+            className="bg-white border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none"
+          >
+            <option value="ALL">All Mandals</option>
+            {safeMandals.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+
+          <select
+            value={selectedTypeFilter}
+            onChange={(e) => setSelectedTypeFilter(e.target.value)}
+            className="bg-white border border-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none max-w-xs truncate"
+          >
+            <option value="ALL">All Appeal Acts / Sections</option>
+            {safeTypes.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => {
+              setSearchTerm('');
+              setSelectedMandal('ALL');
+              setSelectedTypeFilter('ALL');
+              setSelectedStatusFilter('ALL');
+            }}
+            className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 cursor-pointer ml-auto"
+          >
+            <RotateCcw className="w-3 h-3" />
+            <span>Reset</span>
+          </button>
         </div>
       </div>
 
@@ -577,22 +486,23 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       <div className="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto overflow-y-auto max-h-[580px]">
           <table className="w-full text-xs text-left border-collapse">
-            <thead className="sticky top-0 bg-[#134674] text-white">
+            <thead className="sticky top-0 bg-[#134674] text-white z-10">
               <tr>
                 <th className="py-2.5 px-3 border-r border-slate-400 text-center w-12">S.No</th>
-                <th className="py-2.5 px-3 border-r border-slate-400 text-center">Case No</th>
-                <th className="py-2.5 px-3 border-r border-slate-400 text-left">Location</th>
+                <th className="py-2.5 px-3 border-r border-slate-400 text-center">Case No &amp; Section</th>
+                <th className="py-2.5 px-3 border-r border-slate-400 text-left">Location (Village / Mandal)</th>
                 <th className="py-2.5 px-3 border-r border-slate-400 text-left">Parties</th>
                 <th className="py-2.5 px-3 border-r border-slate-400 text-center">Status</th>
+                <th className="py-2.5 px-3 border-r border-slate-400 text-center">Notice / Summons</th>
                 <th className="py-2.5 px-3 border-r border-slate-400 text-left">Final Order</th>
                 <th className="py-2.5 px-3 border-r border-slate-400 text-center">Order Copy</th>
-                <th className="py-2.5 px-3 text-center w-28">Actions</th>
+                <th className="py-2.5 px-3 text-center w-32">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {filteredCases.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={9} className="py-12 text-center text-slate-400">
                     <Scale className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                     <p className="font-semibold">No Appeal Cases found.</p>
                   </td>
@@ -600,33 +510,94 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
               ) : (
                 filteredCases.map((c, idx) => (
                   <tr key={c.id || idx} className="hover:bg-blue-50/60 transition">
-                    <td className="py-3 px-3 border-r border-slate-200 text-center font-bold text-slate-600">{idx + 1}</td>
-                    <td className="py-3 px-3 border-r border-slate-200 text-center font-bold text-blue-900">{c.caseNo || '-'}</td>
-                    <td className="py-3 px-3 border-r border-slate-200">{c.village || '-'}, {c.mandal || '-'}</td>
-                    <td className="py-3 px-3 border-r border-slate-200">
-                      <div className="font-bold text-slate-900">{c.appellantName || '-'}</div>
-                      <div className="text-slate-500 text-[11px]">{c.respondentName || '-'}</div>
+                    <td className="py-3 px-3 border-r border-slate-200 text-center font-bold text-slate-600">
+                      {idx + 1}
                     </td>
-                    <td className="py-3 px-3 border-r border-slate-200 text-center">{renderStatusBadge(c.status)}</td>
-                    <td className="py-3 px-3 border-r border-slate-200">{c.finalOrderNo || '-'}</td>
                     <td className="py-3 px-3 border-r border-slate-200 text-center">
-                      {c.finalOrderNo ? (
-                        <button onClick={() => onViewFinalOrder(c)} className="bg-blue-600 text-white font-bold px-2 py-1 rounded text-[11px]">
-                          View PDF
+                      <div className="font-black text-blue-900">{c.caseNo || '-'}</div>
+                      <div className="text-[10px] text-slate-600 font-medium">{c.bhuBharatiActSection || c.appealType || '-'}</div>
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200">
+                      <div className="font-bold text-slate-900">{c.village || '-'}</div>
+                      <div className="text-[10.5px] text-slate-600">{c.mandal || '-'} Mandal • Sy: {c.surveyNo || '-'}</div>
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200">
+                      <div className="font-bold text-slate-900">App: {c.appellantName || '-'}</div>
+                      <div className="text-slate-500 text-[11px]">Resp: {c.respondentName || '-'}</div>
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 text-center">
+                      {renderStatusBadge(c.status)}
+                    </td>
+                    {/* NOTICE / SUMMONS COLUMN WITH VIEW FILE SUPPORT */}
+                    <td className="py-3 px-3 border-r border-slate-200 text-center">
+                      <div className="text-[11px] font-semibold text-slate-700">
+                        {c.noticeIssuedDate ? `Issued: ${c.noticeIssuedDate}` : 'Pending'}
+                      </div>
+                      {(c as any).noticeFile ? (
+                        <button
+                          onClick={() =>
+                            setNoticeViewDoc({
+                              title: `Notice / Summons: ${c.caseNo}`,
+                              content: (c as any).noticeFile,
+                            })
+                          }
+                          className="mt-1 inline-flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-white font-bold px-2 py-0.5 rounded text-[10px] cursor-pointer"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span>View Notice</span>
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-slate-400">No copy</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200">
+                      <div className="font-bold text-blue-900">{c.finalOrderNo || 'Pending'}</div>
+                      <div className="text-[10.5px] text-slate-600 line-clamp-1">{c.finalOrderSummary || '-'}</div>
+                    </td>
+                    <td className="py-3 px-3 border-r border-slate-200 text-center">
+                      {c.finalOrderNo || c.finalOrderFile || c.hasFinalOrderAttachment ? (
+                        <button
+                          onClick={() => onViewFinalOrder(c)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] cursor-pointer shadow-xs inline-flex items-center gap-1"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>View Order</span>
                         </button>
                       ) : (
                         <span className="text-slate-400 text-[10px]">No File</span>
                       )}
                     </td>
                     <td className="py-3 px-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center justify-center gap-1.5">
                         {!isViewer && (
-                          <button onClick={() => { setCaseToEdit(c); setIsNewModalOpen(true); }} className="p-1 text-blue-600 hover:text-blue-800" title="Edit">
-                            <Edit2 className="w-4 h-4" />
-                          </button>
+                          <>
+                            {/* Upload Final Order Action Button */}
+                            <button
+                              onClick={() => setCaseForOrderUpload(c)}
+                              className="p-1 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded cursor-pointer"
+                              title="Upload Final Order"
+                            >
+                              <FileUp className="w-4 h-4" />
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setCaseToEdit(c);
+                                setIsNewModalOpen(true);
+                              }}
+                              className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded cursor-pointer"
+                              title="Edit Case"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                         {isAdmin && (
-                          <button onClick={() => onDeleteCase(c)} className="p-1 text-rose-600 hover:text-rose-800" title="Delete">
+                          <button
+                            onClick={() => onDeleteCase(c)}
+                            className="p-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded cursor-pointer"
+                            title="Delete Case"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}
@@ -639,6 +610,42 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* NOTICE VIEWER MODAL */}
+      {noticeViewDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-5 relative border border-slate-300">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h3 className="font-bold text-sm text-slate-800">{noticeViewDoc.title}</h3>
+              <button
+                onClick={() => setNoticeViewDoc(null)}
+                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="py-4">
+              {noticeViewDoc.content.startsWith('data:image/') ? (
+                <img src={noticeViewDoc.content} alt="Notice Copy" className="max-h-[70vh] mx-auto rounded-lg shadow-sm" />
+              ) : noticeViewDoc.content.startsWith('data:application/pdf') ? (
+                <iframe src={noticeViewDoc.content} className="w-full h-[65vh] rounded-lg border border-slate-200" title="Notice PDF" />
+              ) : (
+                <div className="p-4 bg-slate-50 rounded text-xs text-slate-700 whitespace-pre-wrap">
+                  {noticeViewDoc.content}
+                </div>
+              )}
+            </div>
+            <div className="text-right pt-2 border-t border-slate-200">
+              <button
+                onClick={() => setNoticeViewDoc(null)}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODALS */}
       <AppealCaseModal
