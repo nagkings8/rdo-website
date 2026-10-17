@@ -51,11 +51,10 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('ALL');
 
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
-  const [caseToEdit, setCaseToEdit] = useState<AppealCase | null>(null);
-  const [caseForOrderUpload, setCaseForOrderUpload] = useState<AppealCase | null>(null);
+  const [caseToEdit, setCaseToEdit] = useState<AppealCase null |>(null);
+  const [caseForOrderUpload, setCaseForOrderUpload] = useState<AppealCase null |>(null);
 
-  // Exact Official Case Status Modal State
-  const [eCourtModalCase, setECourtModalCase] = useState<AppealCase | null>(null);
+  const [eCourtModalCase, setECourtModalCase] = useState<AppealCase null |>(null);
   const [singleNoticeDoc, setSingleNoticeDoc] = useState<{ title: string; content: string } | null>(null);
 
   const safeMandals = useMemo(() => {
@@ -251,17 +250,17 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
   const renderStatusBadge = (c: AppealCase) => {
     const s = String(c.status || '').toLowerCase();
     let badgeClass = 'bg-blue-100 text-blue-900 border-blue-300';
-    let icon = <Clock className="w-3 h-3 text-blue-700" />;
+    let icon = <Clock className="w-3 h-3 text-blue-700"/>;
 
     if (s.includes('allowed')) {
       badgeClass = 'bg-emerald-100 text-emerald-900 border-emerald-300';
-      icon = <CheckCircle2 className="w-3 h-3 text-emerald-700" />;
+      icon = <CheckCircle2 className="w-3 h-3 text-emerald-700"/>;
     } else if (s.includes('dismissed')) {
       badgeClass = 'bg-rose-100 text-rose-900 border-rose-300';
-      icon = <AlertCircle className="w-3 h-3 text-rose-700" />;
+      icon = <AlertCircle className="w-3 h-3 text-rose-700"/>;
     } else if (s.includes('remanded')) {
       badgeClass = 'bg-purple-100 text-purple-900 border-purple-300';
-      icon = <RotateCcw className="w-3 h-3 text-purple-700" />;
+      icon = <RotateCcw className="w-3 h-3 text-purple-700"/>;
     }
 
     return (
@@ -272,19 +271,42 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       >
         {icon}
         <span>{c.status || 'Under Hearing'}</span>
-        <Eye className="w-2.5 h-2.5 opacity-60 ml-0.5" />
+        <Eye className="w-2.5 h-2.5 opacity-60 ml-0.5"/>
       </button>
     );
   };
 
+  const handleOpenNoticeDoc = (title: string, fileDataOrKey?: string) => {
+    if (!fileDataOrKey) {
+      onShowToast('Notice document copy is not available.');
+      return;
+    }
+
+    if (fileDataOrKey.startsWith('data:')) {
+      setSingleNoticeDoc({ title, content: fileDataOrKey });
+      return;
+    }
+
+    try {
+      const stored = localStorage.getItem(`notice_doc_${fileDataOrKey}`) || localStorage.getItem(fileDataOrKey);
+      if (stored) {
+        setSingleNoticeDoc({ title, content: stored });
+      } else {
+        setSingleNoticeDoc({ title, content: fileDataOrKey });
+      }
+    } catch {
+      setSingleNoticeDoc({ title, content: fileDataOrKey });
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* HEADER BANNER - OFFICIAL DEEP BLUE */}
+      {/* HEADER BANNER */}
       <div className="bg-gradient-to-r from-[#0c2a47] via-[#134674] to-[#1e5a92] text-white rounded-2xl p-6 shadow-md border-b-4 border-amber-400">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center border border-white/20 shadow-inner">
-              <Scale className="w-7 h-7 text-amber-300" />
+              <Scale className="w-7 h-7 text-amber-300"/>
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -305,7 +327,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2 bg-white/10 px-4 py-2.5 rounded-xl border border-white/15">
-            <Gavel className="w-5 h-5 text-amber-300" />
+            <Gavel className="w-5 h-5 text-amber-300"/>
             <div>
               <div className="text-[11px] text-blue-200 font-bold uppercase tracking-wide">
                 Final Orders Passed
@@ -383,7 +405,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-5 shadow-xs space-y-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="relative w-full max-w-sm">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5"/>
             <input
               type="text"
               placeholder="Search by Case No, Appellant, Village, Survey No..."
@@ -398,7 +420,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
               onClick={handlePrintDailyCauseList}
               className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-md cursor-pointer"
             >
-              <Printer className="w-3.5 h-3.5 text-amber-300" />
+              <Printer className="w-3.5 h-3.5 text-amber-300"/>
               <span>Print Cause List</span>
             </button>
 
@@ -406,7 +428,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
               onClick={() => handlePrintAllCasesRegister(true)}
               className="bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-md cursor-pointer"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-sky-300" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-sky-300"/>
               <span>Print All Cases ({safeCases.length})</span>
             </button>
 
@@ -418,7 +440,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-md cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-3.5 h-3.5"/>
                 <span>Register New Appeal</span>
               </button>
             )}
@@ -428,7 +450,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
           <span className="font-bold text-slate-500 flex items-center gap-1">
-            <Filter className="w-3.5 h-3.5" /> Filter:
+            <Filter className="w-3.5 h-3.5"/> Filter:
           </span>
 
           <select
@@ -462,7 +484,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
             }}
             className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 cursor-pointer ml-auto"
           >
-            <RotateCcw className="w-3 h-3" />
+            <RotateCcw className="w-3 h-3"/>
             <span>Reset</span>
           </button>
         </div>
@@ -489,7 +511,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
               {filteredCases.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-slate-400">
-                    <Scale className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <Scale className="w-8 h-8 text-slate-300 mx-auto mb-2"/>
                     <p className="font-semibold">No Appeal Cases found.</p>
                   </td>
                 </tr>
@@ -536,7 +558,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                             onClick={() => setECourtModalCase(c)}
                             className="text-[10px] text-blue-600 hover:underline font-bold mt-0.5 cursor-pointer"
                           >
-                            {c.caseHistory.length} Hearings Held
+                            {c.caseHistory.length} Hearings Recorded
                           </button>
                         )}
                       </td>
@@ -552,7 +574,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                             onClick={() => onViewFinalOrder(c)}
                             className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] cursor-pointer shadow-xs inline-flex items-center gap-1"
                           >
-                            <FileText className="w-3.5 h-3.5" />
+                            <FileText className="w-3.5 h-3.5"/>
                             <span>View Order</span>
                           </button>
                         ) : (
@@ -569,7 +591,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                                 className="p-1 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded cursor-pointer"
                                 title="Upload Final Order"
                               >
-                                <FileUp className="w-4 h-4" />
+                                <FileUp className="w-4 h-4"/>
                               </button>
 
                               <button
@@ -580,7 +602,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                                 className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded cursor-pointer"
                                 title="Edit Case / Add Hearing"
                               >
-                                <Edit2 className="w-4 h-4" />
+                                <Edit2 className="w-4 h-4"/>
                               </button>
                             </>
                           )}
@@ -590,7 +612,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                               className="p-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded cursor-pointer"
                               title="Delete Case"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4"/>
                             </button>
                           )}
                         </div>
@@ -604,15 +626,14 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
         </div>
       </div>
 
-      {/* OFFICIAL REVENUE DIVISION BLUE THEME CASE STATUS MODAL */}
+      {/* CASE STATUS MODAL */}
       {eCourtModalCase && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-3 sm:p-5 backdrop-blur-xs overflow-y-auto animate-fade-in">
           <div className="bg-slate-50 rounded-2xl shadow-2xl max-w-5xl w-full border border-slate-300 my-6 max-h-[92vh] overflow-y-auto font-sans">
-            {/* Header: Portal Matching Deep Navy Blue with Gold accent */}
             <div className="bg-gradient-to-r from-[#0c2a47] via-[#134674] to-[#1e5a92] text-white p-4.5 flex items-center justify-between sticky top-0 z-20 shadow-md border-b-2 border-amber-400">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center border border-white/20">
-                  <Scale className="w-5 h-5 text-amber-300" />
+                  <Scale className="w-5 h-5 text-amber-300"/>
                 </div>
                 <div>
                   <h3 className="font-black text-sm sm:text-base tracking-wide uppercase text-white">
@@ -627,12 +648,12 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                 onClick={() => setECourtModalCase(null)}
                 className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer transition"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5"/>
               </button>
             </div>
 
             <div className="p-4 sm:p-6 space-y-5 text-xs text-slate-800">
-              {/* SECTION 1: CASE DETAILS TABLE */}
+              {/* SECTION 1: CASE DETAILS */}
               <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
                 <div className="bg-[#134674] text-white font-bold px-3.5 py-2 text-xs uppercase tracking-wider flex items-center justify-between">
                   <span>Case Details</span>
@@ -664,7 +685,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                 </div>
               </div>
 
-              {/* SECTION 2: CASE STATUS TABLE */}
+              {/* SECTION 2: CASE STATUS */}
               <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
                 <div className="bg-[#134674] text-white font-bold px-3.5 py-2 text-xs uppercase tracking-wider">
                   Case Status
@@ -699,7 +720,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                 </div>
               </div>
 
-              {/* SECTION 3: PETITIONER & RESPONDENT DETAILS */}
+              {/* SECTION 3: PARTIES (NO HARDCODED DEFAULT ADVOCATE NAMES) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
                   <div className="bg-[#134674] text-white font-bold px-3.5 py-2 text-xs uppercase tracking-wider">
@@ -709,9 +730,12 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                     <div className="font-semibold whitespace-pre-line text-slate-900 leading-relaxed text-xs">
                       {eCourtModalCase.appellantName || '-'}
                     </div>
-                    <div className="text-[11px] text-blue-800 font-bold border-t border-slate-100 pt-1.5">
-                      Advocate: {eCourtModalCase.appellantAdvocate || 'Party in Person'}
-                    </div>
+                    {/* Only show advocate if entered */}
+                    {eCourtModalCase.appellantAdvocate && eCourtModalCase.appellantAdvocate.trim() !== '' && (
+                      <div className="text-[11px] text-blue-800 font-bold border-t border-slate-100 pt-1.5">
+                        Advocate: {eCourtModalCase.appellantAdvocate}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -723,9 +747,12 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                     <div className="font-semibold whitespace-pre-line text-slate-900 leading-relaxed text-xs">
                       {eCourtModalCase.respondentName || '-'}
                     </div>
-                    <div className="text-[11px] text-amber-800 font-bold border-t border-slate-100 pt-1.5">
-                      Advocate: {eCourtModalCase.respondentAdvocate || 'Government Pleader for Revenue'}
-                    </div>
+                    {/* Only show advocate if entered */}
+                    {eCourtModalCase.respondentAdvocate && eCourtModalCase.respondentAdvocate.trim() !== '' && (
+                      <div className="text-[11px] text-amber-800 font-bold border-t border-slate-100 pt-1.5">
+                        Advocate: {eCourtModalCase.respondentAdvocate}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -755,7 +782,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                 </table>
               </div>
 
-              {/* SECTION 5: CASE HISTORY TABLE */}
+              {/* SECTION 5: CASE HISTORY (ALL HEARINGS & FINAL ORDER RENDERED) */}
               <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
                 <div className="bg-[#134674] text-white font-bold px-3.5 py-2 text-xs uppercase tracking-wider flex items-center justify-between">
                   <span>Case History (Bench Proceedings)</span>
@@ -777,41 +804,44 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                     </thead>
                     <tbody>
                       {eCourtModalCase.caseHistory && eCourtModalCase.caseHistory.length > 0 ? (
-                        eCourtModalCase.caseHistory.map((h, hIdx) => (
-                          <tr key={h.id || hIdx} className="border-b border-slate-200 hover:bg-blue-50/40">
-                            <td className="p-2.5 border-r border-slate-200 text-center font-bold text-slate-700">
-                              {eCourtModalCase.caseNo}
-                            </td>
-                            <td className="p-2.5 border-r border-slate-200 font-medium text-slate-800">
-                              {h.judgeOfficer || 'Revenue Divisional Officer & SDM'}
-                            </td>
-                            <td className="p-2.5 border-r border-slate-200 text-center font-mono text-slate-600">
-                              {h.businessDate || '-'}
-                            </td>
-                            <td className="p-2.5 border-r border-slate-200 text-center font-mono font-bold text-blue-900">
-                              {h.hearingDate}
-                            </td>
-                            <td className="p-2.5 border-r border-slate-200 font-bold uppercase text-slate-800">
-                              {h.purpose}
-                            </td>
-                            <td className="p-2.5 text-center">
-                              {h.documentFile ? (
-                                <button
-                                  onClick={() => setSingleNoticeDoc({
-                                    title: `Notice Copy - ${eCourtModalCase.caseNo} (${h.hearingDate})`,
-                                    content: h.documentFile!,
-                                  })}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded text-[10.5px] cursor-pointer shadow-xs"
-                                >
-                                  <Eye className="w-3 h-3" />
-                                  <span>View Notice</span>
-                                </button>
-                              ) : (
-                                <span className="text-[10px] text-slate-400">No copy</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))
+                        eCourtModalCase.caseHistory.map((h, hIdx) => {
+                          const docContent = h.documentFile || (h as any).documentFileKey;
+                          return (
+                            <tr key={h.id || hIdx} className="border-b border-slate-200 hover:bg-blue-50/40">
+                              <td className="p-2.5 border-r border-slate-200 text-center font-bold text-slate-700">
+                                {eCourtModalCase.caseNo}
+                              </td>
+                              <td className="p-2.5 border-r border-slate-200 font-medium text-slate-800">
+                                {h.judgeOfficer || 'Revenue Divisional Officer & SDM'}
+                              </td>
+                              <td className="p-2.5 border-r border-slate-200 text-center font-mono text-slate-600">
+                                {h.businessDate || '-'}
+                              </td>
+                              <td className="p-2.5 border-r border-slate-200 text-center font-mono font-bold text-blue-900">
+                                {h.hearingDate}
+                              </td>
+                              <td className="p-2.5 border-r border-slate-200 font-bold uppercase text-slate-800">
+                                {h.purpose}
+                              </td>
+                              <td className="p-2.5 text-center">
+                                {docContent ? (
+                                  <button
+                                    onClick={() => handleOpenNoticeDoc(
+                                      `${h.purpose} Copy - ${eCourtModalCase.caseNo} (${h.hearingDate})`,
+                                      docContent
+                                    )}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded text-[10.5px] cursor-pointer shadow-xs"
+                                  >
+                                    <Eye className="w-3 h-3"/>
+                                    <span>{h.purpose.includes('ORDER') ? 'View Order' : 'View Notice'}</span>
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400">No copy</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
                       ) : (
                         <tr>
                           <td colSpan={6} className="p-6 text-center text-slate-400 italic">
@@ -841,31 +871,34 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                     </thead>
                     <tbody>
                       {eCourtModalCase.caseHistory && eCourtModalCase.caseHistory.length > 0 ? (
-                        eCourtModalCase.caseHistory.map((h, pIdx) => (
-                          <tr key={pIdx} className="border-b border-slate-200">
-                            <td className="p-2.5 border-r border-slate-200 font-mono text-slate-600">
-                              PTSSR03{eCourtModalCase.id}_{pIdx + 1}
-                            </td>
-                            <td className="p-2.5 border-r border-slate-200">{h.businessDate || h.hearingDate}</td>
-                            <td className="p-2.5 border-r border-slate-200 font-semibold">{h.purpose || 'Summons to appear in person'}</td>
-                            <td className="p-2.5 text-center">
-                              {h.documentFile ? (
-                                <button
-                                  onClick={() => setSingleNoticeDoc({
-                                    title: `Summons Copy - ${eCourtModalCase.caseNo}`,
-                                    content: h.documentFile!,
-                                  })}
-                                  className="text-blue-700 hover:underline font-bold text-[11px] cursor-pointer inline-flex items-center gap-1"
-                                >
-                                  <FileText className="w-3.5 h-3.5" />
-                                  <span>{h.documentName || 'Notice Copy.pdf'}</span>
-                                </button>
-                              ) : (
-                                <span className="text-[10px] text-slate-400">Notice Issued (Physical)</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))
+                        eCourtModalCase.caseHistory.map((h, pIdx) => {
+                          const docContent = h.documentFile || (h as any).documentFileKey;
+                          return (
+                            <tr key={pIdx} className="border-b border-slate-200">
+                              <td className="p-2.5 border-r border-slate-200 font-mono text-slate-600">
+                                PTSSR03{eCourtModalCase.id}_{pIdx + 1}
+                              </td>
+                              <td className="p-2.5 border-r border-slate-200">{h.businessDate || h.hearingDate}</td>
+                              <td className="p-2.5 border-r border-slate-200 font-semibold">{h.purpose || 'Summons to appear in person'}</td>
+                              <td className="p-2.5 text-center">
+                                {docContent ? (
+                                  <button
+                                    onClick={() => handleOpenNoticeDoc(
+                                      `${h.purpose} Document - ${eCourtModalCase.caseNo}`,
+                                      docContent
+                                    )}
+                                    className="text-blue-700 hover:underline font-bold text-[11px] cursor-pointer inline-flex items-center gap-1"
+                                  >
+                                    <FileText className="w-3.5 h-3.5"/>
+                                    <span>{h.documentName || 'Document.pdf'}</span>
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400">Notice Issued (Physical)</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
                       ) : (
                         <tr>
                           <td colSpan={4} className="p-4 text-center text-slate-400 italic">
@@ -879,7 +912,6 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
               </div>
             </div>
 
-            {/* Footer Matching Portal Official Look */}
             <div className="bg-white p-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 sticky bottom-0">
               <span className="text-[11px] text-slate-600 font-semibold text-center sm:text-left">
                 Court of Revenue Divisional Officer, Huzurnagar • Suryapet District, Government of Telangana
@@ -895,7 +927,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
         </div>
       )}
 
-      {/* SINGLE NOTICE ATTACHMENT VIEWER */}
+      {/* DOCUMENT PREVIEW MODAL */}
       {singleNoticeDoc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-5 relative border border-slate-300">
@@ -905,14 +937,14 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                 onClick={() => setSingleNoticeDoc(null)}
                 className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5"/>
               </button>
             </div>
             <div className="py-4">
               {singleNoticeDoc.content.startsWith('data:image/') ? (
-                <img src={singleNoticeDoc.content} alt="Notice Copy" className="max-h-[70vh] mx-auto rounded-lg shadow-sm" />
+                <img src={singleNoticeDoc.content} alt="Document Copy" className="max-h-[70vh] mx-auto rounded-lg shadow-sm" />
               ) : singleNoticeDoc.content.startsWith('data:application/pdf') ? (
-                <iframe src={singleNoticeDoc.content} className="w-full h-[65vh] rounded-lg border border-slate-200" title="Notice PDF" />
+                <iframe src={singleNoticeDoc.content} className="w-full h-[65vh] rounded-lg border border-slate-200" title="PDF Document" />
               ) : (
                 <div className="p-4 bg-slate-50 rounded text-xs text-slate-700 whitespace-pre-wrap">
                   {singleNoticeDoc.content}
@@ -932,9 +964,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       )}
 
       {/* MODALS */}
-      <AppealCaseModal
-        isOpen={isNewModalOpen}
-        onClose={() => {
+      <AppealCaseModal isOpen="{isNewModalOpen}" onClose="{()"> {
           setIsNewModalOpen(false);
           setCaseToEdit(null);
         }}
@@ -949,9 +979,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
         onShowToast={onShowToast}
       />
 
-      <UploadFinalOrderModal
-        isOpen={Boolean(caseForOrderUpload)}
-        onClose={() => setCaseForOrderUpload(null)}
+      <UploadFinalOrderModal isOpen="{Boolean(caseForOrderUpload)}" onClose="{()"> setCaseForOrderUpload(null)}
         appealCase={caseForOrderUpload}
         onSaveOrder={async (updatedCase, fileBase64) => {
           await onUpdateCase(updatedCase, fileBase64);

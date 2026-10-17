@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Scale, Plus, Trash2, FileText, Upload, CheckCircle2 } from 'lucide-react';
 import { AppealCase, CaseHistoryEntry, APPEAL_TYPES, APPEAL_STATUSES, MANDAL_LIST, MANDAL_VILLAGES } from '../../types';
+import { setAttachmentInDB } from '../../utils/storage';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../../utils/firebase';
 
 interface AppealCaseModalProps {
   isOpen: boolean;
@@ -53,6 +56,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
   const [newHearingStage, setNewHearingStage] = useState('');
   const [newNoticeFile, setNewNoticeFile] = useState<string | null>(null);
   const [newNoticeName, setNewNoticeName] = useState('');
+  const [isUploadingNotice, setIsUploadingNotice] = useState(false);
 
   const availableVillages = mandal && (MANDAL_VILLAGES as any)[mandal] ? (MANDAL_VILLAGES as any)[mandal] : [];
 
@@ -77,7 +81,6 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
       setStagePurpose(caseToEdit.stagePurpose || '');
       setStatus(caseToEdit.status || 'Under Hearing');
       setRemarks(caseToEdit.remarks || '');
-      // Ensure it is an array
       setHearings(Array.isArray(caseToEdit.caseHistory) ? [...caseToEdit.caseHistory] : []);
     } else {
       setCaseNo('');
@@ -105,6 +108,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
     setNewHearingStage('');
     setNewNoticeFile(null);
     setNewNoticeName('');
+    setIsUploadingNotice(false);
   }, [isOpen, caseToEdit]);
 
   if (!isOpen) return null;
@@ -125,7 +129,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleAddHearing = (e: React.MouseEvent) => {
+  const handleAddHearing = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -134,29 +138,47 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
       return;
     }
 
-    const uniqueId = `h_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    setIsUploadingNotice(true);
+    const timestamp = Date.now();
+    const entryId = `h_${timestamp}`;
+    const noticeDocKey = newNoticeFile ? `notice_doc_${entryId}` : undefined;
+
+    // Heavy file base64 data ni attachments collection lo store chesthunnam (Firestore doc limit bypass)
+    if (newNoticeFile && noticeDocKey) {
+      try {
+        await setAttachmentInDB(noticeDocKey, newNoticeFile);
+        await setDoc(doc(db, 'attachments', noticeDocKey), {
+          key: noticeDocKey,
+          data: newNoticeFile,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('Notice attachment storage error:', err);
+      }
+    }
+
     const entry: CaseHistoryEntry = {
-      id: uniqueId,
+      id: entryId,
       businessDate: newBusinessDate || new Date().toISOString().split('T')[0],
       hearingDate: newHearingDate,
       purpose: (newHearingStage || 'NOTICE ISSUED').toUpperCase(),
       judgeOfficer: 'Revenue Divisional Officer & SDM, Huzurnagar',
       proceedings: newHearingStage || 'Notice issued and posted.',
-      documentFile: newNoticeFile || undefined,
       documentName: newNoticeName || undefined,
       uploadedAt: new Date().toISOString(),
+      // Document file reference key
+      ...(noticeDocKey ? { documentFile: noticeDocKey } : {}),
     };
 
-    // Prepend to list
     setHearings((prev) => [entry, ...prev]);
     setNextHearingDate(newHearingDate);
     if (newHearingStage) setStagePurpose(newHearingStage);
 
-    // Reset inputs
     setNewHearingDate('');
     setNewHearingStage('');
     setNewNoticeFile(null);
     setNewNoticeName('');
+    setIsUploadingNotice(false);
     onShowToast('Notice / Hearing entry added successfully!');
   };
 
@@ -202,9 +224,9 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
       surveyNo: surveyNo.trim() || '-',
       extent: extent.trim() || '-',
       appellantName: appellantName.trim(),
-      appellantAdvocate: appellantAdvocate.trim() || 'Party in Person',
+      appellantAdvocate: appellantAdvocate.trim(),
       respondentName: respondentName.trim() || 'Tahsildar & Others',
-      respondentAdvocate: respondentAdvocate.trim() || 'GP for Revenue',
+      respondentAdvocate: respondentAdvocate.trim(),
       filingDate: filingDate || new Date().toISOString().split('T')[0],
       firstHearingDate: firstHearingDate || filingDate,
       nextHearingDate: nextHearingDate || (hearings[0]?.hearingDate || ''),
@@ -369,10 +391,10 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
               />
               <input
                 type="text"
-                placeholder="Advocate: e.g. Party in Person"
+                placeholder="Appellant Advocate (Optional)"
                 value={appellantAdvocate}
                 onChange={(e) => setAppellantAdvocate(e.target.value)}
-                className="w-full mt-1 px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
+                className="w-full mt-1.5 px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
               />
             </div>
 
@@ -390,10 +412,10 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
               />
               <input
                 type="text"
-                placeholder="Respondent Advocate / GP: e.g. GP for Revenue"
+                placeholder="Respondent Advocate / GP (Optional)"
                 value={respondentAdvocate}
                 onChange={(e) => setRespondentAdvocate(e.target.value)}
-                className="w-full mt-1 px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
+                className="w-full mt-1.5 px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
               />
             </div>
           </div>
@@ -502,10 +524,11 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                 <button
                   type="button"
                   onClick={handleAddHearing}
-                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1 cursor-pointer shadow-sm active:scale-95 transition"
+                  disabled={isUploadingNotice}
+                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1 cursor-pointer shadow-sm active:scale-95 transition disabled:opacity-50"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>+ Add Hearing</span>
+                  <span>{isUploadingNotice ? 'Attaching...' : '+ Add Hearing'}</span>
                 </button>
               </div>
             </div>
@@ -528,7 +551,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                           <span className="text-blue-900 font-black">{h.hearingDate}</span> —{' '}
                           <span className="text-amber-800 uppercase font-bold">{h.purpose}</span>
                         </div>
-                        {h.documentFile && (
+                        {(h.documentName || h.documentFile) && (
                           <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
                             <CheckCircle2 className="w-3 h-3" /> Attached: {h.documentName || 'Notice Copy'}
                           </span>

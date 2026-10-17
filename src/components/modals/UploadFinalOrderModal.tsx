@@ -77,7 +77,7 @@ export const UploadFinalOrderModal: React.FC<UploadFinalOrderModalProps> = ({
     try {
       const todayStr = orderDate || new Date().toISOString().split('T')[0];
 
-      // Final Order as a permanent CaseHistoryEntry
+      // Final Order automatically registered as the latest entry in Case History
       const finalHistoryEntry: CaseHistoryEntry = {
         id: `order_${Date.now()}`,
         businessDate: todayStr,
@@ -90,7 +90,6 @@ export const UploadFinalOrderModal: React.FC<UploadFinalOrderModalProps> = ({
         uploadedAt: new Date().toISOString(),
       };
 
-      // Filter out previous order entry if re-uploading
       const existingHistory = (appealCase.caseHistory || []).filter(
         (h) => h.purpose !== 'FINAL ORDER PRONOUNCED'
       );
@@ -126,7 +125,7 @@ export const UploadFinalOrderModal: React.FC<UploadFinalOrderModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-slate-200">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
-              <Gavel className="w-5 h-5" />
+              <Gavel className="w-5 h-5"/>
             </div>
             <div>
               <h3 className="font-black text-sm text-slate-900">Upload Final Judgment / Order</h3>
@@ -138,7 +137,7 @@ export const UploadFinalOrderModal: React.FC<UploadFinalOrderModalProps> = ({
             onClick={onClose}
             className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5"/>
           </button>
         </div>
 
@@ -196,13 +195,13 @@ export const UploadFinalOrderModal: React.FC<UploadFinalOrderModalProps> = ({
 
           <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
             <span className="font-bold text-slate-700 flex items-center gap-1.5">
-              <FileText className="w-4 h-4 text-emerald-600" />
+              <FileText className="w-4 h-4 text-emerald-600"/>
               <span>Signed Final Order Document (PDF / Image)</span>
             </span>
 
             <div className="flex items-center gap-2">
               <label className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs cursor-pointer flex items-center gap-1.5 shadow-xs">
-                <Upload className="w-3.5 h-3.5" />
+                <Upload className="w-3.5 h-3.5"/>
                 <span>Choose Document</span>
                 <input
                   type="file"
@@ -230,7 +229,7 @@ export const UploadFinalOrderModal: React.FC<UploadFinalOrderModalProps> = ({
               disabled={isSubmitting}
               className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
             >
-              <CheckCircle2 className="w-4 h-4" />
+              <CheckCircle2 className="w-4 h-4"/>
               <span>{isSubmitting ? 'Saving...' : 'Publish Final Order'}</span>
             </button>
           </div>
