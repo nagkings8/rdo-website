@@ -22,6 +22,9 @@ import { AppealCase, CaseHistoryEntry, MANDAL_LIST, APPEAL_TYPES, StaffUser } fr
 import { printTableReport } from '../utils/printReport';
 import { AppealCaseModal } from './modals/AppealCaseModal';
 import { UploadFinalOrderModal } from './modals/UploadFinalOrderModal';
+import { getAttachmentFromDB } from '../utils/storage';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../utils/firebase';
 
 interface AppealCasesViewProps {
   appealCases: AppealCase[];
@@ -51,10 +54,10 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('ALL');
 
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
-  const [caseToEdit, setCaseToEdit] = useState<AppealCase null |>(null);
-  const [caseForOrderUpload, setCaseForOrderUpload] = useState<AppealCase null |>(null);
+  const [caseToEdit, setCaseToEdit] = useState<AppealCase | null>(null);
+  const [caseForOrderUpload, setCaseForOrderUpload] = useState<AppealCase | null>(null);
 
-  const [eCourtModalCase, setECourtModalCase] = useState<AppealCase null |>(null);
+  const [eCourtModalCase, setECourtModalCase] = useState<AppealCase | null>(null);
   const [singleNoticeDoc, setSingleNoticeDoc] = useState<{ title: string; content: string } | null>(null);
 
   const safeMandals = useMemo(() => {
@@ -250,17 +253,17 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
   const renderStatusBadge = (c: AppealCase) => {
     const s = String(c.status || '').toLowerCase();
     let badgeClass = 'bg-blue-100 text-blue-900 border-blue-300';
-    let icon = <Clock className="w-3 h-3 text-blue-700"/>;
+    let icon = <Clock className="w-3 h-3 text-blue-700" />;
 
     if (s.includes('allowed')) {
       badgeClass = 'bg-emerald-100 text-emerald-900 border-emerald-300';
-      icon = <CheckCircle2 className="w-3 h-3 text-emerald-700"/>;
+      icon = <CheckCircle2 className="w-3 h-3 text-emerald-700" />;
     } else if (s.includes('dismissed')) {
       badgeClass = 'bg-rose-100 text-rose-900 border-rose-300';
-      icon = <AlertCircle className="w-3 h-3 text-rose-700"/>;
+      icon = <AlertCircle className="w-3 h-3 text-rose-700" />;
     } else if (s.includes('remanded')) {
       badgeClass = 'bg-purple-100 text-purple-900 border-purple-300';
-      icon = <RotateCcw className="w-3 h-3 text-purple-700"/>;
+      icon = <RotateCcw className="w-3 h-3 text-purple-700" />;
     }
 
     return (
@@ -271,12 +274,12 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       >
         {icon}
         <span>{c.status || 'Under Hearing'}</span>
-        <Eye className="w-2.5 h-2.5 opacity-60 ml-0.5"/>
+        <Eye className="w-2.5 h-2.5 opacity-60 ml-0.5" />
       </button>
     );
   };
 
-  const handleOpenNoticeDoc = (title: string, fileDataOrKey?: string) => {
+  const handleOpenNoticeDoc = async (title: string, fileDataOrKey?: string) => {
     if (!fileDataOrKey) {
       onShowToast('Notice document copy is not available.');
       return;
@@ -287,14 +290,23 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       return;
     }
 
+    let resolvedData: string | null = null;
     try {
-      const stored = localStorage.getItem(`notice_doc_${fileDataOrKey}`) || localStorage.getItem(fileDataOrKey);
-      if (stored) {
-        setSingleNoticeDoc({ title, content: stored });
-      } else {
-        setSingleNoticeDoc({ title, content: fileDataOrKey });
+      const snap = await getDoc(doc(db, 'attachments', fileDataOrKey));
+      if (snap.exists() && snap.data()?.data) {
+        resolvedData = snap.data().data;
       }
-    } catch {
+    } catch (e) {
+      console.warn('Could not fetch notice from Firestore:', e);
+    }
+
+    if (!resolvedData) {
+      resolvedData = await getAttachmentFromDB(fileDataOrKey);
+    }
+
+    if (resolvedData) {
+      setSingleNoticeDoc({ title, content: resolvedData });
+    } else {
       setSingleNoticeDoc({ title, content: fileDataOrKey });
     }
   };
@@ -306,7 +318,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center border border-white/20 shadow-inner">
-              <Scale className="w-7 h-7 text-amber-300"/>
+              <Scale className="w-7 h-7 text-amber-300" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -327,7 +339,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2 bg-white/10 px-4 py-2.5 rounded-xl border border-white/15">
-            <Gavel className="w-5 h-5 text-amber-300"/>
+            <Gavel className="w-5 h-5 text-amber-300" />
             <div>
               <div className="text-[11px] text-blue-200 font-bold uppercase tracking-wide">
                 Final Orders Passed
@@ -405,7 +417,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-5 shadow-xs space-y-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="relative w-full max-w-sm">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5"/>
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
               placeholder="Search by Case No, Appellant, Village, Survey No..."
@@ -420,7 +432,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
               onClick={handlePrintDailyCauseList}
               className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-md cursor-pointer"
             >
-              <Printer className="w-3.5 h-3.5 text-amber-300"/>
+              <Printer className="w-3.5 h-3.5 text-amber-300" />
               <span>Print Cause List</span>
             </button>
 
@@ -428,7 +440,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
               onClick={() => handlePrintAllCasesRegister(true)}
               className="bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-md cursor-pointer"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-sky-300"/>
+              <FileSpreadsheet className="w-3.5 h-3.5 text-sky-300" />
               <span>Print All Cases ({safeCases.length})</span>
             </button>
 
@@ -440,7 +452,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-md cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5"/>
+                <Plus className="w-3.5 h-3.5" />
                 <span>Register New Appeal</span>
               </button>
             )}
@@ -450,7 +462,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
           <span className="font-bold text-slate-500 flex items-center gap-1">
-            <Filter className="w-3.5 h-3.5"/> Filter:
+            <Filter className="w-3.5 h-3.5" /> Filter:
           </span>
 
           <select
@@ -484,7 +496,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
             }}
             className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 cursor-pointer ml-auto"
           >
-            <RotateCcw className="w-3 h-3"/>
+            <RotateCcw className="w-3 h-3" />
             <span>Reset</span>
           </button>
         </div>
@@ -511,7 +523,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
               {filteredCases.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-slate-400">
-                    <Scale className="w-8 h-8 text-slate-300 mx-auto mb-2"/>
+                    <Scale className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                     <p className="font-semibold">No Appeal Cases found.</p>
                   </td>
                 </tr>
@@ -574,7 +586,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                             onClick={() => onViewFinalOrder(c)}
                             className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] cursor-pointer shadow-xs inline-flex items-center gap-1"
                           >
-                            <FileText className="w-3.5 h-3.5"/>
+                            <FileText className="w-3.5 h-3.5" />
                             <span>View Order</span>
                           </button>
                         ) : (
@@ -591,7 +603,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                                 className="p-1 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded cursor-pointer"
                                 title="Upload Final Order"
                               >
-                                <FileUp className="w-4 h-4"/>
+                                <FileUp className="w-4 h-4" />
                               </button>
 
                               <button
@@ -602,7 +614,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                                 className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded cursor-pointer"
                                 title="Edit Case / Add Hearing"
                               >
-                                <Edit2 className="w-4 h-4"/>
+                                <Edit2 className="w-4 h-4" />
                               </button>
                             </>
                           )}
@@ -612,7 +624,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                               className="p-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded cursor-pointer"
                               title="Delete Case"
                             >
-                              <Trash2 className="w-4 h-4"/>
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           )}
                         </div>
@@ -633,7 +645,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
             <div className="bg-gradient-to-r from-[#0c2a47] via-[#134674] to-[#1e5a92] text-white p-4.5 flex items-center justify-between sticky top-0 z-20 shadow-md border-b-2 border-amber-400">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center border border-white/20">
-                  <Scale className="w-5 h-5 text-amber-300"/>
+                  <Scale className="w-5 h-5 text-amber-300" />
                 </div>
                 <div>
                   <h3 className="font-black text-sm sm:text-base tracking-wide uppercase text-white">
@@ -648,7 +660,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                 onClick={() => setECourtModalCase(null)}
                 className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer transition"
               >
-                <X className="w-5 h-5"/>
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -730,7 +742,6 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                     <div className="font-semibold whitespace-pre-line text-slate-900 leading-relaxed text-xs">
                       {eCourtModalCase.appellantName || '-'}
                     </div>
-                    {/* Only show advocate if entered */}
                     {eCourtModalCase.appellantAdvocate && eCourtModalCase.appellantAdvocate.trim() !== '' && (
                       <div className="text-[11px] text-blue-800 font-bold border-t border-slate-100 pt-1.5">
                         Advocate: {eCourtModalCase.appellantAdvocate}
@@ -747,7 +758,6 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                     <div className="font-semibold whitespace-pre-line text-slate-900 leading-relaxed text-xs">
                       {eCourtModalCase.respondentName || '-'}
                     </div>
-                    {/* Only show advocate if entered */}
                     {eCourtModalCase.respondentAdvocate && eCourtModalCase.respondentAdvocate.trim() !== '' && (
                       <div className="text-[11px] text-amber-800 font-bold border-t border-slate-100 pt-1.5">
                         Advocate: {eCourtModalCase.respondentAdvocate}
@@ -782,7 +792,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                 </table>
               </div>
 
-              {/* SECTION 5: CASE HISTORY (ALL HEARINGS & FINAL ORDER RENDERED) */}
+              {/* SECTION 5: CASE HISTORY */}
               <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
                 <div className="bg-[#134674] text-white font-bold px-3.5 py-2 text-xs uppercase tracking-wider flex items-center justify-between">
                   <span>Case History (Bench Proceedings)</span>
@@ -805,7 +815,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                     <tbody>
                       {eCourtModalCase.caseHistory && eCourtModalCase.caseHistory.length > 0 ? (
                         eCourtModalCase.caseHistory.map((h, hIdx) => {
-                          const docContent = h.documentFile || (h as any).documentFileKey;
+                          const docRef = (h as any).documentFileKey || h.documentFile;
                           return (
                             <tr key={h.id || hIdx} className="border-b border-slate-200 hover:bg-blue-50/40">
                               <td className="p-2.5 border-r border-slate-200 text-center font-bold text-slate-700">
@@ -824,15 +834,15 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                                 {h.purpose}
                               </td>
                               <td className="p-2.5 text-center">
-                                {docContent ? (
+                                {docRef ? (
                                   <button
                                     onClick={() => handleOpenNoticeDoc(
                                       `${h.purpose} Copy - ${eCourtModalCase.caseNo} (${h.hearingDate})`,
-                                      docContent
+                                      docRef
                                     )}
                                     className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded text-[10.5px] cursor-pointer shadow-xs"
                                   >
-                                    <Eye className="w-3 h-3"/>
+                                    <Eye className="w-3 h-3" />
                                     <span>{h.purpose.includes('ORDER') ? 'View Order' : 'View Notice'}</span>
                                   </button>
                                 ) : (
@@ -872,7 +882,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                     <tbody>
                       {eCourtModalCase.caseHistory && eCourtModalCase.caseHistory.length > 0 ? (
                         eCourtModalCase.caseHistory.map((h, pIdx) => {
-                          const docContent = h.documentFile || (h as any).documentFileKey;
+                          const docRef = (h as any).documentFileKey || h.documentFile;
                           return (
                             <tr key={pIdx} className="border-b border-slate-200">
                               <td className="p-2.5 border-r border-slate-200 font-mono text-slate-600">
@@ -881,15 +891,15 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                               <td className="p-2.5 border-r border-slate-200">{h.businessDate || h.hearingDate}</td>
                               <td className="p-2.5 border-r border-slate-200 font-semibold">{h.purpose || 'Summons to appear in person'}</td>
                               <td className="p-2.5 text-center">
-                                {docContent ? (
+                                {docRef ? (
                                   <button
                                     onClick={() => handleOpenNoticeDoc(
                                       `${h.purpose} Document - ${eCourtModalCase.caseNo}`,
-                                      docContent
+                                      docRef
                                     )}
                                     className="text-blue-700 hover:underline font-bold text-[11px] cursor-pointer inline-flex items-center gap-1"
                                   >
-                                    <FileText className="w-3.5 h-3.5"/>
+                                    <FileText className="w-3.5 h-3.5" />
                                     <span>{h.documentName || 'Document.pdf'}</span>
                                   </button>
                                 ) : (
@@ -937,7 +947,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
                 onClick={() => setSingleNoticeDoc(null)}
                 className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
               >
-                <X className="w-5 h-5"/>
+                <X className="w-5 h-5" />
               </button>
             </div>
             <div className="py-4">
@@ -964,7 +974,9 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       )}
 
       {/* MODALS */}
-      <AppealCaseModal isOpen="{isNewModalOpen}" onClose="{()"> {
+      <AppealCaseModal
+        isOpen={isNewModalOpen}
+        onClose={() => {
           setIsNewModalOpen(false);
           setCaseToEdit(null);
         }}
@@ -979,7 +991,9 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
         onShowToast={onShowToast}
       />
 
-      <UploadFinalOrderModal isOpen="{Boolean(caseForOrderUpload)}" onClose="{()"> setCaseForOrderUpload(null)}
+      <UploadFinalOrderModal
+        isOpen={Boolean(caseForOrderUpload)}
+        onClose={() => setCaseForOrderUpload(null)}
         appealCase={caseForOrderUpload}
         onSaveOrder={async (updatedCase, fileBase64) => {
           await onUpdateCase(updatedCase, fileBase64);

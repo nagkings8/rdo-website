@@ -140,10 +140,11 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
 
     setIsUploadingNotice(true);
     const timestamp = Date.now();
-    const entryId = `h_${timestamp}`;
+    const entryId = `h_${timestamp}_${Math.random().toString(36).substring(2, 6)}`;
+    const stageName = (newHearingStage || 'NOTICE ISSUED').toUpperCase();
     const noticeDocKey = newNoticeFile ? `notice_doc_${entryId}` : undefined;
 
-    // Heavy file base64 data ni attachments collection lo store chesthunnam (Firestore doc limit bypass)
+    // Heavy file base64 data ni attachments storage lo store chesthunnam (Firestore doc 1MB limit bypass kosam)
     if (newNoticeFile && noticeDocKey) {
       try {
         await setAttachmentInDB(noticeDocKey, newNoticeFile);
@@ -161,25 +162,24 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
       id: entryId,
       businessDate: newBusinessDate || new Date().toISOString().split('T')[0],
       hearingDate: newHearingDate,
-      purpose: (newHearingStage || 'NOTICE ISSUED').toUpperCase(),
+      purpose: stageName,
       judgeOfficer: 'Revenue Divisional Officer & SDM, Huzurnagar',
-      proceedings: newHearingStage || 'Notice issued and posted.',
+      proceedings: stageName,
       documentName: newNoticeName || undefined,
       uploadedAt: new Date().toISOString(),
-      // Document file reference key
-      ...(noticeDocKey ? { documentFile: noticeDocKey } : {}),
+      ...(noticeDocKey ? { documentFile: noticeDocKey, documentFileKey: noticeDocKey } : {}),
     };
 
     setHearings((prev) => [entry, ...prev]);
     setNextHearingDate(newHearingDate);
-    if (newHearingStage) setStagePurpose(newHearingStage);
+    setStagePurpose(stageName);
 
     setNewHearingDate('');
     setNewHearingStage('');
     setNewNoticeFile(null);
     setNewNoticeName('');
     setIsUploadingNotice(false);
-    onShowToast('Notice / Hearing entry added successfully!');
+    onShowToast(`Notice / Hearing "${stageName}" added! Please click "Update Appeal Case" to save permanently.`);
   };
 
   const handleRemoveHearing = (id: string, e: React.MouseEvent) => {
@@ -391,7 +391,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
               />
               <input
                 type="text"
-                placeholder="Appellant Advocate (Optional)"
+                placeholder="Appellant Advocate (Optional - unte matrame type cheyyandi)"
                 value={appellantAdvocate}
                 onChange={(e) => setAppellantAdvocate(e.target.value)}
                 className="w-full mt-1.5 px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
@@ -405,14 +405,14 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
               </label>
               <textarea
                 rows={3}
-                placeholder="1) Respondent Name&#10;2) Tahsildar"
+                placeholder="1) Tahsildar, Garidepally&#10;2) Respondent Name"
                 value={respondentName}
                 onChange={(e) => setRespondentName(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none font-medium text-xs"
               />
               <input
                 type="text"
-                placeholder="Respondent Advocate / GP (Optional)"
+                placeholder="Respondent Advocate (Optional - unte matrame type cheyyandi)"
                 value={respondentAdvocate}
                 onChange={(e) => setRespondentAdvocate(e.target.value)}
                 className="w-full mt-1.5 px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
@@ -551,7 +551,7 @@ export const AppealCaseModal: React.FC<AppealCaseModalProps> = ({
                           <span className="text-blue-900 font-black">{h.hearingDate}</span> —{' '}
                           <span className="text-amber-800 uppercase font-bold">{h.purpose}</span>
                         </div>
-                        {(h.documentName || h.documentFile) && (
+                        {(h.documentName || h.documentFile || (h as any).documentFileKey) && (
                           <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
                             <CheckCircle2 className="w-3 h-3" /> Attached: {h.documentName || 'Notice Copy'}
                           </span>

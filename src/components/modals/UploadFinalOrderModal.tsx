@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Gavel, Upload, FileText, CheckCircle2 } from 'lucide-react';
 import { AppealCase, CaseHistoryEntry } from '../../types';
+import { setAttachmentInDB } from '../../utils/storage';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../../utils/firebase';
 
 interface UploadFinalOrderModalProps {
   isOpen: boolean;
@@ -76,20 +79,38 @@ export const UploadFinalOrderModal: React.FC<UploadFinalOrderModalProps> = ({
 
     try {
       const todayStr = orderDate || new Date().toISOString().split('T')[0];
+      const orderEntryId = `order_${Date.now()}`;
+      const orderDocKey = `appeal_order_${appealCase.id}`;
 
-      // Final Order automatically registered as the latest entry in Case History
+      // Heavy PDF string ni separate attachments storage loki pamputhunnam (Firestore doc 1MB limit crash avvakunda)
+      if (fileBase64) {
+        try {
+          await setAttachmentInDB(orderDocKey, fileBase64);
+          await setDoc(doc(db, 'attachments', orderDocKey), {
+            key: orderDocKey,
+            data: fileBase64,
+            updatedAt: new Date().toISOString(),
+          });
+        } catch (err) {
+          console.warn('Order attachment save error:', err);
+        }
+      }
+
+      // CaseHistoryEntry lo heavy base64 pettakunda orderDocKey reference matrame isthunnam
       const finalHistoryEntry: CaseHistoryEntry = {
-        id: `order_${Date.now()}`,
+        id: orderEntryId,
         businessDate: todayStr,
         hearingDate: todayStr,
         purpose: 'FINAL ORDER PRONOUNCED',
         judgeOfficer: 'Revenue Divisional Officer & SDM, Huzurnagar',
         proceedings: `Appeal ${orderStatus.replace('Final Order Issued - ', '').toUpperCase()}. Final Order No: ${orderNo.trim()}. ${summary.trim()}`,
-        documentFile: fileBase64 || appealCase.finalOrderFile || undefined,
-        documentName: fileName || 'Final_Order_Copy.pdf',
+        documentFileKey: orderDocKey,
+        documentFile: orderDocKey,
+        documentName: fileName || appealCase.finalOrderFileName || 'Final_Order_Copy.pdf',
         uploadedAt: new Date().toISOString(),
       };
 
+      // Patha 'FINAL ORDER PRONOUNCED' entry emaina unte remove chesi kotthadi mundhuku cherusthunnam
       const existingHistory = (appealCase.caseHistory || []).filter(
         (h) => h.purpose !== 'FINAL ORDER PRONOUNCED'
       );
@@ -105,6 +126,8 @@ export const UploadFinalOrderModal: React.FC<UploadFinalOrderModalProps> = ({
         finalOrderDate: todayStr,
         finalOrderSummary: summary.trim(),
         finalOrderFileName: fileName || appealCase.finalOrderFileName || 'Final_Order_Copy.pdf',
+        attachmentKey: orderDocKey,
+        hasFinalOrderAttachment: Boolean(fileBase64 || appealCase.hasFinalOrderAttachment),
         caseHistory: updatedHistory,
       };
 
@@ -125,7 +148,7 @@ export const UploadFinalOrderModal: React.FC<UploadFinalOrderModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-slate-200">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
-              <Gavel className="w-5 h-5"/>
+              <Gavel className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-black text-sm text-slate-900">Upload Final Judgment / Order</h3>
@@ -137,7 +160,7 @@ export const UploadFinalOrderModal: React.FC<UploadFinalOrderModalProps> = ({
             onClick={onClose}
             className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
           >
-            <X className="w-5 h-5"/>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -195,13 +218,13 @@ export const UploadFinalOrderModal: React.FC<UploadFinalOrderModalProps> = ({
 
           <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
             <span className="font-bold text-slate-700 flex items-center gap-1.5">
-              <FileText className="w-4 h-4 text-emerald-600"/>
+              <FileText className="w-4 h-4 text-emerald-600" />
               <span>Signed Final Order Document (PDF / Image)</span>
             </span>
 
             <div className="flex items-center gap-2">
               <label className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs cursor-pointer flex items-center gap-1.5 shadow-xs">
-                <Upload className="w-3.5 h-3.5"/>
+                <Upload className="w-3.5 h-3.5" />
                 <span>Choose Document</span>
                 <input
                   type="file"
@@ -229,7 +252,7 @@ export const UploadFinalOrderModal: React.FC<UploadFinalOrderModalProps> = ({
               disabled={isSubmitting}
               className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
             >
-              <CheckCircle2 className="w-4 h-4"/>
+              <CheckCircle2 className="w-4 h-4" />
               <span>{isSubmitting ? 'Saving...' : 'Publish Final Order'}</span>
             </button>
           </div>

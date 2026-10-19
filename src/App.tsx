@@ -826,9 +826,25 @@ export default function App() {
 
   // FULLY PRESERVED CaseHistory WITH NOTICES TRACKER
   const handleSaveAppealCase = async (newCase: AppealCase, rawFileString?: string) => {
+    // Sanitize caseHistory to ensure it's a clean array without undefined values
+    const safeHistory = Array.isArray(newCase.caseHistory)
+      ? newCase.caseHistory.map((h) => ({
+          id: String(h.id || Date.now()),
+          businessDate: String(h.businessDate || ''),
+          hearingDate: String(h.hearingDate || ''),
+          purpose: String(h.purpose || 'NOTICE ISSUED'),
+          judgeOfficer: String(h.judgeOfficer || 'Revenue Divisional Officer & SDM, Huzurnagar'),
+          proceedings: String(h.proceedings || ''),
+          documentName: h.documentName ? String(h.documentName) : '',
+          documentFile: h.documentFile ? String(h.documentFile) : '',
+          documentFileKey: h.documentFileKey ? String(h.documentFileKey) : '',
+          uploadedAt: h.uploadedAt ? String(h.uploadedAt) : new Date().toISOString(),
+        }))
+      : [];
+
     let caseToSave: AppealCase = {
       ...newCase,
-      caseHistory: Array.isArray(newCase.caseHistory) ? [...newCase.caseHistory] : [],
+      caseHistory: safeHistory,
     };
 
     if (rawFileString) {
@@ -860,9 +876,25 @@ export default function App() {
 
   // FULLY PRESERVED CaseHistory MULTIPLE HEARINGS AND NOTICES FIX
   const handleUpdateAppealCase = async (updatedCase: AppealCase, rawFileString?: string) => {
+    // Sanitize caseHistory to guarantee it persists across cloud/local storage
+    const safeHistory = Array.isArray(updatedCase.caseHistory)
+      ? updatedCase.caseHistory.map((h) => ({
+          id: String(h.id || Date.now()),
+          businessDate: String(h.businessDate || ''),
+          hearingDate: String(h.hearingDate || ''),
+          purpose: String(h.purpose || 'NOTICE ISSUED'),
+          judgeOfficer: String(h.judgeOfficer || 'Revenue Divisional Officer & SDM, Huzurnagar'),
+          proceedings: String(h.proceedings || ''),
+          documentName: h.documentName ? String(h.documentName) : '',
+          documentFile: h.documentFile ? String(h.documentFile) : '',
+          documentFileKey: h.documentFileKey ? String(h.documentFileKey) : '',
+          uploadedAt: h.uploadedAt ? String(h.uploadedAt) : new Date().toISOString(),
+        }))
+      : [];
+
     let caseToSave: AppealCase = {
       ...updatedCase,
-      caseHistory: Array.isArray(updatedCase.caseHistory) ? [...updatedCase.caseHistory] : [],
+      caseHistory: safeHistory,
     };
 
     if (rawFileString) {
@@ -887,7 +919,7 @@ export default function App() {
       'Appeal Cases',
       updatedCase.caseNo,
       rawFileString ? 'ORDER_UPLOAD' : 'EDIT',
-      `Appeal updated by ${currentUser?.name || 'Staff'}. Total hearings recorded: ${caseToSave.caseHistory?.length || 0}. Status: ${updatedCase.status}`
+      `Appeal updated by ${currentUser?.name || 'Staff'}. Total hearings recorded: ${safeHistory.length}. Status: ${updatedCase.status}`
     );
     showToast(`Appeal Case #${updatedCase.caseNo} updated successfully.`);
   };
