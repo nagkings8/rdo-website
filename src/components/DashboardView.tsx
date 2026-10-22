@@ -56,35 +56,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6 sm:space-y-8 max-w-[1520px] mx-auto pb-6">
       
-      {/* 1. HERO BANNER: FULL PHOTO + EMBEDDED RIGHT-BOTTOM TAG + GREEN RIBBON */}
-      <div className="relative rounded-3xl overflow-hidden shadow-lg border border-slate-200/90 bg-slate-950">
+      {/* 1. HERO BANNER: FULL NATIONAL FLAG VISIBILITY + INTEGRATED RIBBON (NO BLACK BOX) */}
+      <div className="relative rounded-3xl overflow-hidden shadow-lg border border-slate-200/90 bg-white">
         
-        {/* Real Building Photo Frame */}
-        <div className="relative w-full h-[240px] sm:h-[320px] md:h-[380px] lg:h-[430px] overflow-hidden">
+        {/* Real Building Photo Frame - Flag fully protected with object-[center_top] */}
+        <div className="relative w-full h-[280px] sm:h-[360px] md:h-[440px] lg:h-[500px] overflow-hidden bg-sky-100">
           <img
             src={imgSrc}
             onError={handleImageError}
-            alt="Revenue Divisional Office Huzurnagar Digital Model"
-            className="w-full h-full object-cover object-center"
+            alt="Revenue Divisional Office Huzurnagar Building"
+            className="w-full h-full object-cover object-[center_top]"
           />
 
           {/* Top Left Minimal District Badge */}
-          <div className="absolute top-3.5 left-3.5 sm:top-5 sm:left-6 z-10">
-            <span className="px-3 py-1 rounded-full bg-slate-900/80 backdrop-blur-md text-emerald-300 text-[10.5px] sm:text-xs font-bold tracking-wider uppercase border border-emerald-500/30 shadow-xs">
+          <div className="absolute top-4 left-4 sm:top-5 sm:left-6 z-10">
+            <span className="px-3.5 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md text-emerald-300 text-[11px] sm:text-xs font-bold tracking-wider uppercase border border-emerald-500/30 shadow-sm">
               Huzurnagar Division • Suryapet District
             </span>
           </div>
 
-          {/* PHOTO BOX LONE RIGHT BOTTOM CORNER TAG */}
-          <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-6 z-20">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950/70 backdrop-blur-md border border-white/20 text-white/95 text-[10px] sm:text-[11px] font-semibold tracking-wide shadow-md">
-              <Sparkles className="w-3 h-3 text-amber-300 shrink-0" />
+          {/* Clean Integrated Tag directly above ribbon without any odd black box */}
+          <div className="absolute bottom-6 right-4 sm:bottom-8 sm:right-7 z-20 pointer-events-none">
+            <div className="flex items-center gap-1.5 text-emerald-950 font-bold text-[10.5px] sm:text-xs bg-white/85 backdrop-blur-md px-3 py-1 rounded-full border border-emerald-400/40 shadow-xs">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
               <span>Digital Concept Model (Illustrative Representation)</span>
             </div>
           </div>
         </div>
 
-        {/* COLORFUL FLOWING RIBBON CURVE */}
+        {/* EXACT COLORFUL FLOWING RIBBON CURVE */}
         <div className="absolute -bottom-1 inset-x-0 w-full pointer-events-none overflow-hidden leading-none z-10">
           <svg
             className="relative block w-full h-12 sm:h-16 md:h-20 lg:h-24"
