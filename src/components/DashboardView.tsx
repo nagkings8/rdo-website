@@ -53,13 +53,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isOfficial = currentUser && currentUser.role !== 'VIEWER';
 
   return (
-    <div className="space-y-6 sm:space-y-8 max-w-[1520px] mx-auto pb-6">
+    <div className="space-y-4 sm:space-y-5 max-w-[1520px] mx-auto pb-4">
       
-      {/* HERO BANNER CONTAINER */}
-      <div className="relative rounded-3xl overflow-hidden shadow-lg border border-slate-200/90 bg-white pb-3 sm:pb-3.5">
+      {/* 1. HERO BANNER: FULL FLAG VISIBILITY + COMPACT BOTTOM (NO EXTRA WHITE GAP) */}
+      <div className="relative rounded-3xl overflow-hidden shadow-md border border-slate-200/90 bg-white pb-1 sm:pb-1.5">
         
-        {/* Photo Box */}
-        <div className="relative w-full h-[280px] sm:h-[360px] md:h-[430px] lg:h-[490px] overflow-hidden bg-sky-100">
+        {/* Real Building Photo Frame */}
+        <div className="relative w-full h-[280px] sm:h-[360px] md:h-[430px] lg:h-[480px] overflow-hidden bg-sky-100">
           <img
             src={imgSrc}
             onError={handleImageError}
@@ -77,7 +77,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* COLORFUL GREEN RIBBON WAVE */}
           <div className="absolute -bottom-1 inset-x-0 w-full pointer-events-none overflow-hidden leading-none z-10">
             <svg
-              className="relative block w-full h-12 sm:h-16 md:h-20 lg:h-24"
+              className="relative block w-full h-12 sm:h-16 md:h-20 lg:h-22"
               viewBox="0 0 1200 120"
               preserveAspectRatio="none"
             >
@@ -102,10 +102,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* PHOTO CONTAINER LOPALE RIBBON KINDA PLAIN TEXT (NO BOX, NO BORDER) */}
-        <div className="text-right px-6 pt-1">
-          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 tracking-wide">
-            * Digital Concept Model (Illustrative Representation)
+        {/* COMPACT NOTE WITHOUT EXTRA WHITE SPACE */}
+        <div className="text-right px-4 sm:px-6 pt-0.5">
+          <span className="text-[10px] sm:text-[10.5px] font-medium text-slate-400 tracking-tight">
+            * 3D Architectural Concept View - Divisional Office Complex
           </span>
         </div>
       </div>
