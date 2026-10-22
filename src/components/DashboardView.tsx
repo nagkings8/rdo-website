@@ -54,12 +54,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isOfficial = currentUser && currentUser.role !== 'VIEWER';
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-[1520px] mx-auto pb-6">
+    <div className="space-y-6 sm:space-y-8 max-w-[1520px] mx-auto pb-6">
       
-      {/* 1. HERO BANNER: 100% CLEAN PHOTO + COLORFUL RIBBON CURVE */}
-      <div className="relative rounded-3xl overflow-hidden shadow-md border border-slate-200/90 bg-white">
+      {/* 1. HERO BANNER: FULL PHOTO + EMBEDDED RIGHT-BOTTOM TAG + GREEN RIBBON */}
+      <div className="relative rounded-3xl overflow-hidden shadow-lg border border-slate-200/90 bg-slate-950">
         
-        {/* Real Building Photo Frame (No Black Tag Overlay Inside) */}
+        {/* Real Building Photo Frame */}
         <div className="relative w-full h-[240px] sm:h-[320px] md:h-[380px] lg:h-[430px] overflow-hidden">
           <img
             src={imgSrc}
@@ -74,9 +74,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               Huzurnagar Division • Suryapet District
             </span>
           </div>
+
+          {/* PHOTO BOX LONE RIGHT BOTTOM CORNER TAG */}
+          <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-6 z-20">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950/70 backdrop-blur-md border border-white/20 text-white/95 text-[10px] sm:text-[11px] font-semibold tracking-wide shadow-md">
+              <Sparkles className="w-3 h-3 text-amber-300 shrink-0" />
+              <span>Digital Concept Model (Illustrative Representation)</span>
+            </div>
+          </div>
         </div>
 
-        {/* EXACT COLORFUL FLOWING RIBBON CURVE */}
+        {/* COLORFUL FLOWING RIBBON CURVE */}
         <div className="absolute -bottom-1 inset-x-0 w-full pointer-events-none overflow-hidden leading-none z-10">
           <svg
             className="relative block w-full h-12 sm:h-16 md:h-20 lg:h-24"
@@ -111,16 +119,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* PHOTO KINDA MEERU RED LINE THO MARK CHESINA WHITE SPACE LO CLEAN NOTE */}
-      <div className="flex items-center justify-end px-3 -mt-2">
-        <div className="inline-flex items-center gap-1.5 text-[10.5px] sm:text-xs text-slate-500 font-medium">
-          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Note: Illustrative 3D Concept Model of Divisional Complex, Huzurnagar</span>
-        </div>
-      </div>
-
       {/* 2. THE 5 SERVICE TILES */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         
         {/* CARD 1: Bhu Bharati Files */}
         <div
