@@ -53,13 +53,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isOfficial = currentUser && currentUser.role !== 'VIEWER';
 
   return (
-    <div className="space-y-4 sm:space-y-5 max-w-[1520px] mx-auto pb-4">
+    <div className="space-y-4 max-w-[1520px] mx-auto pb-4">
       
-      {/* 1. HERO BANNER: FULL FLAG VISIBILITY + COMPACT BOTTOM (NO EXTRA WHITE GAP) */}
-      <div className="relative rounded-3xl overflow-hidden shadow-md border border-slate-200/90 bg-white pb-1 sm:pb-1.5">
+      {/* 1. HERO BANNER: ZERO EXTRA WHITE SPACE */}
+      <div className="relative rounded-3xl overflow-hidden shadow-md border border-slate-200/90 bg-white">
         
-        {/* Real Building Photo Frame */}
-        <div className="relative w-full h-[280px] sm:h-[360px] md:h-[430px] lg:h-[480px] overflow-hidden bg-sky-100">
+        {/* Photo Frame */}
+        <div className="relative w-full h-[260px] sm:h-[340px] md:h-[400px] lg:h-[450px] overflow-hidden bg-sky-100">
           <img
             src={imgSrc}
             onError={handleImageError}
@@ -74,39 +74,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
           </div>
 
-          {/* COLORFUL GREEN RIBBON WAVE */}
-          <div className="absolute -bottom-1 inset-x-0 w-full pointer-events-none overflow-hidden leading-none z-10">
+          {/* NOTE EXACTLY ON THE BOTTOM RIGHT EDGE OF PHOTO */}
+          <div className="absolute bottom-2 right-4 sm:bottom-2.5 sm:right-6 z-20 pointer-events-none select-none">
+            <span className="text-[10px] sm:text-[10.5px] font-semibold text-slate-500/90 tracking-tight drop-shadow-xs">
+              * 3D Architectural Concept View - Divisional Office Complex
+            </span>
+          </div>
+
+          {/* COLORFUL GREEN RIBBON WAVE - FLUSH WITH BOTTOM */}
+          <div className="absolute -bottom-0.5 inset-x-0 w-full pointer-events-none overflow-hidden leading-none z-10">
             <svg
-              className="relative block w-full h-12 sm:h-16 md:h-20 lg:h-22"
-              viewBox="0 0 1200 120"
+              className="relative block w-full h-10 sm:h-14 md:h-16 lg:h-18"
+              viewBox="0 0 1200 100"
               preserveAspectRatio="none"
             >
               <path
-                d="M0,95 C160,82 320,80 500,92 C720,108 940,55 1200,12 L1200,28 C940,70 720,118 500,102 C320,90 160,92 0,105 Z"
+                d="M0,75 C160,65 320,62 500,74 C720,88 940,42 1200,8 L1200,20 C940,54 720,96 500,82 C320,72 160,74 0,84 Z"
                 fill="#6ee7b7"
                 opacity="0.95"
               />
               <path
-                d="M0,100 C180,88 360,86 540,98 C750,112 960,45 1200,24 L1200,46 C960,68 750,126 540,112 C360,98 180,100 0,112 Z"
+                d="M0,80 C180,70 360,68 540,80 C750,92 960,34 1200,18 L1200,36 C960,54 750,104 540,92 C360,80 180,82 0,90 Z"
                 fill="#10b981"
               />
               <path
-                d="M200,105 C400,102 600,116 800,90 C980,68 1100,42 1200,38 L1200,60 C1100,65 980,88 800,110 C600,128 400,114 200,115 Z"
+                d="M200,85 C400,82 600,94 800,72 C980,54 1100,32 1200,28 L1200,48 C1100,52 980,72 800,90 C600,104 400,94 200,94 Z"
                 fill="#047857"
               />
               <path
-                d="M0,108 C200,96 400,98 600,110 C800,122 1000,75 1200,54 L1200,120 L0,120 Z"
+                d="M0,88 C200,78 400,80 600,90 C800,100 1000,60 1200,44 L1200,100 L0,100 Z"
                 fill="#ffffff"
               />
             </svg>
           </div>
-        </div>
-
-        {/* COMPACT NOTE WITHOUT EXTRA WHITE SPACE */}
-        <div className="text-right px-4 sm:px-6 pt-0.5">
-          <span className="text-[10px] sm:text-[10.5px] font-medium text-slate-400 tracking-tight">
-            * 3D Architectural Concept View - Divisional Office Complex
-          </span>
         </div>
       </div>
 
