@@ -47,6 +47,9 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
 }) => {
   const isAdmin = currentUser?.role === 'ADMIN';
   const isViewer = !currentUser || currentUser?.role === 'VIEWER';
+  
+  // Public user ki false, logged in staff/admin ki matrame true
+  const isOfficial = Boolean(currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'STAFF'));
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMandal, setSelectedMandal] = useState<string>('ALL');
@@ -203,7 +206,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       period: `Total Cases: ${listToPrint.length}`,
       landscape: true,
       fileName: 'Appeal_Cases_Register',
-      isOfficial: true,
+      isOfficial: isOfficial, // Dynamic: login lenappudu public copy, login unte official copy
     });
   };
 
@@ -246,7 +249,7 @@ export const AppealCasesView: React.FC<AppealCasesViewProps> = ({
       period: `Total Listed: ${listToPrint.length}`,
       landscape: true,
       fileName: 'Daily_Cause_List',
-      isOfficial: true,
+      isOfficial: isOfficial, // Dynamic: login lenappudu public copy, login unte official copy
     });
   };
 
