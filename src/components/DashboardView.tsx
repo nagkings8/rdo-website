@@ -11,7 +11,7 @@ import {
   Send,
   ShieldCheck,
   Building2,
-  CheckCircle2
+  FileCheck2
 } from 'lucide-react';
 import { ActiveTab } from './Navigation';
 
@@ -57,56 +57,80 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-8 max-w-[1520px] mx-auto pb-6">
       
-      {/* 1. HERO STRIP: FULL PHOTO WITH ELEGANT BOTTOM CURVED WAVE */}
-      <div className="relative rounded-3xl overflow-hidden shadow-lg border border-emerald-900/10 min-h-[300px] sm:min-h-[360px] lg:min-h-[400px] flex items-center bg-slate-900">
+      {/* 1. PROFESSIONAL GOVT HERO BANNER WITH INTEGRATED BUILDING DISPLAY */}
+      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-[#062417] via-[#0b3b27] to-[#124d34] text-white shadow-xl border border-emerald-500/20">
         
-        {/* Full Office Building Photo Background */}
-        <div className="absolute inset-0 w-full h-full pointer-events-none select-none">
-          <img
-            src={imgSrc}
-            onError={handleImageError}
-            alt="Revenue Divisional Office Huzurnagar"
-            className="w-full h-full object-cover object-center lg:object-[center_28%]"
-          />
-          {/* Subtle Contrast Gradient so text is always crystal clear */}
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/50 to-transparent sm:from-slate-950/80 sm:via-slate-950/40 sm:to-transparent" />
-        </div>
+        {/* Subtle Decorative Pattern */}
+        <div className="absolute inset-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px] opacity-10 pointer-events-none" />
 
-        {/* Text Card: Glassmorphic Overlay (No photo overlap in mobile or desktop) */}
-        <div className="relative z-10 p-6 sm:p-10 lg:p-12 w-full max-w-xl">
-          <div className="backdrop-blur-md bg-white/10 sm:bg-white/15 p-5 sm:p-7 rounded-2xl border border-white/20 shadow-xl space-y-2.5">
-            
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/25 border border-emerald-400/30 text-emerald-300 text-[10.5px] sm:text-xs font-black tracking-wider uppercase">
-              <CheckCircle2 className="w-3.5 h-3.5 text-amber-300" />
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 items-center p-6 sm:p-8 lg:p-10 gap-6 lg:gap-8 pb-12 sm:pb-16 lg:pb-20">
+          
+          {/* Left Block (7 Cols): Clean Official Identity */}
+          <div className="lg:col-span-7 space-y-4 text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-400/10 border border-emerald-400/25 text-emerald-300 text-[11px] font-bold tracking-wider uppercase">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
               <span>Huzurnagar Division • Suryapet District</span>
             </div>
 
-            <div className="space-y-0.5">
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight drop-shadow-md">
-                RDO Huzurnagar
+            <div className="space-y-1">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
+                Revenue Divisional Office
               </h1>
-              <h2 className="text-sm sm:text-base lg:text-lg font-bold text-amber-300 drop-shadow-xs">
-                Revenue Divisional Office &amp; SDM Court
-              </h2>
+              <p className="text-sm sm:text-base font-semibold text-amber-300">
+                SDM Appellate Court &amp; D-Section File Management Portal
+              </p>
             </div>
 
-            <div className="w-14 h-1 bg-amber-400 rounded-full" />
-
-            <p className="text-xs sm:text-sm text-slate-100 font-medium leading-relaxed drop-shadow-xs">
-              Serving citizens with transparency, accountability and efficiency.
+            <p className="text-xs sm:text-sm text-emerald-100/80 font-normal leading-relaxed max-w-xl mx-auto lg:mx-0">
+              Official e-governance service desk for fast-track revenue files, tapal despatch tracking, and cause list information.
             </p>
+
+            {/* Quick Metrics Bar */}
+            <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-3">
+              <div className="px-3.5 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center gap-2">
+                <FileCheck2 className="w-4 h-4 text-emerald-300" />
+                <span className="text-xs font-bold text-slate-100">
+                  {files.length} Files Active
+                </span>
+              </div>
+              <div className="px-3.5 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center gap-2">
+                <Scale className="w-4 h-4 text-amber-300" />
+                <span className="text-xs font-bold text-slate-100">
+                  {appealCases.length} Revenue Appeals
+                </span>
+              </div>
+            </div>
           </div>
+
+          {/* Right Block (5 Cols): Real Office Building Photo with Official Frame */}
+          <div className="lg:col-span-5 flex justify-center lg:justify-end">
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl border-2 border-emerald-400/40 w-full max-w-md bg-slate-950/40 group">
+              <img
+                src={imgSrc}
+                onError={handleImageError}
+                alt="Revenue Divisional Office Huzurnagar"
+                className="w-full h-52 sm:h-60 lg:h-64 object-cover object-center group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-transparent p-2.5 text-center border-t border-white/10">
+                <span className="text-[11px] sm:text-xs font-bold text-emerald-200 tracking-wider uppercase flex items-center justify-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-amber-300" />
+                  Divisional Administrative Complex
+                </span>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        {/* Bottom Curved Wave Design (Smooth Organic Flow) */}
+        {/* Elegant Curved Wave at Bottom - Blends into page cleanly */}
         <div className="absolute -bottom-1 inset-x-0 w-full pointer-events-none overflow-hidden leading-none z-10">
           <svg
-            className="relative block w-full h-8 sm:h-12 lg:h-16 text-slate-100"
+            className="relative block w-full h-8 sm:h-12 lg:h-14 text-slate-100"
             viewBox="0 0 1200 120"
             preserveAspectRatio="none"
           >
             <path
-              d="M0,0 C150,90 350,-40 500,45 C650,130 900,10 1200,40 L1200,120 L0,120 Z"
+              d="M0,0 C200,80 400,-20 600,40 C800,90 1000,20 1200,60 L1200,120 L0,120 Z"
               fill="currentColor"
             />
           </svg>
