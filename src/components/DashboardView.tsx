@@ -56,10 +56,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6 sm:space-y-8 max-w-[1520px] mx-auto pb-6">
       
-      {/* 1. HERO BANNER: FULL PHOTO WITH EXACT COLORFUL GREEN LAYERED RIBBON WAVE */}
-      <div className="relative rounded-3xl overflow-hidden shadow-lg border border-slate-200/90 bg-slate-950">
+      {/* 1. HERO BANNER: 100% CRYSTAL CLEAR PHOTO + VIBRANT GREEN RIBBON WAVE */}
+      <div className="relative rounded-3xl overflow-hidden shadow-lg border border-slate-200/90 bg-white">
         
-        {/* Real Building Photo Frame */}
+        {/* Real Building Photo Frame - No Blur / No Fog Overlay */}
         <div className="relative w-full h-[240px] sm:h-[320px] md:h-[380px] lg:h-[430px] overflow-hidden">
           <img
             src={imgSrc}
@@ -68,33 +68,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             className="w-full h-full object-cover object-center"
           />
 
-          {/* Top Subtle Vignette */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/15 pointer-events-none" />
-
           {/* Top Left Minimal District Badge */}
           <div className="absolute top-3.5 left-3.5 sm:top-5 sm:left-6 z-10">
-            <span className="px-3 py-1 rounded-full bg-slate-950/75 backdrop-blur-md text-emerald-300 text-[10.5px] sm:text-xs font-bold tracking-wider uppercase border border-emerald-500/30 shadow-xs">
+            <span className="px-3 py-1 rounded-full bg-slate-900/80 backdrop-blur-md text-emerald-300 text-[10.5px] sm:text-xs font-bold tracking-wider uppercase border border-emerald-500/30 shadow-xs">
               Huzurnagar Division • Suryapet District
             </span>
           </div>
 
           {/* Bottom Right: Digital Illustration Disclaimer */}
           <div className="absolute bottom-12 right-3.5 sm:bottom-16 sm:right-6 z-20">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/65 backdrop-blur-md border border-white/20 text-white/90 text-[9.5px] sm:text-[11px] font-semibold tracking-wide shadow-sm">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/75 backdrop-blur-md border border-white/20 text-white text-[9.5px] sm:text-[11px] font-semibold tracking-wide shadow-sm">
               <Sparkles className="w-3 h-3 text-amber-300" />
               <span>Digital Concept Model (Illustrative Representation)</span>
             </div>
           </div>
         </div>
 
-        {/* 2nd PHOTO EXACT COLORFUL FLOWING RIBBON CURVE */}
+        {/* EXACT COLORFUL FLOWING RIBBON CURVE */}
         <div className="absolute -bottom-1 inset-x-0 w-full pointer-events-none overflow-hidden leading-none z-10">
           <svg
             className="relative block w-full h-12 sm:h-16 md:h-20 lg:h-24"
             viewBox="0 0 1200 120"
             preserveAspectRatio="none"
           >
-            {/* Ribbon Layer 1: Soft Light Mint Ribbon on Top Edge */}
+            {/* Ribbon Layer 1: Soft Light Mint Ribbon */}
             <path
               d="M0,95 C160,82 320,80 500,92 C720,108 940,55 1200,12 L1200,28 C940,70 720,118 500,102 C320,90 160,92 0,105 Z"
               fill="#6ee7b7"
@@ -107,13 +104,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               fill="#10b981"
             />
 
-            {/* Ribbon Layer 3: Deep Forest / Telangana Green Accent Stripe */}
+            {/* Ribbon Layer 3: Deep Forest Green Accent */}
             <path
               d="M200,105 C400,102 600,116 800,90 C980,68 1100,42 1200,38 L1200,60 C1100,65 980,88 800,110 C600,128 400,114 200,115 Z"
               fill="#047857"
             />
 
-            {/* Layer 4: Bottom Seamless Canvas Cutout (Merges smoothly into Cards area) */}
+            {/* Layer 4: Bottom Seamless Canvas Cutout */}
             <path
               d="M0,108 C200,96 400,98 600,110 C800,122 1000,75 1200,54 L1200,120 L0,120 Z"
               fill="#f1f5f9"
