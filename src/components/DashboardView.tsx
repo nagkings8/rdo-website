@@ -9,7 +9,8 @@ import {
   ArrowRight,
   PlusCircle,
   Send,
-  ShieldCheck
+  ShieldCheck,
+  Sparkles
 } from 'lucide-react';
 import { ActiveTab } from './Navigation';
 
@@ -55,39 +56,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6 sm:space-y-8 max-w-[1520px] mx-auto pb-6">
       
-      {/* 1. CLEAN FULL PHOTO BANNER WITH BEAUTIFUL CURVE - NO UNWANTED SODHI */}
-      <div className="relative rounded-3xl overflow-hidden shadow-md border border-slate-200/80 bg-white">
+      {/* 1. HERO BANNER: FULL PHOTO + ELEGANT RIBBON CURVE + CG ILLUSTRATION DISCLAIMER */}
+      <div className="relative rounded-3xl overflow-hidden shadow-md border border-slate-200/90 bg-slate-950">
         
-        {/* Real Building Photo Frame */}
-        <div className="relative w-full h-[220px] sm:h-[300px] md:h-[360px] lg:h-[400px] overflow-hidden">
+        {/* Full Image Display */}
+        <div className="relative w-full h-[230px] sm:h-[310px] md:h-[370px] lg:h-[420px] overflow-hidden">
           <img
             src={imgSrc}
             onError={handleImageError}
-            alt="Revenue Divisional Office Huzurnagar"
+            alt="Revenue Divisional Office Huzurnagar Digital Model"
             className="w-full h-full object-cover object-center"
           />
-          
-          {/* Very Subtle Top Vignette for Depth */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10 pointer-events-none" />
 
-          {/* Minimal Elegant Badge - Top Left */}
-          <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-10">
-            <span className="px-3 py-1 rounded-full bg-slate-900/75 backdrop-blur-md text-amber-300 text-[11px] sm:text-xs font-bold tracking-wider uppercase border border-white/20 shadow-sm">
+          {/* Top Subtle Vignette */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15 pointer-events-none" />
+
+          {/* Top Left Minimal District Badge */}
+          <div className="absolute top-3.5 left-3.5 sm:top-5 sm:left-6 z-10">
+            <span className="px-3 py-1 rounded-full bg-slate-950/75 backdrop-blur-md text-emerald-300 text-[10.5px] sm:text-xs font-bold tracking-wider uppercase border border-emerald-500/30 shadow-xs">
               Huzurnagar Division • Suryapet District
             </span>
           </div>
+
+          {/* Bottom Right: Digital Illustration / CG Concept Disclaimer Tag */}
+          <div className="absolute bottom-7 right-3.5 sm:bottom-10 sm:right-6 z-20">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/65 backdrop-blur-md border border-white/20 text-white/90 text-[9.5px] sm:text-[11px] font-semibold tracking-wide shadow-sm">
+              <Sparkles className="w-3 h-3 text-amber-300" />
+              <span>Digital Concept Model (Illustrative Representation)</span>
+            </div>
+          </div>
         </div>
 
-        {/* Elegant Organic Bottom Curve */}
+        {/* 3D Flowing Ribbon Curve Wave at Bottom (Matching photo's green dynamic ribbon) */}
         <div className="absolute -bottom-1 inset-x-0 w-full pointer-events-none overflow-hidden leading-none z-10">
           <svg
-            className="relative block w-full h-6 sm:h-10 lg:h-14 text-slate-100"
+            className="relative block w-full h-9 sm:h-14 lg:h-20"
             viewBox="0 0 1200 120"
             preserveAspectRatio="none"
           >
+            {/* Background Ribbon Layer (Vibrant Emerald Shadow) */}
             <path
-              d="M0,0 C250,70 450,-10 650,45 C850,90 1050,15 1200,35 L1200,120 L0,120 Z"
-              fill="currentColor"
+              d="M0,35 C200,95 450,-10 650,55 C880,115 1050,15 1200,45 L1200,120 L0,120 Z"
+              fill="#059669"
+              opacity="0.35"
+            />
+            {/* Foreground Ribbon Layer (Matching Dashboard Canvas Slate/White) */}
+            <path
+              d="M0,50 C180,10 400,90 620,40 C820,-10 1020,80 1200,25 L1200,120 L0,120 Z"
+              fill="#f1f5f9"
             />
           </svg>
         </div>
