@@ -54,12 +54,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isOfficial = currentUser && currentUser.role !== 'VIEWER';
 
   return (
-    <div className="space-y-6 sm:space-y-8 max-w-[1520px] mx-auto pb-6">
+    <div className="space-y-4 sm:space-y-6 max-w-[1520px] mx-auto pb-6">
       
-      {/* 1. HERO BANNER: 100% CRYSTAL CLEAR PHOTO + VIBRANT GREEN RIBBON WAVE */}
-      <div className="relative rounded-3xl overflow-hidden shadow-lg border border-slate-200/90 bg-white">
+      {/* 1. HERO BANNER: 100% CLEAN PHOTO + COLORFUL RIBBON CURVE */}
+      <div className="relative rounded-3xl overflow-hidden shadow-md border border-slate-200/90 bg-white">
         
-        {/* Real Building Photo Frame - No Blur / No Fog Overlay */}
+        {/* Real Building Photo Frame (No Black Tag Overlay Inside) */}
         <div className="relative w-full h-[240px] sm:h-[320px] md:h-[380px] lg:h-[430px] overflow-hidden">
           <img
             src={imgSrc}
@@ -73,14 +73,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span className="px-3 py-1 rounded-full bg-slate-900/80 backdrop-blur-md text-emerald-300 text-[10.5px] sm:text-xs font-bold tracking-wider uppercase border border-emerald-500/30 shadow-xs">
               Huzurnagar Division • Suryapet District
             </span>
-          </div>
-
-          {/* Bottom Right: Digital Illustration Disclaimer */}
-          <div className="absolute bottom-12 right-3.5 sm:bottom-16 sm:right-6 z-20">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/75 backdrop-blur-md border border-white/20 text-white text-[9.5px] sm:text-[11px] font-semibold tracking-wide shadow-sm">
-              <Sparkles className="w-3 h-3 text-amber-300" />
-              <span>Digital Concept Model (Illustrative Representation)</span>
-            </div>
           </div>
         </div>
 
@@ -119,8 +111,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
+      {/* PHOTO KINDA MEERU RED LINE THO MARK CHESINA WHITE SPACE LO CLEAN NOTE */}
+      <div className="flex items-center justify-end px-3 -mt-2">
+        <div className="inline-flex items-center gap-1.5 text-[10.5px] sm:text-xs text-slate-500 font-medium">
+          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Note: Illustrative 3D Concept Model of Divisional Complex, Huzurnagar</span>
+        </div>
+      </div>
+
       {/* 2. THE 5 SERVICE TILES */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-1">
         
         {/* CARD 1: Bhu Bharati Files */}
         <div
