@@ -9,8 +9,7 @@ import {
   ArrowRight,
   PlusCircle,
   Send,
-  ShieldCheck,
-  Sparkles
+  ShieldCheck
 } from 'lucide-react';
 import { ActiveTab } from './Navigation';
 
@@ -56,11 +55,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6 sm:space-y-8 max-w-[1520px] mx-auto pb-6">
       
-      {/* 1. HERO BANNER: FULL NATIONAL FLAG VISIBILITY + INTEGRATED RIBBON (NO BLACK BOX) */}
-      <div className="relative rounded-3xl overflow-hidden shadow-lg border border-slate-200/90 bg-white">
+      {/* HERO BANNER CONTAINER */}
+      <div className="relative rounded-3xl overflow-hidden shadow-lg border border-slate-200/90 bg-white pb-3 sm:pb-3.5">
         
-        {/* Real Building Photo Frame - Flag fully protected with object-[center_top] */}
-        <div className="relative w-full h-[280px] sm:h-[360px] md:h-[440px] lg:h-[500px] overflow-hidden bg-sky-100">
+        {/* Photo Box */}
+        <div className="relative w-full h-[280px] sm:h-[360px] md:h-[430px] lg:h-[490px] overflow-hidden bg-sky-100">
           <img
             src={imgSrc}
             onError={handleImageError}
@@ -68,54 +67,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             className="w-full h-full object-cover object-[center_top]"
           />
 
-          {/* Top Left Minimal District Badge */}
+          {/* Top Left District Badge */}
           <div className="absolute top-4 left-4 sm:top-5 sm:left-6 z-10">
             <span className="px-3.5 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md text-emerald-300 text-[11px] sm:text-xs font-bold tracking-wider uppercase border border-emerald-500/30 shadow-sm">
               Huzurnagar Division • Suryapet District
             </span>
           </div>
 
-          {/* Clean Integrated Tag directly above ribbon without any odd black box */}
-          <div className="absolute bottom-6 right-4 sm:bottom-8 sm:right-7 z-20 pointer-events-none">
-            <div className="flex items-center gap-1.5 text-emerald-950 font-bold text-[10.5px] sm:text-xs bg-white/85 backdrop-blur-md px-3 py-1 rounded-full border border-emerald-400/40 shadow-xs">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-              <span>Digital Concept Model (Illustrative Representation)</span>
-            </div>
+          {/* COLORFUL GREEN RIBBON WAVE */}
+          <div className="absolute -bottom-1 inset-x-0 w-full pointer-events-none overflow-hidden leading-none z-10">
+            <svg
+              className="relative block w-full h-12 sm:h-16 md:h-20 lg:h-24"
+              viewBox="0 0 1200 120"
+              preserveAspectRatio="none"
+            >
+              <path
+                d="M0,95 C160,82 320,80 500,92 C720,108 940,55 1200,12 L1200,28 C940,70 720,118 500,102 C320,90 160,92 0,105 Z"
+                fill="#6ee7b7"
+                opacity="0.95"
+              />
+              <path
+                d="M0,100 C180,88 360,86 540,98 C750,112 960,45 1200,24 L1200,46 C960,68 750,126 540,112 C360,98 180,100 0,112 Z"
+                fill="#10b981"
+              />
+              <path
+                d="M200,105 C400,102 600,116 800,90 C980,68 1100,42 1200,38 L1200,60 C1100,65 980,88 800,110 C600,128 400,114 200,115 Z"
+                fill="#047857"
+              />
+              <path
+                d="M0,108 C200,96 400,98 600,110 C800,122 1000,75 1200,54 L1200,120 L0,120 Z"
+                fill="#ffffff"
+              />
+            </svg>
           </div>
         </div>
 
-        {/* EXACT COLORFUL FLOWING RIBBON CURVE */}
-        <div className="absolute -bottom-1 inset-x-0 w-full pointer-events-none overflow-hidden leading-none z-10">
-          <svg
-            className="relative block w-full h-12 sm:h-16 md:h-20 lg:h-24"
-            viewBox="0 0 1200 120"
-            preserveAspectRatio="none"
-          >
-            {/* Ribbon Layer 1: Soft Light Mint Ribbon */}
-            <path
-              d="M0,95 C160,82 320,80 500,92 C720,108 940,55 1200,12 L1200,28 C940,70 720,118 500,102 C320,90 160,92 0,105 Z"
-              fill="#6ee7b7"
-              opacity="0.95"
-            />
-
-            {/* Ribbon Layer 2: Main Vibrant Emerald Green Ribbon */}
-            <path
-              d="M0,100 C180,88 360,86 540,98 C750,112 960,45 1200,24 L1200,46 C960,68 750,126 540,112 C360,98 180,100 0,112 Z"
-              fill="#10b981"
-            />
-
-            {/* Ribbon Layer 3: Deep Forest Green Accent */}
-            <path
-              d="M200,105 C400,102 600,116 800,90 C980,68 1100,42 1200,38 L1200,60 C1100,65 980,88 800,110 C600,128 400,114 200,115 Z"
-              fill="#047857"
-            />
-
-            {/* Layer 4: Bottom Seamless Canvas Cutout */}
-            <path
-              d="M0,108 C200,96 400,98 600,110 C800,122 1000,75 1200,54 L1200,120 L0,120 Z"
-              fill="#f1f5f9"
-            />
-          </svg>
+        {/* PHOTO CONTAINER LOPALE RIBBON KINDA PLAIN TEXT (NO BOX, NO BORDER) */}
+        <div className="text-right px-6 pt-1">
+          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 tracking-wide">
+            * Digital Concept Model (Illustrative Representation)
+          </span>
         </div>
       </div>
 
