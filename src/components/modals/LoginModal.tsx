@@ -11,8 +11,7 @@ import {
   Loader2, 
   Phone, 
   Smartphone, 
-  Check,
-  User
+  Check 
 } from 'lucide-react';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
@@ -67,7 +66,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       if (snap.exists() && snap.data()?.users) {
         try {
           const parsed = JSON.parse(snap.data().users);
-          setCloudStaffList(parsed);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setCloudStaffList(parsed);
+          }
         } catch (e) {
           console.error(e);
         }
@@ -78,7 +79,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       if (snap.exists() && snap.data()?.profile) {
         try {
           const parsed = JSON.parse(snap.data().profile);
-          setCloudAdminProfile(parsed);
+          if (parsed) {
+            setCloudAdminProfile(parsed);
+          }
         } catch (e) {
           console.error(e);
         }
@@ -190,7 +193,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   };
 
-  // Send OTP to Registered Mobile Number
   const handleSendOtp = async () => {
     if (!forgotStaffId) {
       onShowToast('Please select your staff profile first.');
@@ -242,7 +244,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
   };
 
-  // Verify OTP & Save New Password
   const handleVerifyOtpAndReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!confirmationResult) {

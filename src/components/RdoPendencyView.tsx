@@ -76,6 +76,7 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Firestore Realtime Listener
   useEffect(() => {
     setIsLoadingCloud(true);
     const colRef = collection(db, 'rdo_pendency_sheets');
@@ -105,7 +106,13 @@ export const RdoPendencyView: React.FC<RdoPendencyViewProps> = ({
           if (loadedSheets.length > 0) {
             setSheetsData(loadedSheets);
             safeSaveLocalStorage('rdo_pendency_sheets_local', loadedSheets);
+          } else {
+            setSheetsData([]);
+            localStorage.removeItem('rdo_pendency_sheets_local');
           }
+        } else {
+          setSheetsData([]);
+          localStorage.removeItem('rdo_pendency_sheets_local');
         }
         setIsLoadingCloud(false);
       },

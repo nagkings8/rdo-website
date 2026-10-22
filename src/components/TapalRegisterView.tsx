@@ -1,6 +1,21 @@
 import React, { useState, useMemo } from 'react';
 import { InwardTapal, OutwardDespatch, MANDAL_LIST, StaffUser } from '../types';
-import { Search, RotateCcw, Download, PlusCircle, Send, FileText, RefreshCw, Trash2, Link as LinkIcon, Printer, Mail, CheckCircle2, Clock, Building2, Eye } from 'lucide-react';
+import { 
+  Search, 
+  RotateCcw, 
+  Download, 
+  PlusCircle, 
+  Send, 
+  FileText, 
+  RefreshCw, 
+  Trash2, 
+  Link as LinkIcon, 
+  Printer, 
+  Mail, 
+  CheckCircle2, 
+  Clock, 
+  Building2 
+} from 'lucide-react';
 import { exportInwardToCSV, exportOutwardToCSV } from '../utils/storage';
 import { printTableReport } from '../utils/printReport';
 
@@ -22,8 +37,8 @@ interface TapalRegisterViewProps {
 }
 
 export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
-  inwards,
-  outwards,
+  inwards = [],
+  outwards = [],
   initialInwardStatus = '',
   initialOutwardSentTo = '',
   currentUser,
@@ -41,6 +56,12 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
   const isViewer = !currentUser || currentUser?.role === 'VIEWER';
   const isOfficial = !isViewer;
 
+  const safeInwards = useMemo(() => (Array.isArray(inwards) ? inwards.filter(Boolean) : []), [inwards]);
+  const safeOutwards = useMemo(() => (Array.isArray(outwards) ? outwards.filter(Boolean) : []), [outwards]);
+  const safeMandals = useMemo(() => (Array.isArray(MANDAL_LIST) && MANDAL_LIST.length > 0 ? MANDAL_LIST : [
+    'HUZURNAGAR', 'CHINTHALAPALEM', 'GARIDEPALLY', 'MATTAMPALLY', 'MELLACHERVU', 'NEREDUCHERLA', 'PALAKEEDU'
+  ]), []);
+
   // Inward filters
   const [inwardSearch, setInwardSearch] = useState('');
   const [inwardMandal, setInwardMandal] = useState('');
@@ -53,12 +74,12 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
   const [outwardSource, setOutwardSource] = useState('');
 
   const tapalStats = useMemo(() => {
-    const totalInward = inwards.length;
-    const inwardScrutiny = inwards.filter((i) => i.status === 'Under Scrutiny').length;
-    const inwardDisposed = inwards.filter((i) => i.status === 'Disposed').length;
-    const totalOutward = outwards.length;
-    const outwardCollectorate = outwards.filter((o) => (o.sentTo || '').includes('Collectorate')).length;
-    const outwardMro = outwards.filter((o) => (o.sentTo || '').includes('MRO')).length;
+    const totalInward = safeInwards.length;
+    const inwardScrutiny = safeInwards.filter((i) => String(i?.status || '').toLowerCase() === 'under scrutiny').length;
+    const inwardDisposed = safeInwards.filter((i) => String(i?.status || '').toLowerCase() === 'disposed').length;
+    const totalOutward = safeOutwards.length;
+    const outwardCollectorate = safeOutwards.filter((o) => String(o?.sentTo || '').toLowerCase().includes('collectorate')).length;
+    const outwardMro = safeOutwards.filter((o) => String(o?.sentTo || '').toLowerCase().includes('mro')).length;
     return {
       totalInward,
       inwardScrutiny,
@@ -67,50 +88,53 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
       outwardCollectorate,
       outwardMro,
     };
-  }, [inwards, outwards]);
+  }, [safeInwards, safeOutwards]);
 
   const filteredInwards = useMemo(() => {
-    return inwards.filter((t) => {
-      const q = inwardSearch.toLowerCase();
-      const matchSearch =
-        (t.inwardNo || '').toLowerCase().includes(q) ||
-        (t.sender || '').toLowerCase().includes(q) ||
-        (t.subject || '').toLowerCase().includes(q);
+    return safeInwards.filter((t) => {
+      const q = inwardSearch.toLowerCase().trim();
+      const inNo = String(t.inwardNo || '').toLowerCase();
+      const sender = String(t.sender || '').toLowerCase();
+      const subject = String(t.subject || '').toLowerCase();
+
+      const matchSearch = !q || inNo.includes(q) || sender.includes(q) || subject.includes(q);
       const matchMandal = inwardMandal === '' || t.mandal === inwardMandal;
       const matchStatus = inwardStatus === '' || t.status === inwardStatus;
       return matchSearch && matchMandal && matchStatus;
     });
-  }, [inwards, inwardSearch, inwardMandal, inwardStatus]);
+  }, [safeInwards, inwardSearch, inwardMandal, inwardStatus]);
 
   const filteredOutwards = useMemo(() => {
-    return outwards.filter((o) => {
-      const q = outwardSearch.toLowerCase();
-      const matchSearch =
-        (o.outwardNo || '').toLowerCase().includes(q) ||
-        (o.sentTo || '').toLowerCase().includes(q) ||
-        (o.subject || '').toLowerCase().includes(q);
-      const matchSentTo = outwardSentTo === '' || (o.sentTo || '').includes(outwardSentTo);
+    return safeOutwards.filter((o) => {
+      const q = outwardSearch.toLowerCase().trim();
+      const outNo = String(o.outwardNo || '').toLowerCase();
+      const sent = String(o.sentTo || '').toLowerCase();
+      const subj = String(o.subject || '').toLowerCase();
+
+      const matchSearch = !q || outNo.includes(q) || sent.includes(q) || subj.includes(q);
+      const matchSentTo = outwardSentTo === '' || String(o.sentTo || '').includes(outwardSentTo);
       const matchMode = outwardMode === '' || o.mode === outwardMode;
       const matchSource =
         outwardSource === '' ||
-        (outwardSource === 'INWARD_LINKED' && (o.entryType === 'INWARD_LINKED' || o.linkedInwardNo)) ||
+        (outwardSource === 'INWARD_LINKED' && (o.entryType === 'INWARD_LINKED' || Boolean(o.linkedInwardNo))) ||
         (outwardSource === 'FRESH' && o.entryType === 'FRESH');
       return matchSearch && matchSentTo && matchMode && matchSource;
     });
-  }, [outwards, outwardSearch, outwardSentTo, outwardMode, outwardSource]);
+  }, [safeOutwards, outwardSearch, outwardSentTo, outwardMode, outwardSource]);
 
   const getStatusBadge = (status: string) => {
-    if (status === 'Disposed') {
+    if (String(status || '').toLowerCase() === 'disposed') {
       return 'bg-emerald-50 text-emerald-800 border-emerald-200';
     }
     return 'bg-amber-50 text-amber-800 border-amber-200';
   };
 
   const getSentToBadge = (sentTo: string) => {
-    if ((sentTo || '').includes('Collectorate')) {
+    const s = String(sentTo || '');
+    if (s.includes('Collectorate')) {
       return 'bg-blue-50 text-blue-800 border-blue-200';
     }
-    if ((sentTo || '').includes('MRO')) {
+    if (s.includes('MRO')) {
       return 'bg-purple-50 text-purple-800 border-purple-200';
     }
     return 'bg-emerald-50 text-emerald-800 border-emerald-200';
@@ -133,13 +157,13 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
     const tableRows = filteredInwards.map((t, i) => `
       <tr>
         <td style="text-align: center; font-weight: bold; border: 1px solid #94a3b8; padding: 5px;">${i + 1}</td>
-        <td style="font-weight: bold; border: 1px solid #94a3b8; padding: 5px;">${t.inwardNo}</td>
-        <td style="text-align: center; border: 1px solid #94a3b8; padding: 5px;">${t.receivedDate}</td>
-        <td style="border: 1px solid #94a3b8; padding: 5px;">${t.sender}</td>
+        <td style="font-weight: bold; border: 1px solid #94a3b8; padding: 5px;">${t.inwardNo || '-'}</td>
+        <td style="text-align: center; border: 1px solid #94a3b8; padding: 5px;">${t.receivedDate || '-'}</td>
+        <td style="border: 1px solid #94a3b8; padding: 5px;">${t.sender || '-'}</td>
         <td style="border: 1px solid #94a3b8; padding: 5px;">${t.mandal || 'GENERAL'}</td>
         <td style="border: 1px solid #94a3b8; padding: 5px;">${t.village || 'General / Division'}</td>
-        <td style="border: 1px solid #94a3b8; padding: 5px;">${t.subject}</td>
-        <td style="text-align: center; font-weight: bold; border: 1px solid #94a3b8; padding: 5px;">${t.status}</td>
+        <td style="border: 1px solid #94a3b8; padding: 5px;">${t.subject || '-'}</td>
+        <td style="text-align: center; font-weight: bold; border: 1px solid #94a3b8; padding: 5px;">${t.status || '-'}</td>
       </tr>
     `).join('');
 
@@ -184,11 +208,11 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
     const tableRows = filteredOutwards.map((o, i) => `
       <tr>
         <td style="text-align: center; font-weight: bold; border: 1px solid #94a3b8; padding: 5px;">${i + 1}</td>
-        <td style="font-weight: bold; border: 1px solid #94a3b8; padding: 5px;">${o.outwardNo}</td>
-        <td style="text-align: center; border: 1px solid #94a3b8; padding: 5px;">${o.despatchedDate}</td>
-        <td style="font-weight: bold; border: 1px solid #94a3b8; padding: 5px;">${o.sentTo}</td>
-        <td style="border: 1px solid #94a3b8; padding: 5px;">${o.subject}</td>
-        <td style="text-align: center; border: 1px solid #94a3b8; padding: 5px;">${o.mode}</td>
+        <td style="font-weight: bold; border: 1px solid #94a3b8; padding: 5px;">${o.outwardNo || '-'}</td>
+        <td style="text-align: center; border: 1px solid #94a3b8; padding: 5px;">${o.outwardDate || o.despatchedDate || '-'}</td>
+        <td style="font-weight: bold; border: 1px solid #94a3b8; padding: 5px;">${o.sentTo || '-'}</td>
+        <td style="border: 1px solid #94a3b8; padding: 5px;">${o.subject || '-'}</td>
+        <td style="text-align: center; border: 1px solid #94a3b8; padding: 5px;">${o.mode || '-'}</td>
         <td style="text-align: center; border: 1px solid #94a3b8; padding: 5px;">${o.linkedInwardNo || '-'}</td>
       </tr>
     `).join('');
@@ -407,7 +431,7 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
             {!isViewer && (
               <>
                 <button
-                  onClick={() => exportInwardToCSV(inwards)}
+                  onClick={() => exportInwardToCSV(safeInwards)}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -445,7 +469,7 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
           >
             <option value="">All Mandals</option>
             <option value="GENERAL / DIVISION">GENERAL / DIVISION</option>
-            {MANDAL_LIST.map((m) => (
+            {safeMandals.map((m) => (
               <option key={m} value={m}>
                 {m}
               </option>
@@ -502,13 +526,13 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
                 filteredInwards.map((tapal) => (
                   <tr key={tapal.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-2.5 px-3 font-bold text-slate-900 border-r border-slate-200">
-                      {tapal.inwardNo}
+                      {tapal.inwardNo || '-'}
                     </td>
                     <td className="py-2.5 px-3 text-slate-600 border-r border-slate-200 whitespace-nowrap">
-                      {tapal.receivedDate}
+                      {tapal.receivedDate || '-'}
                     </td>
                     <td className="py-2.5 px-3 font-medium text-slate-800 border-r border-slate-200">
-                      <div>{tapal.sender}</div>
+                      <div>{tapal.sender || '-'}</div>
                       {tapal.returnHistory && tapal.returnHistory.length > 0 && (
                         <div className="text-[10px] text-amber-700 font-bold mt-0.5">
                           ↺ Returned: {tapal.returnHistory[tapal.returnHistory.length - 1].from}
@@ -516,7 +540,7 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
                       )}
                     </td>
                     <td className="py-2.5 px-3 text-slate-700 border-r border-slate-200">
-                      {tapal.mandal}
+                      {tapal.mandal || 'GENERAL'}
                     </td>
                     <td className="py-2.5 px-3 border-r border-slate-200">
                       <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-800">
@@ -524,7 +548,7 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
                       </span>
                     </td>
                     <td className="py-2.5 px-3 text-slate-800 border-r border-slate-200">
-                      <div>{tapal.subject}</div>
+                      <div>{tapal.subject || '-'}</div>
                       {tapal.remarks && (
                         <div className="text-[10.5px] text-slate-500 italic mt-0.5">Note: {tapal.remarks}</div>
                       )}
@@ -535,7 +559,7 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
                           tapal.status
                         )}`}
                       >
-                        {tapal.status}
+                        {tapal.status || 'Under Scrutiny'}
                       </span>
                     </td>
                     <td className="py-2.5 px-3 text-center border-r border-slate-200">
@@ -616,7 +640,7 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
             {!isViewer && (
               <>
                 <button
-                  onClick={() => exportOutwardToCSV(outwards)}
+                  onClick={() => exportOutwardToCSV(safeOutwards)}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -719,14 +743,14 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
                 </tr>
               ) : (
                 filteredOutwards.map((o) => {
-                  const isLinked = o.entryType === 'INWARD_LINKED' || o.linkedInwardNo;
+                  const isLinked = o.entryType === 'INWARD_LINKED' || Boolean(o.linkedInwardNo);
                   return (
                     <tr key={o.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-2.5 px-3 font-bold text-slate-900 border-r border-slate-200">
-                        {o.outwardNo}
+                        {o.outwardNo || '-'}
                       </td>
                       <td className="py-2.5 px-3 text-slate-600 border-r border-slate-200 whitespace-nowrap">
-                        {o.outwardDate}
+                        {o.outwardDate || o.despatchedDate || '-'}
                       </td>
                       <td className="py-2.5 px-3 border-r border-slate-200">
                         {isLinked ? (
@@ -746,11 +770,11 @@ export const TapalRegisterView: React.FC<TapalRegisterViewProps> = ({
                             o.sentTo
                           )}`}
                         >
-                          {o.sentTo}
+                          {o.sentTo || '-'}
                         </span>
                       </td>
                       <td className="py-2.5 px-3 text-slate-800 border-r border-slate-200">
-                        {o.subject}
+                        {o.subject || '-'}
                       </td>
                       <td className="py-2.5 px-3 border-r border-slate-200 whitespace-nowrap">
                         <span className="inline-block px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-700">

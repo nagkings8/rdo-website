@@ -56,11 +56,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6 sm:space-y-8 max-w-[1520px] mx-auto pb-6">
       
-      {/* 1. HERO BANNER: FULL PHOTO + ELEGANT RIBBON CURVE + CG ILLUSTRATION DISCLAIMER */}
-      <div className="relative rounded-3xl overflow-hidden shadow-md border border-slate-200/90 bg-slate-950">
+      {/* 1. HERO BANNER: FULL PHOTO WITH EXACT COLORFUL GREEN LAYERED RIBBON WAVE */}
+      <div className="relative rounded-3xl overflow-hidden shadow-lg border border-slate-200/90 bg-slate-950">
         
-        {/* Full Image Display */}
-        <div className="relative w-full h-[230px] sm:h-[310px] md:h-[370px] lg:h-[420px] overflow-hidden">
+        {/* Real Building Photo Frame */}
+        <div className="relative w-full h-[240px] sm:h-[320px] md:h-[380px] lg:h-[430px] overflow-hidden">
           <img
             src={imgSrc}
             onError={handleImageError}
@@ -69,7 +69,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           />
 
           {/* Top Subtle Vignette */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/15 pointer-events-none" />
 
           {/* Top Left Minimal District Badge */}
           <div className="absolute top-3.5 left-3.5 sm:top-5 sm:left-6 z-10">
@@ -78,8 +78,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
           </div>
 
-          {/* Bottom Right: Digital Illustration / CG Concept Disclaimer Tag */}
-          <div className="absolute bottom-7 right-3.5 sm:bottom-10 sm:right-6 z-20">
+          {/* Bottom Right: Digital Illustration Disclaimer */}
+          <div className="absolute bottom-12 right-3.5 sm:bottom-16 sm:right-6 z-20">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/65 backdrop-blur-md border border-white/20 text-white/90 text-[9.5px] sm:text-[11px] font-semibold tracking-wide shadow-sm">
               <Sparkles className="w-3 h-3 text-amber-300" />
               <span>Digital Concept Model (Illustrative Representation)</span>
@@ -87,22 +87,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* 3D Flowing Ribbon Curve Wave at Bottom (Matching photo's green dynamic ribbon) */}
+        {/* 2nd PHOTO EXACT COLORFUL FLOWING RIBBON CURVE */}
         <div className="absolute -bottom-1 inset-x-0 w-full pointer-events-none overflow-hidden leading-none z-10">
           <svg
-            className="relative block w-full h-9 sm:h-14 lg:h-20"
+            className="relative block w-full h-12 sm:h-16 md:h-20 lg:h-24"
             viewBox="0 0 1200 120"
             preserveAspectRatio="none"
           >
-            {/* Background Ribbon Layer (Vibrant Emerald Shadow) */}
+            {/* Ribbon Layer 1: Soft Light Mint Ribbon on Top Edge */}
             <path
-              d="M0,35 C200,95 450,-10 650,55 C880,115 1050,15 1200,45 L1200,120 L0,120 Z"
-              fill="#059669"
-              opacity="0.35"
+              d="M0,95 C160,82 320,80 500,92 C720,108 940,55 1200,12 L1200,28 C940,70 720,118 500,102 C320,90 160,92 0,105 Z"
+              fill="#6ee7b7"
+              opacity="0.95"
             />
-            {/* Foreground Ribbon Layer (Matching Dashboard Canvas Slate/White) */}
+
+            {/* Ribbon Layer 2: Main Vibrant Emerald Green Ribbon */}
             <path
-              d="M0,50 C180,10 400,90 620,40 C820,-10 1020,80 1200,25 L1200,120 L0,120 Z"
+              d="M0,100 C180,88 360,86 540,98 C750,112 960,45 1200,24 L1200,46 C960,68 750,126 540,112 C360,98 180,100 0,112 Z"
+              fill="#10b981"
+            />
+
+            {/* Ribbon Layer 3: Deep Forest / Telangana Green Accent Stripe */}
+            <path
+              d="M200,105 C400,102 600,116 800,90 C980,68 1100,42 1200,38 L1200,60 C1100,65 980,88 800,110 C600,128 400,114 200,115 Z"
+              fill="#047857"
+            />
+
+            {/* Layer 4: Bottom Seamless Canvas Cutout (Merges smoothly into Cards area) */}
+            <path
+              d="M0,108 C200,96 400,98 600,110 C800,122 1000,75 1200,54 L1200,120 L0,120 Z"
               fill="#f1f5f9"
             />
           </svg>

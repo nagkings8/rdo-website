@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { StaffUser, AdminProfile } from '../../types';
 import { 
   X, 
-  Lock, 
   KeyRound, 
   Eye, 
   EyeOff, 
@@ -84,11 +83,10 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         return;
       }
 
-      onUpdateAdminPassword(newPassword);
-      onShowToast('✅ Administrator password updated successfully.');
+      onUpdateAdminPassword(newPassword.trim());
+      onShowToast('Administrator password updated successfully.');
       handleClose();
     } else {
-      // Staff password change
       const staffMember = staff.find((s) => s.id === currentUser.id);
       const expectedPassword = staffMember?.password || currentUser.password || 'staff';
 
@@ -97,8 +95,8 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         return;
       }
 
-      onUpdateStaffPassword(currentUser.id, newPassword);
-      onShowToast(`✅ Password successfully changed for ${currentUser.name}.`);
+      onUpdateStaffPassword(currentUser.id, newPassword.trim());
+      onShowToast(`Password successfully changed for ${currentUser.name}.`);
       handleClose();
     }
   };
@@ -106,7 +104,6 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   return (
     <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center z-50 p-3">
       <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transition-all animate-in fade-in zoom-in-95 duration-200">
-        {/* Header */}
         <div className="bg-[#061122] text-white px-5 py-4 flex justify-between items-center border-b-2 border-amber-500">
           <h3 className="font-bold text-sm text-white flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400">
@@ -126,7 +123,6 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 md:p-6 space-y-4 text-xs">
-          {/* User badge */}
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-[#061122] text-amber-400 flex items-center justify-center font-bold shrink-0 border border-amber-500/30">
               {currentUser.role === 'ADMIN' ? <ShieldCheck className="w-5 h-5" /> : <User className="w-5 h-5" />}
@@ -154,7 +150,6 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             </div>
           )}
 
-          {/* Current Password */}
           <div>
             <label className="font-bold text-slate-700 block mb-1">
               Current Password <span className="text-rose-500">*</span>
@@ -179,7 +174,6 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             </div>
           </div>
 
-          {/* New Password */}
           <div>
             <label className="font-bold text-slate-700 block mb-1">
               New Password <span className="text-rose-500">*</span>
@@ -204,7 +198,6 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             </div>
           </div>
 
-          {/* Confirm New Password */}
           <div>
             <label className="font-bold text-slate-700 block mb-1">
               Confirm New Password <span className="text-rose-500">*</span>
